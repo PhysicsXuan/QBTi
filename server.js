@@ -1,15 +1,13 @@
 /* ============================================================
-   QBTI 本地验证码服务器
-   - 提供静态文件服务（index.html / qbti-core.js 等）
+   QBTI 后端服务器（Resend API 版本）
+   - 提供静态文件服务
    - 提供 /api/send-code 和 /api/verify-code
-   - 读取 .env 中的 SMTP 配置，真实发送邮件
+   - 使用 Resend HTTP API 发送邮件（不依赖 SMTP，不卡顿）
    ============================================================ */
-
-require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,9 +15,19 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(__dirname));
 
+/* ---------- Resend 客户端 ---------- */
+let resend = null;
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY);
+  console.log('✅ Resend 已配置，将真实发送邮件');
+} else {
+  console.log('⚠️  未配置 RESEND_API_KEY，验证码将打印在控制台');
+}
+
 /* ---------- 内存存储验证码 ---------- */
 const codeStore = new Map();
 
+// 每 60 秒清理一次过期超过 10 分钟的条目
 setInterval(() => {
   const now = Date.now();
   for (const [key, val] of codeStore) {
@@ -28,35 +36,6 @@ setInterval(() => {
     }
   }
 }, 60 * 1000);
-
-/* ---------- 邮件服务 ---------- */
-let mailer = null;
-if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-  mailer = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.qq.com',
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: false,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  mailer.verify((err) => {
-    if (err) {
-      console.error('');
-      console.error('❌ SMTP 连接失败:', err.message);
-      console.error('   请检查 .env 中的 SMTP_USER / SMTP_PASS 是否正确');
-      console.error('   SMTP_PASS 必须是授权码，不是 QQ 密码');
-      console.error('');
-      mailer = null;
-    } else {
-      console.log('✅ SMTP 连接成功，将真实发送邮件到', process.env.SMTP_USER);
-    }
-  });
-} else {
-  console.log('⚠️  未配置 SMTP，验证码将打印在控制台');
-}
 
 /* ---------- 发送验证码 ---------- */
 app.post('/api/send-code', async (req, res) => {
@@ -94,10 +73,10 @@ app.post('/api/send-code', async (req, res) => {
   console.log('========================================');
   console.log('');
 
-  if (email && mailer) {
+  if (email && resend) {
     try {
-      await mailer.sendMail({
-        from: '"QBTI" <' + process.env.SMTP_USER + '>',
+      const result = await resend.emails.send({
+        from: 'QBTI <onboarding@resend.dev>',
         to: email,
         subject: '【QBTI】你的验证码',
         html: [
@@ -109,14 +88,18 @@ app.post('/api/send-code', async (req, res) => {
           '</div>'
         ].join('\n'),
       });
-      console.log('[Mailer] 邮件已发送到 ' + email);
+      if (result.error) {
+        console.error('[Resend] 发送失败:', result.error);
+        return res.status(500).json({ error: '邮件发送失败：' + result.error.message });
+      }
+      console.log('[Resend] 邮件已发送到 ' + email);
     } catch (err) {
-      console.error('[Mailer] 发送失败:', err.message);
+      console.error('[Resend] 发送异常:', err.message);
       return res.status(500).json({ error: '邮件发送失败：' + err.message });
     }
   }
 
-  const isDev = !mailer;
+  const isDev = !resend;
   res.json({
     success: true,
     message: isDev ? '验证码已生成，请查看服务端控制台' : '验证码已发送到你的邮箱',
@@ -153,7 +136,7 @@ app.post('/api/verify-code', (req, res) => {
 
 /* ---------- 健康检查 ---------- */
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, mailer: !!mailer });
+  res.json({ ok: true, mailer: !!resend });
 });
 
 app.get('/', (req, res) => {
@@ -165,6 +148,7 @@ app.listen(PORT, () => {
   console.log('===========================================');
   console.log('  QBTI 本地服务器已启动');
   console.log('  访问：http://localhost:' + PORT);
+  console.log('  邮件：' + (resend ? '✅ Resend 已启用' : '⚠️  未配置 Resend'));
   console.log('===========================================');
   console.log('');
 });
