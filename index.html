@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>QUANTUM · QBTI</title>
+<style>
+:root{--q-r:255;--q-g:138;--q-b:72;--q-color:rgb(var(--q-r),var(--q-g),var(--q-b));--txt:#E9EBFF;--muted:#8B90B8;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.65;}
+.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+.screen{display:none;flex:1;padding:56px 22px 80px;max-width:980px;margin:0 auto;width:100%}
+.screen.active{display:block}
+.btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.035);color:#fff;padding:13px 26px;border-radius:12px;font-size:15px;cursor:pointer;transition:.25s;font-family:inherit;}
+.btn:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.7);background:rgba(var(--q-r),var(--q-g),var(--q-b),.09)}
+.btn:disabled{opacity:.32;cursor:not-allowed}
+.btn.primary{background:var(--q-color);border:none;color:#fff;font-weight:700;box-shadow:0 0 32px rgba(var(--q-r),var(--q-g),var(--q-b),.24);}
+.btn.sm{padding:9px 18px;font-size:13.5px;border-radius:10px}
+.btn.ghost{background:transparent}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:7px 15px;border-radius:99px;font-size:12px;letter-spacing:.14em;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.035);color:rgba(255,255,255,.62);text-transform:uppercase;margin-bottom:26px;}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--q-color);box-shadow:0 0 10px var(--q-color);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.hero h1{font-size:clamp(34px,7.2vw,58px);font-weight:800;line-height:1.16;letter-spacing:-.02em;margin-bottom:20px;color:#fff}
+.hero h1 .grad{background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.lead{color:var(--muted);font-size:clamp(15px,2.4vw,17px);max-width:620px;margin-bottom:34px}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:56px}
+.dim-preview{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.pv-card{padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.025);}
+.pv-idx{font-size:11px;color:var(--q-color);letter-spacing:.18em;font-weight:700}
+.pv-name{font-size:16px;font-weight:700;margin:8px 0 4px;color:#fff}
+.pv-en{font-size:11.5px;color:var(--muted);margin-bottom:12px}
+.pv-tags{display:flex;flex-wrap:wrap;gap:6px}
+.pv-tag{font-size:11px;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,.06);color:#B7BCE0}
+.quiz-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}
+.progress-track{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;width:0;border-radius:99px;background:var(--q-color);transition:width .45s}
+.progress-text{font-size:13px;color:var(--muted);white-space:nowrap}
+.progress-text b{color:#fff;font-weight:700}
+.group-strip{display:flex;gap:6px;justify-content:center;margin-bottom:34px;flex-wrap:wrap}
+.group-dot{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:99px;font-size:11px;border:1px solid rgba(255,255,255,.10);color:var(--muted);background:rgba(255,255,255,.02);transition:.3s;}
+.group-dot.done{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.4);color:#B7BCE0;background:rgba(var(--q-r),var(--q-g),var(--q-b),.08)}
+.group-dot.active{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.75);color:#fff;background:rgba(var(--q-r),var(--q-g),var(--q-b),.15);}
+.group-dot .gd-num{font-weight:700}
+.quiz-card{padding:38px 32px;border-radius:22px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.025);}
+.q-text{font-size:clamp(19px,3.4vw,25px);font-weight:700;line-height:1.5;color:#fff}
+.options{display:flex;flex-direction:column;gap:11px;margin-top:32px}
+.opt{display:flex;align-items:center;gap:14px;width:100%;padding:15px 20px;border-radius:14px;text-align:left;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.018);color:var(--txt);font-size:15px;font-family:inherit;cursor:pointer;transition:.2s;}
+.opt:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.62);background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);transform:translateX(5px)}
+.opt.selected{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.62);background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);}
+.opt .dot{width:9px;height:9px;border-radius:50%;border:2px solid var(--muted);flex-shrink:0;}
+.opt.selected .dot{background:var(--q-color);border-color:var(--q-color);}
+.opt .num{font-size:11px;color:var(--muted);width:14px}
+.quiz-foot{margin-top:26px;display:flex;justify-content:space-between;align-items:center}
+.hint{font-size:12px;color:var(--muted);opacity:.65}
+.result-hero{text-align:center;padding:22px 0 12px}
+.type-portrait{width:min(280px,72vw);height:210px;margin:0 auto 14px;display:flex;align-items:flex-end;justify-content:center;position:relative}
+.type-portrait::before{content:'';position:absolute;width:190px;height:38px;bottom:4px;border-radius:50%;background:radial-gradient(ellipse,rgba(var(--q-r),var(--q-g),var(--q-b),.30),rgba(var(--q-r),var(--q-g),var(--q-b),0) 70%);filter:blur(8px);}
+.type-portrait img{position:relative;z-index:1;width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 14px 24px rgba(0,0,0,.32));}
+.r-label{font-size:12px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-bottom:18px}
+.code{font-size:clamp(40px,9.5vw,72px);font-weight:800;letter-spacing:.06em;line-height:1.05;background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.code .code-suffix{color:var(--q-color);-webkit-text-fill-color:var(--q-color);}
+.type-name{margin-top:18px;font-size:clamp(20px,3.8vw,28px);font-weight:800;color:#fff;letter-spacing:.08em;text-shadow:0 0 24px rgba(var(--q-r),var(--q-g),var(--q-b),.4);}
+.type-name .tn-suffix{font-size:.72em;color:#9EEBFF;font-weight:700;}
+.r-tagline{color:var(--muted);font-size:14.5px;max-width:680px;margin:24px auto 0;line-height:1.75}
+.section-title{font-size:13px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin:52px 0 18px;display:flex;align-items:center;gap:12px;}
+.section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.1),transparent)}
+.dim-stacks{display:flex;flex-direction:column;gap:16px;margin-top:36px}
+.dim-stack-card{padding:20px 22px 18px;border-radius:18px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.025);}
+.dsc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.dsc-title{font-size:15.5px;font-weight:700;color:#fff}
+.dsc-en{font-size:11px;color:var(--muted);margin-top:2px}
+.dsc-lead{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.dsc-lead-letter{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 9px;border-radius:8px;font-weight:800;font-size:13px;color:#fff;}
+.dsc-gap{padding:3px 9px;border-radius:6px;font-size:10.5px;font-weight:600;background:rgba(255,255,255,.06);color:#C6CBF5;}
+.dsc-gap.clear{color:#9EEBFF;background:rgba(0,229,255,.12)}
+.dsc-gap.moderate{color:#FFD98A;background:rgba(255,217,138,.12)}
+.dsc-gap.weak{color:#FFB4CB;background:rgba(255,107,157,.12)}
+.dsc-bar{display:flex;height:44px;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.04);}
+.dsc-seg{display:flex;align-items:center;justify-content:center;gap:6px;height:100%;min-width:0;color:#fff;font-weight:700;overflow:hidden;white-space:nowrap;transition:width 1s;}
+.dsc-seg-letter{font-size:14px;font-weight:800}
+.dsc-seg-pct{font-size:12.5px;font-weight:700}
+.dsc-seg.small .dsc-seg-pct{display:none}
+.dsc-seg.tiny .dsc-seg-letter,.dsc-seg.tiny .dsc-seg-pct{display:none}
+.dsc-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}
+.dsc-leg{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.dsc-leg.lead{color:#fff;font-weight:700}
+.dsc-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.vector-section{margin-top:36px;padding:26px 22px;border-radius:20px;border:1px solid rgba(var(--q-r),var(--q-g),var(--q-b),.32);background:rgba(255,255,255,.025);}
+.vector-head{text-align:center;margin-bottom:22px}
+.vector-title{font-size:14px;letter-spacing:.18em;color:#9EEBFF;font-weight:700;margin-bottom:6px}
+.vector-sub{font-size:12px;color:var(--muted);line-height:1.6;max-width:560px;margin:0 auto}
+.vector-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.vector-card{padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);}
+.vector-card.top{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.75);background:rgba(var(--q-r),var(--q-g),var(--q-b),.12);}
+.vector-card .vc-letter{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;font-weight:800;font-size:14px;background:rgba(255,255,255,.08);color:var(--muted);margin-bottom:10px;}
+.vector-card.top .vc-letter{background:var(--q-color);color:#fff}
+.vector-card .vc-name{font-size:14.5px;font-weight:700;margin-bottom:3px;color:#fff}
+.vector-card .vc-en{font-size:10.5px;color:var(--muted);margin-bottom:12px}
+.vector-card .vc-pct{font-size:24px;font-weight:800;color:var(--q-color);line-height:1;}
+.vector-card.top .vc-pct{color:#fff}
+.vector-card .vc-bar{height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-top:10px}
+.vector-card .vc-fill{height:100%;width:0;border-radius:99px;background:var(--q-color);transition:width .9s;}
+.vector-card .vc-desc{font-size:11.5px;color:#A8AEDA;margin-top:10px;line-height:1.55}
+.ai-panel{margin-top:18px;padding:26px;border-radius:20px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.025);}
+.ai-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.ai-head h3{font-size:17px;font-weight:700;display:flex;align-items:center;gap:9px;color:#fff}
+.ai-head h3::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--q-color);}
+.ai-body{margin-top:20px;font-size:14.5px;line-height:1.85;color:#C9CEEE}
+.ai-body p{margin-bottom:14px}
+.ai-body h4{font-size:15px;color:#CBBEFF;margin:20px 0 8px}
+.ai-body strong{color:#fff}
+.ai-body ul{margin:8px 0 16px;padding-left:4px;list-style:none}
+.ai-body li{position:relative;padding-left:18px;margin-bottom:8px}
+.ai-body li::before{content:'▸';position:absolute;left:0;color:var(--q-color)}
+.ai-empty{color:var(--muted);font-size:14px;padding:8px 0}
+.spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--q-color);border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.result-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:48px}
+.modal-mask{position:fixed;inset:0;background:rgba(3,4,12,.82);backdrop-filter:blur(6px);z-index:50;display:none;place-items:center;padding:20px;}
+.modal-mask.show{display:grid}
+.modal{width:100%;max-width:480px;padding:28px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:#0B0D1C;}
+.modal h3{font-size:17px;margin-bottom:6px;color:#fff}
+.modal p.sub{font-size:12.5px;color:var(--muted);margin-bottom:22px;line-height:1.7}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px}
+.field input{width:100%;padding:11px 14px;border-radius:10px;font-size:13.5px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--txt);font-family:inherit;outline:none;}
+.field input:focus{border-color:var(--q-color)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px;flex-wrap:wrap}
+.test-result{margin-top:14px;font-size:12.5px;line-height:1.7;padding:10px 14px;border-radius:10px;display:none}
+.test-result.show{display:block}
+.test-result.ok{background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);color:#A6F0FF}
+.test-result.err{background:rgba(255,107,157,.08);border:1px solid rgba(255,107,157,.3);color:#FFB4CB}
+.gear{position:fixed;right:20px;bottom:20px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;transition:.25s;backdrop-filter:blur(8px);}
+.gear:hover{color:var(--txt);border-color:var(--q-color);transform:rotate(45deg)}
+.quantum-nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.76);border-bottom:1px solid rgba(255,255,255,.07);backdrop-filter:blur(18px);}
+.quantum-nav-inner{width:min(1180px,calc(100% - 40px));display:flex;align-items:center;justify-content:space-between;}
+.quantum-brand{border:0;background:none;color:#fff;cursor:pointer;font-size:15px;font-weight:700;letter-spacing:.22em;padding:8px 0;}
+.quantum-links{display:flex;align-items:center;gap:8px}
+.quantum-link{border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;padding:10px 17px;border-radius:999px;font:inherit;font-size:13px;letter-spacing:.08em;transition:.25s;}
+.quantum-link:hover{color:#fff;background:rgba(255,255,255,.06)}
+.quantum-link.active{color:#fff;background:rgba(255,255,255,.09)}
+#screen-home{display:none;max-width:none !important;width:100% !important;min-height:100vh;height:100vh;padding:0 !important;margin:0 !important;position:relative;overflow:hidden;align-items:center;justify-content:center;background:#000 !important;}
+#screen-home.active{display:flex !important;}
+.home-stage{position:relative;width:100%;height:100%;min-height:620px;display:grid;place-items:center;isolation:isolate;overflow:hidden;}
+.quantum-visual{width:min(92vw,82vh,880px);height:min(92vw,82vh,880px);position:relative;display:block;overflow:visible;}
+.quantum-hint{position:absolute;z-index:3;left:50%;top:calc(50% + min(33.12vw,29.52vh,316.8px) + 18px);transform:translateX(-50%);width:max-content;max-width:90vw;text-align:center;color:#ffffff;font-size:clamp(12px,1.55vw,15px);font-weight:400;letter-spacing:.18em;white-space:nowrap;pointer-events:none;animation:quantumHintBreath 15.708s ease-in-out infinite;text-shadow:0 0 16px rgba(255,255,255,.10);}
+@keyframes quantumHintBreath{0%{opacity:.10}25%{opacity:.95}50%{opacity:.10}75%{opacity:0}100%{opacity:.10}}
+@media(max-height:560px){.quantum-hint{top:auto;bottom:5vh}}
+#quantumCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none;-webkit-tap-highlight-color:transparent;}
+.screen:not(#screen-home){padding:112px 22px 90px !important;max-width:1040px !important;min-height:100vh;background:#000;}
+.contact-page{min-height:calc(100vh - 72px);display:grid;place-items:center;text-align:center;}
+.contact-inner{max-width:600px}
+.contact-kicker{color:rgba(255,255,255,.42);font-size:11px;letter-spacing:.28em;text-transform:uppercase;margin-bottom:18px;}
+.contact-title{font-size:clamp(36px,7vw,72px);font-weight:700;letter-spacing:-.04em;color:#fff}
+.contact-text{margin:20px auto 30px;color:rgba(255,255,255,.48);max-width:500px;font-size:15px;line-height:1.9;}
+.contact-mail{display:inline-flex;padding:12px 20px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:#fff;text-decoration:none;font-size:13px;}
+@media(max-width:700px){
+  .quantum-nav{height:64px}
+  .quantum-nav-inner{width:calc(100% - 24px)}
+  .quantum-brand{font-size:12px}
+  .quantum-links{gap:0}
+  .quantum-link{padding:9px 10px;font-size:11px}
+}
+@media(max-width:600px){
+  .screen{padding:36px 16px 70px}
+  .quiz-card{padding:26px 20px;border-radius:18px}
+  .type-name{font-size:20px}
+  .code{font-size:38px}
+}
+</style>
+</head>
+<body>
+
+<nav class="quantum-nav">
+  <div class="quantum-nav-inner">
+    <button class="quantum-brand nav-go" data-target="screen-home">QUANTUM</button>
+    <div class="quantum-links">
+      <button class="quantum-link nav-go active" data-target="screen-home">主页</button>
+      <button class="quantum-link nav-go" data-target="screen-intro">QBTI</button>
+      <button class="quantum-link nav-go" data-target="screen-contact">联系我们</button>
+    </div>
+  </div>
+</nav>
+
+<div class="app">
+  <section class="screen active" id="screen-home">
+    <div class="home-stage">
+      <div class="quantum-visual" id="quantumVisual">
+        <canvas id="quantumCanvas"></canvas>
+      </div>
+      <div class="quantum-hint" aria-hidden="true">按住量子球以开始</div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-intro">
+    <div class="hero">
+      <div class="badge">QBTI · Quantum Behavior Type Indicator</div>
+      <h1>你，<span class="grad">尚未坍缩</span>。</h1>
+      <p class="lead">
+        在单一的评价框架里，每一次排名、每一张试卷，都是一次强观测。
+        而观测，会让叠加态坍缩。<br>
+        QBTI 用 40 道题、81 种人格类型、4 个发展方向，描述那些还没被观测到的你。
+      </p>
+      <div class="hero-actions">
+        <button class="btn primary" id="btnStart">开始观测 →</button>
+      </div>
+      <div class="dim-preview" id="dimPreview"></div>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-quiz">
+    <div class="quiz-head">
+      <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+      <div class="progress-text"><b id="qIdx">1</b> / <span id="qTotal">40</span></div>
+    </div>
+    <div class="group-strip" id="groupStrip"></div>
+    <div class="quiz-card" id="quizCard">
+      <h2 class="q-text" id="qText">加载中…</h2>
+      <div class="options" id="options"></div>
+    </div>
+    <div class="quiz-foot">
+      <button class="btn sm" id="btnPrev" disabled>← 上一题</button>
+      <span class="hint">键盘 1–5 可快速作答</span>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-result">
+    <div class="result-hero">
+      <div class="r-label">Your Quantum Learning Type</div>
+      <div class="type-portrait"><img id="rTypeImage" src="" alt="人格画像"></div>
+      <div class="code" id="rCode">—</div>
+      <div class="type-name" id="rTypeName">—</div>
+      <p class="r-tagline" id="rTagline"></p>
+    </div>
+    <div class="section-title">四维倾向 · 每维度内三字母合计 100%</div>
+    <div class="dim-stacks" id="dimStacks"></div>
+    <div class="section-title">发展向量 Developmental Vector</div>
+    <div class="vector-section">
+      <div class="vector-head">
+        <div class="vector-title">你当前的学习状态更倾向于……</div>
+        <div class="vector-sub">四条发展路径的相对权重。</div>
+      </div>
+      <div class="vector-grid" id="vectorGrid"></div>
+    </div>
+    <div class="section-title">AI 引导报告</div>
+    <div class="ai-panel">
+      <div class="ai-head">
+        <h3>个性化波函数解读</h3>
+        <button class="btn sm" id="btnAI">生成报告</button>
+      </div>
+      <div class="ai-body" id="aiBody">
+        <div class="ai-empty">点击「生成报告」，由 AI 基于你的十二维量子态，输出专属的引导路径。</div>
+      </div>
+    </div>
+    <div class="result-actions">
+      <button class="btn" id="btnRestart">重新观测</button>
+      <button class="btn" id="btnCopy">复制结果</button>
+    </div>
+  </section>
+
+  <section class="screen" id="screen-contact">
+    <div class="contact-page">
+      <div class="contact-inner">
+        <div class="contact-kicker">CONTACT</div>
+        <h1 class="contact-title">联系我们</h1>
+        <p class="contact-text">如果你希望了解项目、提出建议，或者参与后续的量子态映射研究，可以通过邮件与我们联系。</p>
+        <a class="contact-mail" href="mailto:contact@example.com">contact@example.com</a>
+      </div>
+    </div>
+  </section>
+</div>
+
+<button class="gear" id="btnGear" title="API 设置">⚙</button>
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h3>API 设置</h3>
+    <p class="sub">密钥仅保存在本地浏览器（localStorage），不会上传到任何第三方。</p>
+    <div class="field"><label>接口地址</label><input id="inpUrl" type="text" placeholder="https://api.deepseek.com/chat/completions"></div>
+    <div class="field"><label>API Key</label><input id="inpKey" type="password" placeholder="sk-..."></div>
+    <div class="field"><label>模型名称</label><input id="inpModel" type="text" placeholder="deepseek-chat"></div>
+    <button class="btn sm" id="btnTestCfg" style="width:100%">测试连接</button>
+    <div class="test-result" id="testResult"></div>
+    <div class="modal-actions">
+      <button class="btn sm ghost" id="btnCancelCfg">取消</button>
+      <button class="btn sm primary" id="btnSaveCfg">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 三个外部 JS 模块 ============ -->
+<script src="qbti-core.js"></script>
+<script src="quantum-sphere.js"></script>
+<script src="qbti-auth.js"></script>
+
+<!-- ============ 主控制脚本 ============ -->
+<script>
+(function(){
+  'use strict';
+  const Q = window.QBTI;
+  const $ = id => document.getElementById(id);
+
+  if(!Q){
+    console.error('[QBTI] qbti-core.js 未加载');
+    return;
+  }
+
+  const state = {
+    idx: 0,
+    answers: {},
+    locked: false,
+    result: null,
+    quantumState: null,
+    dimStates: null,
+    restoredTs: null
+  };
+  const CFG_KEY = 'qbti_config_v2';
+  const RESULT_KEY_PREFIX = 'qbti_results_';
+  const DEFAULT_CFG = {
+    url: 'https://api.deepseek.com/chat/completions',
+    key: 'sk-72cc39d1b5854b6ea9132c3a02e6e319',
+    model: 'deepseek-chat'
+  };
+
+  /* ============ 工具 ============ */
+  function formatTime(ts){
+    const d = new Date(ts);
+    const pad = n => n < 10 ? '0'+n : ''+n;
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
+      ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  /* ============ 页面切换 ============ */
+  document.querySelectorAll('.nav-go').forEach(btn => {
+    btn.addEventListener('click', () => showScreen(btn.dataset.target));
+  });
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = $(id);
+    if(target) target.classList.add('active');
+    document.querySelectorAll('.quantum-link').forEach(b => {
+      b.classList.toggle('active', b.dataset.target === id);
+    });
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    if(id === 'screen-home' && window.QuantumSphere){
+      setTimeout(() => window.QuantumSphere.resize(), 50);
+      setTimeout(() => window.QuantumSphere.resize(), 200);
+      setTimeout(() => window.QuantumSphere.resize(), 500);
+    }
+  }
+
+  /* ============ 维度预览 ============ */
+  (function(){
+    const el = $('dimPreview');
+    if(!el) return;
+    el.innerHTML = Q.DIMS.map((d, i) =>
+      '<div class="pv-card">'
+      + '<div class="pv-idx">0' + (i+1) + '</div>'
+      + '<div class="pv-name">' + d.name + '</div>'
+      + '<div class="pv-en">' + d.en + '</div>'
+      + '<div class="pv-tags">' + d.letters.map(l => {
+        const s = Q.SUBDIMS.find(x => x.id === l);
+        return '<span class="pv-tag" style="background:' + Q.DIM_COLORS[d.id][l] + '22;color:' + Q.DIM_COLORS[d.id][l] + '">' + l + ' · ' + s.name + '</span>';
+      }).join('') + '</div></div>'
+    ).join('');
+  })();
+
+  /* ==================================================
+     ★ 历史记录：保存 / 读取 / 恢复
+     ================================================== */
+  function saveResultToUser(result, qs, ds, answers){
+    if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
+    const u = window.QAuth.getCurrentUser();
+    if(!u || !u.email) return;
+    const key = RESULT_KEY_PREFIX + u.email;
+    let history = [];
+    try {
+      history = JSON.parse(localStorage.getItem(key) || '[]');
+      if(!Array.isArray(history)) history = [];
+    } catch(e){ history = []; }
+    history.push({
+      ts: Date.now(),
+      answers: Object.assign({}, answers),
+      code: result.letters.join(''),
+      suffix: result.suffix.letter,
+      quantumState: qs ? qs.type : null,
+      dimStates: ds
+    });
+    if(history.length > 10) history = history.slice(-10);
+    try {
+      localStorage.setItem(key, JSON.stringify(history));
+      console.log('[QBTI] 结果已保存到账户 ' + u.email);
+    } catch(e){}
+  }
+
+  function getLatestResultFromUser(){
+    if(!window.QAuth || !window.QAuth.isLoggedIn()) return null;
+    const u = window.QAuth.getCurrentUser();
+    if(!u || !u.email) return null;
+    const key = RESULT_KEY_PREFIX + u.email;
+    let history = [];
+    try {
+      history = JSON.parse(localStorage.getItem(key) || '[]');
+      if(!Array.isArray(history)) history = [];
+    } catch(e){ history = []; }
+    if(history.length === 0) return null;
+    return history[history.length - 1];
+  }
+
+  function applyQuantumStateToSphere(qs, ds){
+    if(!window.QuantumSphere) return;
+    if(qs && window.QuantumSphere.setQuantumState){
+      window.QuantumSphere.setQuantumState(qs.type);
+    }
+    if(ds && window.QuantumSphere.setDimensionStates){
+      window.QuantumSphere.setDimensionStates(ds);
+    }
+  }
+
+  function restoreFromHistory(entry){
+    if(!entry || !entry.answers) return false;
+    state.answers = Object.assign({}, entry.answers);
+    state.result = Q.computeResult(state.answers);
+    state.restoredTs = entry.ts || null;
+
+    let qs = null, ds = null;
+    if(Q.analyzeQuantumState){
+      qs = Q.analyzeQuantumState(state.result);
+      state.quantumState = qs;
+    }
+    if(Q.analyzeDimensionStates){
+      const raw = Q.analyzeDimensionStates(state.result);
+      ds = { PO: raw.PO.type, II: raw.II.type, LA: raw.LA.type, UR: raw.UR.type };
+      state.dimStates = { raw: raw, types: ds };
+    }
+    applyQuantumStateToSphere(qs, ds);
+    renderResult(state.result, state.restoredTs);
+    renderQuantumStateBadge(qs, ds);
+    return true;
+  }
+
+  /* ★ 在 intro 页顶部显示"欢迎回来"横幅 */
+  function updateRestoreBanner(){
+    const existing = document.getElementById('restoreBanner');
+    if(existing) existing.remove();
+
+    if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
+    const latest = getLatestResultFromUser();
+    if(!latest) return;
+
+    const hero = document.querySelector('#screen-intro .hero');
+    if(!hero) return;
+
+    const u = window.QAuth.getCurrentUser();
+    const typeName = Q.TYPE_NAMES[latest.code] || '';
+    const banner = document.createElement('div');
+    banner.id = 'restoreBanner';
+    banner.style.cssText = [
+      'margin:0 0 26px;padding:16px 20px;border-radius:14px;',
+      'border:1px solid rgba(var(--q-r),var(--q-g),var(--q-b),.35);',
+      'background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);',
+      'display:flex;align-items:center;gap:14px;flex-wrap:wrap;'
+    ].join('');
+    banner.innerHTML =
+      '<div style="flex:1;min-width:200px;">'
+      + '<div style="font-size:11px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">'
+      + '欢迎回来，' + Q.escapeHTML(u.username) + '</div>'
+      + '<div style="font-size:14.5px;color:#fff;font-weight:700;">'
+      + '上次测评：' + latest.code + '-' + latest.suffix
+      + (typeName ? ' · ' + typeName : '') + '</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-top:3px;">'
+      + formatTime(latest.ts) + '</div>'
+      + '</div>'
+      + '<button id="btnViewHistory" class="btn sm primary" type="button">查看上次结果</button>';
+
+    hero.insertBefore(banner, hero.firstChild);
+
+    document.getElementById('btnViewHistory').addEventListener('click', () => {
+      restoreFromHistory(latest);
+      showScreen('screen-result');
+    });
+  }
+
+  /* ============ 测验渲染 ============ */
+  $('qTotal').textContent = Q.QUESTIONS.length;
+
+  function renderGroupStrip(){
+    const cur = Q.QUESTIONS[state.idx].group;
+    const labels = ['潜能开放度','内在驱动力','学习自主性','未知应对方式'];
+    $('groupStrip').innerHTML = [1,2,3,4].map(g => {
+      let cls = 'group-dot';
+      if(g < cur) cls += ' done';
+      else if(g === cur) cls += ' active';
+      return '<span class="' + cls + '"><span class="gd-num">0' + g + '</span> ' + labels[g-1] + '</span>';
+    }).join('');
+  }
+
+  function renderQuestion(){
+    const q = Q.QUESTIONS[state.idx];
+    $('qText').textContent = q.text;
+    $('qIdx').textContent = state.idx + 1;
+    $('progFill').style.width = (state.idx / Q.QUESTIONS.length * 100) + '%';
+    renderGroupStrip();
+    $('options').innerHTML = Q.OPTIONS.map((o, i) =>
+      '<button class="opt" data-v="' + o.v + '"><span class="num">' + (i+1) + '</span><span class="dot"></span><span>' + o.t + '</span></button>'
+    ).join('');
+    const chosen = state.answers[q.id];
+    if(chosen != null){
+      const el = $('options').querySelector('[data-v="' + chosen + '"]');
+      if(el) el.classList.add('selected');
+    }
+    $('btnPrev').disabled = state.idx === 0;
+  }
+
+  $('options').addEventListener('click', e => {
+    const btn = e.target.closest('.opt');
+    if(!btn) return;
+    answer(parseInt(btn.dataset.v, 10));
+  });
+
+  function answer(val){
+    if(state.locked) return;
+    state.locked = true;
+    const q = Q.QUESTIONS[state.idx];
+    state.answers[q.id] = val;
+    $('options').querySelectorAll('.opt').forEach(el => el.classList.remove('selected'));
+    const sel = $('options').querySelector('[data-v="' + val + '"]');
+    if(sel) sel.classList.add('selected');
+    setTimeout(() => {
+      state.locked = false;
+      state.idx++;
+      if(state.idx >= Q.QUESTIONS.length) finish();
+      else renderQuestion();
+    }, 240);
+  }
+
+  $('btnPrev').addEventListener('click', () => {
+    if(state.idx === 0 || state.locked) return;
+    state.idx--;
+    renderQuestion();
+  });
+
+  document.addEventListener('keydown', e => {
+    if(!$('screen-quiz').classList.contains('active')) return;
+    const n = parseInt(e.key, 10);
+    if(n >= 1 && n <= 5){ e.preventDefault(); answer(n); }
+    if(e.key === 'Backspace' && state.idx > 0){
+      e.preventDefault();
+      state.idx--;
+      renderQuestion();
+    }
+  });
+
+  /* ============ 结果流程 ============ */
+  const STABILITY_LABEL = {
+    clear:    {text:'明确',       cls:'clear'},
+    moderate: {text:'中等',       cls:'moderate'},
+    weak:     {text:'尚未坍缩',   cls:'weak'}
+  };
+
+  function finish(){
+    state.result = Q.computeResult(state.answers);
+    state.restoredTs = null;
+
+    let qs = null, ds = null;
+    if(Q.analyzeQuantumState){
+      qs = Q.analyzeQuantumState(state.result);
+      state.quantumState = qs;
+    }
+    if(Q.analyzeDimensionStates){
+      const raw = Q.analyzeDimensionStates(state.result);
+      ds = { PO: raw.PO.type, II: raw.II.type, LA: raw.LA.type, UR: raw.UR.type };
+      state.dimStates = { raw: raw, types: ds };
+    }
+    applyQuantumStateToSphere(qs, ds);
+
+    // ★ 保存到当前用户
+    saveResultToUser(state.result, qs, ds, state.answers);
+
+    renderResult(state.result, null);
+    renderQuantumStateBadge(qs, ds);
+    showScreen('screen-result');
+  }
+
+  function renderQuantumStateBadge(qs, dimStates){
+    if(!qs) return;
+    const labels = {
+      good:          { text: '良好量子态', color: '#50DC8C' },
+      danger:        { text: '危险量子态', color: '#EB414B' },
+      superposition: { text: '叠加量子态', color: '#5A8CF5' }
+    };
+    const info = labels[qs.type];
+    if(!info) return;
+
+    const old = document.getElementById('quantumStateBadge');
+    if(old) old.remove();
+
+    const wrap = document.createElement('div');
+    wrap.id = 'quantumStateBadge';
+    wrap.style.cssText = 'margin:20px auto 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;';
+
+    const total = document.createElement('div');
+    total.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:99px;font-size:13.5px;font-weight:700;letter-spacing:.06em;border:1px solid ' + info.color + '44;background:' + info.color + '14;color:' + info.color + ';';
+    total.innerHTML = '<span style="text-shadow:0 0 8px ' + info.color + '">●</span>整体 · ' + info.text
+      + '<span style="opacity:.55;font-weight:400;font-size:11.5px;margin-left:4px">主页大球已变色</span>';
+    wrap.appendChild(total);
+
+    if(dimStates){
+      const dimRow = document.createElement('div');
+      dimRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;';
+      const dimNames = { PO:'潜能开放度', II:'内在驱动力', LA:'学习自主性', UR:'未知应对方式' };
+      ['PO','II','LA','UR'].forEach(id => {
+        const t = dimStates[id];
+        const meta = labels[t];
+        if(!meta) return;
+        const chip = document.createElement('span');
+        chip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;font-size:11.5px;font-weight:600;border:1px solid ' + meta.color + '44;background:' + meta.color + '12;color:' + meta.color + ';';
+        chip.innerHTML = '<span style="font-size:9px">●</span>' + dimNames[id] + ' · ' + meta.text;
+        dimRow.appendChild(chip);
+      });
+      wrap.appendChild(dimRow);
+    }
+
+    const hero = document.querySelector('.result-hero');
+    if(hero) hero.appendChild(wrap);
+  }
+
+  function renderResult(res, restoredTs){
+    const baseCode = res.letters.join('');
+    const typeName = Q.TYPE_NAMES[baseCode] || '未知类型';
+    const portrait = $('rTypeImage');
+    if(portrait){ portrait.src = Q.makeTypeImage(baseCode); portrait.alt = baseCode + ' · ' + typeName; }
+    $('rCode').innerHTML = baseCode + '<span class="code-suffix">-' + res.suffix.letter + '</span>';
+    $('rTypeName').innerHTML = typeName + ' <span class="tn-suffix">· ' + res.suffix.name + '</span>';
+    const sufStab = STABILITY_LABEL[res.suffixStability];
+    $('rTagline').innerHTML = '你当前的发展方向为「<strong style="color:#C6CBF5">' + res.suffix.name + '</strong>」——' + res.suffix.desc + '<br><span style="opacity:.75;font-size:13px">主导差值 ' + res.suffixGap + '% · ' + sufStab.text + '</span>';
+
+    $('dimStacks').innerHTML = Q.DIMS.map(d => {
+      const ratios = res.dimGroupRatio[d.id];
+      const info = res.dimLeadInfo[d.id];
+      const colors = Q.DIM_COLORS[d.id];
+      const stab = STABILITY_LABEL[info.stability];
+      const segments = d.letters.map(l => {
+        const pct = ratios[l]; const color = colors[l];
+        let sc = '';
+        if(pct < 8) sc = 'tiny';
+        else if(pct < 14) sc = 'small';
+        return '<div class="dsc-seg ' + sc + '" style="width:0%;background:' + color + ';" data-w="' + pct + '"><span class="dsc-seg-letter">' + l + '</span><span class="dsc-seg-pct">' + pct + '%</span></div>';
+      }).join('');
+      const legend = d.letters.map(l => {
+        const s = Q.SUBDIMS.find(x => x.id === l);
+        const isLead = l === info.lead;
+        return '<span class="dsc-leg ' + (isLead?'lead':'') + '"><span class="dsc-dot" style="background:' + colors[l] + '"></span><span class="dsc-leg-name">' + l + ' ' + s.name + '</span></span>';
+      }).join('');
+      return '<div class="dim-stack-card"><div class="dsc-head"><div><div class="dsc-title">' + d.name + '</div><div class="dsc-en">' + d.en + '</div></div><div class="dsc-lead">主导 <span class="dsc-lead-letter" style="background:' + colors[info.lead] + ';">' + info.lead + '</span><span class="dsc-gap ' + stab.cls + '">差值 ' + info.gap + '% · ' + stab.text + '</span></div></div><div class="dsc-bar">' + segments + '</div><div class="dsc-legend">' + legend + '</div></div>';
+    }).join('');
+
+    const maxSuf = Math.max.apply(null, Q.SUFFIXES.map(sf => res.suffixRatio[sf.letter]));
+    $('vectorGrid').innerHTML = Q.SUFFIXES.map(sf => {
+      const pct = res.suffixRatio[sf.letter];
+      const isTop = pct === maxSuf;
+      return '<div class="vector-card ' + (isTop?'top':'') + '"><div class="vc-letter">' + sf.letter + '</div><div class="vc-name">' + sf.name + '</div><div class="vc-en">' + sf.name + '</div><div class="vc-pct">' + pct + '%</div><div class="vc-bar"><div class="vc-fill" data-w="' + pct + '"></div></div><div class="vc-desc">' + sf.desc + '</div></div>';
+    }).join('');
+
+    // ★ "上次测评"提示
+    const oldTip = document.getElementById('restoredTip');
+    if(oldTip) oldTip.remove();
+    if(restoredTs){
+      const tip = document.createElement('div');
+      tip.id = 'restoredTip';
+      tip.style.cssText = 'margin:18px auto 0;padding:10px 18px;border-radius:99px;font-size:12.5px;display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted);';
+      tip.innerHTML = '⏱ 上次测评时间：' + formatTime(restoredTs) + ' · 点击下方「重新观测」可重新测试';
+      const hero = document.querySelector('.result-hero');
+      if(hero) hero.appendChild(tip);
+    }
+
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.dsc-seg').forEach((el, i) => setTimeout(() => { el.style.width = el.dataset.w + '%'; }, 60 + i*40));
+      document.querySelectorAll('.vc-fill').forEach((el, i) => setTimeout(() => { el.style.width = el.dataset.w + '%'; }, 320 + i*80));
+    });
+
+    $('aiBody').innerHTML = '<div class="ai-empty">点击「生成报告」，由 AI 基于你的十二维量子态，输出专属的引导路径。</div>';
+    $('btnAI').disabled = false;
+    $('btnAI').textContent = '生成报告';
+  }
+
+  /* ============ AI 报告 ============ */
+  function getCfg(){
+    const cfg = Object.assign({}, DEFAULT_CFG);
+    try {
+      const raw = localStorage.getItem(CFG_KEY);
+      if(raw){
+        const s = JSON.parse(raw) || {};
+        if(s.url && s.url.trim()) cfg.url = s.url.trim();
+        if(s.key && s.key.trim()) cfg.key = s.key.trim();
+        if(s.model && s.model.trim()) cfg.model = s.model.trim();
+      }
+    } catch(e){}
+    return cfg;
+  }
+  function saveCfg(cfg){
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  }
+
+  async function callAPI(prompt){
+    const cfg = getCfg();
+    if(!cfg.key) throw new Error('未配置 API Key');
+    let res;
+    try {
+      res = await fetch(cfg.url, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Authorization':'Bearer ' + cfg.key},
+        body: JSON.stringify({
+          model: cfg.model,
+          messages: [
+            {role: 'system', content: '你是一位擅长用隐喻理解青少年的教育引导顾问，语气温暖、具体、不评判。'},
+            {role: 'user', content: prompt}
+          ],
+          temperature: 0.85,
+          max_tokens: 1800,
+          stream: false
+        })
+      });
+    } catch(e){ throw new Error('CORS_OR_NETWORK'); }
+    if(!res.ok){
+      const t = await res.text().catch(() => '');
+      throw new Error('API ' + res.status + ' · ' + t.slice(0,180));
+    }
+    const data = await res.json();
+    const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if(!content) throw new Error('API 返回内容为空');
+    return content;
+  }
+
+  $('btnAI').addEventListener('click', async () => {
+    if(!state.result) return;
+    const btn = $('btnAI');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>生成中…';
+    $('aiBody').innerHTML = '<div class="ai-empty"><span class="spinner"></span>正在解析你的波函数…</div>';
+    try {
+      const text = await callAPI(Q.buildPrompt(state.result));
+      $('aiBody').innerHTML = Q.renderMD(text);
+    } catch(err){
+      const msg = String(err.message || err);
+      let extra = '';
+      if(msg.indexOf('CORS_OR_NETWORK') >= 0){
+        extra = '<br><br><span style="color:#FFD98A">⚠ 浏览器跨域限制。用本地服务器打开或换允许 CORS 的代理地址。下方已切换本地报告。</span>';
+      }
+      $('aiBody').innerHTML = '<div class="ai-empty" style="color:#FF9BB5">AI 调用失败：' + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim()) + extra + '</div>' + Q.renderMD(Q.localReport(state.result));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '重新生成';
+    }
+  });
+
+  /* ============ 按钮事件 ============ */
+  $('btnStart').addEventListener('click', () => {
+    state.idx = 0;
+    state.answers = {};
+    state.result = null;
+    state.restoredTs = null;
+    state.locked = false;
+    renderQuestion();
+    showScreen('screen-quiz');
+  });
+
+  $('btnRestart').addEventListener('click', () => {
+    state.idx = 0;
+    state.answers = {};
+    state.result = null;
+    state.restoredTs = null;
+    state.locked = false;
+    updateRestoreBanner();
+    showScreen('screen-intro');
+  });
+
+  $('btnCopy').addEventListener('click', async () => {
+    if(!state.result) return;
+    const res = state.result;
+    const baseCode = res.letters.join('');
+    const typeName = Q.TYPE_NAMES[baseCode] || '';
+    const fullCode = baseCode + '-' + res.suffix.letter;
+    const dimLines = Q.DIMS.map(d => {
+      const r = res.dimGroupRatio[d.id]; const info = res.dimLeadInfo[d.id];
+      return d.name + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → 主导 ' + info.lead + '（差值 ' + info.gap + '%）';
+    }).join('\n');
+    const vecLines = Q.SUFFIXES.map(sf => sf.letter + ' ' + sf.name + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
+    const txt = 'QBTI 量子人格测评结果\n类型：' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）\n发展方向：' + res.suffix.desc + '\n\n四大维度倾向：\n' + dimLines + '\n\n四个发展向量占比：\n' + vecLines;
+    try {
+      await navigator.clipboard.writeText(txt);
+      const b = $('btnCopy');
+      b.textContent = '已复制 ✓';
+      setTimeout(() => b.textContent = '复制结果', 1800);
+    } catch(e){ alert('复制失败'); }
+  });
+
+  /* ============ API 设置弹窗 ============ */
+  $('btnGear').addEventListener('click', () => {
+    const cfg = getCfg();
+    $('inpUrl').value = cfg.url;
+    $('inpKey').value = cfg.key;
+    $('inpModel').value = cfg.model;
+    $('testResult').className = 'test-result';
+    $('modalMask').classList.add('show');
+  });
+  $('btnCancelCfg').addEventListener('click', () => $('modalMask').classList.remove('show'));
+  $('modalMask').addEventListener('click', e => { if(e.target === $('modalMask')) $('modalMask').classList.remove('show'); });
+  $('btnSaveCfg').addEventListener('click', () => {
+    saveCfg({
+      url: $('inpUrl').value.trim() || DEFAULT_CFG.url,
+      key: $('inpKey').value.trim(),
+      model: $('inpModel').value.trim() || DEFAULT_CFG.model
+    });
+    $('modalMask').classList.remove('show');
+    const b = $('btnSaveCfg');
+    b.textContent = '已保存 ✓';
+    setTimeout(() => b.textContent = '保存', 1500);
+  });
+  $('btnTestCfg').addEventListener('click', async () => {
+    const tr = $('testResult');
+    tr.className = 'test-result show';
+    tr.textContent = '正在测试…';
+    tr.style.color = '#A8AEDA';
+    const url = $('inpUrl').value.trim() || DEFAULT_CFG.url;
+    const key = $('inpKey').value.trim() || DEFAULT_CFG.key;
+    const model = $('inpModel').value.trim() || DEFAULT_CFG.model;
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
+        body: JSON.stringify({model, messages:[{role:'user',content:'ping'}], max_tokens:5, stream:false})
+      });
+      if(!r.ok){
+        const t = await r.text().catch(() => '');
+        throw new Error('HTTP ' + r.status + ' · ' + t.slice(0,120));
+      }
+      tr.className = 'test-result show ok';
+      tr.textContent = '✓ 连接成功，API 可用。';
+    } catch(err){
+      const m = String(err.message || err);
+      if(/Failed to fetch|NetworkError|Load failed/i.test(m)){
+        tr.className = 'test-result show err';
+        tr.innerHTML = '✕ 浏览器直连被拦截（CORS / 网络）。<br>请改用本地服务器打开页面。';
+      } else {
+        tr.className = 'test-result show err';
+        tr.textContent = '✕ ' + m;
+      }
+    }
+  });
+
+  /* ==================================================
+     ★ 监听登录状态变化
+     ================================================== */
+  if(window.QAuth && window.QAuth.onChange){
+    window.QAuth.onChange(function(info){
+      console.log('[QBTI] 登录状态变化:', info);
+      if(info.isLoggedIn){
+        // 登录后更新横幅
+        updateRestoreBanner();
+      } else {
+        // 退出登录：清空当前显示
+        state.result = null;
+        state.quantumState = null;
+        state.dimStates = null;
+        state.restoredTs = null;
+        const banner = document.getElementById('restoreBanner');
+        if(banner) banner.remove();
+      }
+    });
+  }
+
+  /* ==================================================
+     ★ 初始化
+     ================================================== */
+  renderQuestion();
+  updateRestoreBanner();
+  console.log('[QBTI] 初始化完成');
+  console.log(' - QBTI 模块:', !!window.QBTI);
+  console.log(' - QuantumSphere 模块:', !!window.QuantumSphere);
+  console.log(' - QAuth 模块:', !!window.QAuth);
+})();
+</script>
+</body>
+</html>
