@@ -1,33 +1,26 @@
 /* ============================================================
    Quantum Sphere —— 量子球视觉引擎 + 触感音效 + 手机震动
-   使用方式：<script src="quantum-sphere.js"></script>（放在 body 末尾）
-   暴露全局：window.QuantumSphere = { resize, isSplit, reset, sound }
-   依赖 DOM：#quantumCanvas（必须）、#quantumVisual（可选）
+   使用方式：<script src="quantum-sphere.js"></script>
+   暴露全局：window.QuantumSphere = {
+     resize, isSplit, reset, sound, haptic,
+     setQuantumState, setDimensionStates,
+     getQuantumState, clearQuantumState
+   }
    ============================================================ */
 (function(){
   'use strict';
 
   /* ==========================================================
-     HapticFX —— 手机震动反馈模块（基于 Web Vibration API）
-     - 自动检测设备是否支持震动
-     - 支持单次震动和模式震动
+     HapticFX —— 手机震动反馈
      ========================================================== */
   const HapticFX = (function(){
     const isSupported = typeof navigator !== 'undefined' && 'vibrate' in navigator;
     let enabled = true;
-
-    // 兼容性检测：只在支持震动的设备上启用
     function vibrate(pattern){
       if(!enabled || !isSupported) return;
-      try {
-        navigator.vibrate(pattern);
-      } catch(e) {}
+      try { navigator.vibrate(pattern); } catch(e){}
     }
-
-    function setEnabled(v){
-      enabled = !!v;
-    }
-
+    function setEnabled(v){ enabled = !!v; }
     return {
       vibrate,
       setEnabled,
@@ -36,12 +29,7 @@
   })();
 
   /* ==========================================================
-     AudioFX —— 基于 Web Audio API 的轻量合成音效系统
-     ------------------------------------------------------------
-     v5：
-     - 蓄力音：低沉三角波（v5）
-     - 爆炸音：低频闷响（v4）
-     - 全局解锁、master 0.26、debug 接口
+     AudioFX —— Web Audio API 合成音效
      ========================================================== */
   const AudioFX = (function(){
     let ctx = null;
@@ -62,9 +50,7 @@
         master = ctx.createGain();
         master.gain.value = 0.26;
         master.connect(ctx.destination);
-      } catch(e){
-        ctx = null;
-      }
+      } catch(e){ ctx = null; }
     }
 
     function warmup(){
@@ -89,27 +75,19 @@
         try {
           const p = ctx.resume();
           if(p && typeof p.then === 'function'){
-            p.then(function(){
-              unlocked = true;
-              warmup();
-            }).catch(function(){});
+            p.then(function(){ unlocked = true; warmup(); }).catch(function(){});
           }
         } catch(e){}
       } else {
         unlocked = true;
       }
-      if(ctx.state === 'running' && !unlocked){
-        unlocked = true;
-        warmup();
-      }
+      if(ctx.state === 'running' && !unlocked){ unlocked = true; warmup(); }
     }
 
     function ensure(){
       createContext();
       if(!ctx) return;
-      if(ctx.state === 'suspended'){
-        try { ctx.resume(); } catch(e){}
-      }
+      if(ctx.state === 'suspended'){ try { ctx.resume(); } catch(e){} }
     }
 
     function setBase(brightness){
@@ -122,15 +100,9 @@
       if(!enabled) stopCharge();
       try { localStorage.setItem('qs_sound_enabled', enabled ? '1' : '0'); } catch(e){}
     }
-    function toggle(){
-      setEnabled(!enabled);
-      return enabled;
-    }
+    function toggle(){ setEnabled(!enabled); return enabled; }
     function loadPreference(){
-      try {
-        const saved = localStorage.getItem('qs_sound_enabled');
-        if(saved === '0') enabled = false;
-      } catch(e){}
+      try { const saved = localStorage.getItem('qs_sound_enabled'); if(saved === '0') enabled = false; } catch(e){}
     }
 
     function playTone(o){
@@ -144,36 +116,23 @@
       const f0 = o.freq != null ? o.freq : baseFreq;
       const f1 = o.endFreq != null ? o.endFreq : f0;
       osc.frequency.setValueAtTime(f0, t0);
-      if(f1 !== f0){
-        osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + (o.sweepDur || o.dur));
-      }
+      if(f1 !== f0) osc.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + (o.sweepDur || o.dur));
       const vol = o.vol != null ? o.vol : 0.3;
       const attack = o.attack != null ? o.attack : 0.005;
       const dur = o.dur || 0.2;
       gain.gain.setValueAtTime(0.0001, t0);
       gain.gain.linearRampToValueAtTime(vol, t0 + attack);
       gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
       if(o.lowpass){
         const filter = ctx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.Q.value = o.q != null ? o.q : 1;
         filter.frequency.setValueAtTime(o.lowpass, t0);
-        if(o.lowpassEnd){
-          filter.frequency.exponentialRampToValueAtTime(
-            Math.max(60, o.lowpassEnd),
-            t0 + dur * 0.9
-          );
-        }
-        osc.connect(filter);
-        filter.connect(gain);
-      } else {
-        osc.connect(gain);
-      }
-
+        if(o.lowpassEnd) filter.frequency.exponentialRampToValueAtTime(Math.max(60, o.lowpassEnd), t0 + dur * 0.9);
+        osc.connect(filter); filter.connect(gain);
+      } else { osc.connect(gain); }
       gain.connect(master);
-      osc.start(t0);
-      osc.stop(t0 + dur + 0.05);
+      osc.start(t0); osc.stop(t0 + dur + 0.05);
     }
 
     function playNoise(o){
@@ -186,27 +145,20 @@
       const sr = ctx.sampleRate;
       const buf = ctx.createBuffer(1, Math.floor(sr * dur), sr);
       const data = buf.getChannelData(0);
-      for(let i=0;i<data.length;i++){
-        data[i] = (Math.random()*2-1) * (1 - i/data.length);
-      }
+      for(let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * (1 - i/data.length);
       const src = ctx.createBufferSource();
       src.buffer = buf;
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(o.filterFreq || 2500, t0);
-      if(o.filterEnd){
-        filter.frequency.exponentialRampToValueAtTime(Math.max(60, o.filterEnd), t0 + dur);
-      }
+      if(o.filterEnd) filter.frequency.exponentialRampToValueAtTime(Math.max(60, o.filterEnd), t0 + dur);
       const gain = ctx.createGain();
       const atk = o.attack != null ? o.attack : 0.008;
       gain.gain.setValueAtTime(0.0001, t0);
       gain.gain.linearRampToValueAtTime(o.vol != null ? o.vol : 0.15, t0 + atk);
       gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      src.connect(filter);
-      filter.connect(gain);
-      gain.connect(master);
-      src.start(t0);
-      src.stop(t0 + dur + 0.05);
+      src.connect(filter); filter.connect(gain); gain.connect(master);
+      src.start(t0); src.stop(t0 + dur + 0.05);
     }
 
     function hover(){
@@ -214,109 +166,33 @@
       const now = performance.now();
       if(now - lastHoverTime < 90) return;
       lastHoverTime = now;
-      playTone({
-        type: 'sine',
-        freq: baseFreq * 2.4,
-        endFreq: baseFreq * 2.6,
-        vol: 0.07,
-        attack: 0.008,
-        dur: 0.12,
-        sweepDur: 0.1
-      });
+      playTone({ type:'sine', freq:baseFreq*2.4, endFreq:baseFreq*2.6, vol:0.07, attack:0.008, dur:0.12, sweepDur:0.1 });
     }
-
     function ripple(){
-      playTone({
-        type: 'sine',
-        freq: baseFreq * 3.2,
-        endFreq: baseFreq * 1.1,
-        vol: 0.30,
-        attack: 0.004,
-        dur: 0.32,
-        sweepDur: 0.26
-      });
-      playTone({
-        type: 'triangle',
-        freq: baseFreq * 0.7,
-        endFreq: baseFreq * 0.5,
-        vol: 0.16,
-        attack: 0.01,
-        dur: 0.45,
-        sweepDur: 0.4
-      });
+      playTone({ type:'sine', freq:baseFreq*3.2, endFreq:baseFreq*1.1, vol:0.30, attack:0.004, dur:0.32, sweepDur:0.26 });
+      playTone({ type:'triangle', freq:baseFreq*0.7, endFreq:baseFreq*0.5, vol:0.16, attack:0.01, dur:0.45, sweepDur:0.4 });
     }
-
     function burst(){
-      playTone({
-        type: 'sawtooth',
-        freq: baseFreq * 1.6,
-        endFreq: baseFreq * 0.4,
-        vol: 0.32,
-        attack: 0.003,
-        dur: 0.55,
-        sweepDur: 0.48
-      });
-      playTone({
-        type: 'sine',
-        freq: baseFreq * 4.5,
-        endFreq: baseFreq * 1.8,
-        vol: 0.18,
-        attack: 0.003,
-        dur: 0.28,
-        sweepDur: 0.24
-      });
-      playNoise({dur: 0.28, vol: 0.11, filterFreq: 3500, filterEnd: 600});
+      playTone({ type:'sawtooth', freq:baseFreq*1.6, endFreq:baseFreq*0.4, vol:0.32, attack:0.003, dur:0.55, sweepDur:0.48 });
+      playTone({ type:'sine', freq:baseFreq*4.5, endFreq:baseFreq*1.8, vol:0.18, attack:0.003, dur:0.28, sweepDur:0.24 });
+      playNoise({dur:0.28, vol:0.11, filterFreq:3500, filterEnd:600});
     }
-
     function focus(){
-      playTone({
-        type: 'sine',
-        freq: baseFreq * 2.0,
-        endFreq: baseFreq * 2.0,
-        vol: 0.22,
-        attack: 0.008,
-        dur: 0.38
-      });
+      playTone({ type:'sine', freq:baseFreq*2.0, endFreq:baseFreq*2.0, vol:0.22, attack:0.008, dur:0.38 });
       setTimeout(function(){
-        playTone({
-          type: 'sine',
-          freq: baseFreq * 3.0,
-          endFreq: baseFreq * 3.0,
-          vol: 0.16,
-          attack: 0.01,
-          dur: 0.45
-        });
+        playTone({ type:'sine', freq:baseFreq*3.0, endFreq:baseFreq*3.0, vol:0.16, attack:0.01, dur:0.45 });
       }, 55);
     }
-
     function unfocus(){
-      playTone({
-        type: 'sine',
-        freq: baseFreq * 1.6,
-        endFreq: baseFreq * 1.2,
-        vol: 0.16,
-        attack: 0.008,
-        dur: 0.28,
-        sweepDur: 0.24
-      });
+      playTone({ type:'sine', freq:baseFreq*1.6, endFreq:baseFreq*1.2, vol:0.16, attack:0.008, dur:0.28, sweepDur:0.24 });
     }
-
     function drag(){
       if(!enabled) return;
       const now = performance.now();
       if(now - lastDragTime < 100) return;
       lastDragTime = now;
-      playTone({
-        type: 'triangle',
-        freq: baseFreq * 1.2,
-        endFreq: baseFreq * 1.8,
-        vol: 0.05,
-        attack: 0.01,
-        dur: 0.09,
-        sweepDur: 0.08
-      });
+      playTone({ type:'triangle', freq:baseFreq*1.2, endFreq:baseFreq*1.8, vol:0.05, attack:0.01, dur:0.09, sweepDur:0.08 });
     }
-
     function startCharge(){
       if(!enabled) return;
       ensure();
@@ -336,7 +212,6 @@
       chargeGain.connect(master);
       chargeOsc.start();
     }
-
     function updateCharge(v){
       if(!chargeOsc || !ctx) return;
       const t = ctx.currentTime;
@@ -344,109 +219,33 @@
       chargeFilter.frequency.setTargetAtTime(320 + v * 630, t, 0.06);
       chargeGain.gain.setTargetAtTime(0.02 + v * 0.14, t, 0.05);
     }
-
     function stopCharge(){
-      if(chargeOsc){
-        try { chargeOsc.stop(); } catch(e){}
-        try { chargeOsc.disconnect(); } catch(e){}
-        chargeOsc = null;
-      }
-      if(chargeFilter){
-        try { chargeFilter.disconnect(); } catch(e){}
-        chargeFilter = null;
-      }
-      if(chargeGain){
-        try { chargeGain.disconnect(); } catch(e){}
-        chargeGain = null;
-      }
+      if(chargeOsc){ try { chargeOsc.stop(); } catch(e){} try { chargeOsc.disconnect(); } catch(e){} chargeOsc = null; }
+      if(chargeFilter){ try { chargeFilter.disconnect(); } catch(e){} chargeFilter = null; }
+      if(chargeGain){ try { chargeGain.disconnect(); } catch(e){} chargeGain = null; }
     }
-
     function superRelease(){
       stopCharge();
       const sf = Math.min(baseFreq, 380);
-
-      playTone({
-        type: 'triangle',
-        freq: sf * 0.55,
-        endFreq: sf * 0.12,
-        vol: 0.55,
-        attack: 0.045,
-        dur: 1.9,
-        sweepDur: 1.6,
-        lowpass: 600,
-        lowpassEnd: 90,
-        q: 2.0
-      });
-
-      playTone({
-        type: 'sine',
-        freq: sf * 0.32,
-        endFreq: sf * 0.10,
-        vol: 0.42,
-        attack: 0.055,
-        dur: 2.2,
-        sweepDur: 1.8
-      });
-
-      playTone({
-        type: 'sine',
-        freq: 55,
-        endFreq: 38,
-        vol: 0.32,
-        attack: 0.08,
-        dur: 1.5,
-        sweepDur: 1.2
-      });
-
-      playNoise({
-        dur: 1.1,
-        vol: 0.18,
-        filterFreq: 380,
-        filterEnd: 60,
-        attack: 0.025
-      });
+      playTone({ type:'triangle', freq:sf*0.55, endFreq:sf*0.12, vol:0.55, attack:0.045, dur:1.9, sweepDur:1.6, lowpass:600, lowpassEnd:90, q:2.0 });
+      playTone({ type:'sine', freq:sf*0.32, endFreq:sf*0.10, vol:0.42, attack:0.055, dur:2.2, sweepDur:1.8 });
+      playTone({ type:'sine', freq:55, endFreq:38, vol:0.32, attack:0.08, dur:1.5, sweepDur:1.2 });
+      playNoise({ dur:1.1, vol:0.18, filterFreq:380, filterEnd:60, attack:0.025 });
     }
-
     function split(){
       for(let i=0;i<4;i++){
         (function(idx){
           setTimeout(function(){
-            playTone({
-              type: 'sine',
-              freq: baseFreq * (1.8 + idx * 0.15),
-              endFreq: baseFreq * (2.4 + idx * 0.2),
-              vol: 0.15,
-              attack: 0.005,
-              dur: 0.35,
-              sweepDur: 0.3
-            });
-          }, idx * 65);
+            playTone({ type:'sine', freq:baseFreq*(1.8+idx*0.15), endFreq:baseFreq*(2.4+idx*0.2), vol:0.15, attack:0.005, dur:0.35, sweepDur:0.3 });
+          }, idx*65);
         })(i);
       }
       setTimeout(function(){
-        playTone({
-          type: 'triangle',
-          freq: baseFreq * 0.6,
-          endFreq: baseFreq * 0.4,
-          vol: 0.20,
-          attack: 0.01,
-          dur: 1.2,
-          sweepDur: 1.0,
-          lowpass: 1200,
-          lowpassEnd: 400
-        });
+        playTone({ type:'triangle', freq:baseFreq*0.6, endFreq:baseFreq*0.4, vol:0.20, attack:0.01, dur:1.2, sweepDur:1.0, lowpass:1200, lowpassEnd:400 });
       }, 100);
     }
-
     function debugState(){
-      return {
-        hasContext: !!ctx,
-        state: ctx ? ctx.state : 'none',
-        enabled: enabled,
-        unlocked: unlocked,
-        baseFreq: baseFreq,
-        masterGain: master ? master.gain.value : 0
-      };
+      return { hasContext: !!ctx, state: ctx ? ctx.state : 'none', enabled: enabled, unlocked: unlocked, baseFreq: baseFreq, masterGain: master ? master.gain.value : 0 };
     }
 
     return {
@@ -480,24 +279,8 @@
   function injectSoundToggle(){
     if(document.getElementById('qSoundToggle')) return;
     const style = document.createElement('style');
-    style.textContent = [
-      '.q-sound-toggle{',
-      '  position:fixed;right:20px;bottom:72px;z-index:150;',
-      '  width:42px;height:42px;border-radius:50%;',
-      '  border:1px solid rgba(255,255,255,.1);',
-      '  background:rgba(12,14,28,.85);color:var(--muted);',
-      '  cursor:pointer;display:grid;place-items:center;',
-      '  font-size:16px;line-height:1;transition:.25s;',
-      '  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);',
-      '  padding:0;font-family:inherit;',
-      '}',
-      '.q-sound-toggle:hover{',
-      '  color:var(--txt);border-color:var(--q-color);',
-      '}',
-      '.q-sound-toggle.muted{opacity:.5;}'
-    ].join('\n');
+    style.textContent = '.q-sound-toggle{position:fixed;right:20px;bottom:72px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;transition:.25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:0;font-family:inherit;}.q-sound-toggle:hover{color:var(--txt);border-color:var(--q-color);}.q-sound-toggle.muted{opacity:.5;}';
     document.head.appendChild(style);
-
     const btn = document.createElement('button');
     btn.id = 'qSoundToggle';
     btn.className = 'q-sound-toggle';
@@ -510,7 +293,7 @@
       const on = AudioFX.toggle();
       btn.textContent = on ? '🔊' : '🔇';
       btn.classList.toggle('muted', !on);
-      if(on) HapticFX.vibrate(20); // 打开音效时轻微震动反馈
+      if(on) HapticFX.vibrate(20);
     });
     document.body.appendChild(btn);
   }
@@ -534,7 +317,7 @@
     const ctx = canvas.getContext('2d');
     const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-    /* ---------- 颜色系统：QBTI 三色 ---------- */
+    /* ---------- 颜色系统 ---------- */
     const palette = [[255,140,80],[120,180,255],[180,130,255],[255,110,170],[100,230,200],[200,230,110],[255,210,90]];
 
     const QUANTUM_COLORS = {
@@ -542,9 +325,27 @@
       danger:        [235,  65,  75],
       superposition: [ 90, 140, 245]
     };
+    const DIM_IDS = ['PO','II','LA','UR'];
     const STATE_STORAGE_KEY = 'qbti_quantum_state';
+    const DIM_STATE_KEY = 'qbti_dimension_states';
 
-    let CR, CG, CB, PR, PG, PB;
+    // ★ 全局状态变量（之前缺失的就是这些）
+    let globalState = 'default';
+    let dimensionStates = null;
+    let fallbackColor = palette[Math.floor(Math.random() * palette.length)];
+    let globalColor = [fallbackColor[0], fallbackColor[1], fallbackColor[2]];
+
+    let CR = fallbackColor[0], CG = fallbackColor[1], CB = fallbackColor[2];
+    let PR = CR, PG = CG, PB = CB;
+
+    function applyGlobalColor(c){
+      globalColor = c.slice();
+      document.documentElement.style.setProperty('--q-r', c[0]);
+      document.documentElement.style.setProperty('--q-g', c[1]);
+      document.documentElement.style.setProperty('--q-b', c[2]);
+      document.documentElement.style.setProperty('--q-color', 'rgb('+c[0]+','+c[1]+','+c[2]+')');
+      AudioFX.setBase((c[0]+c[1]+c[2]) / 3);
+    }
 
     function applyColor(cr, cg, cb){
       CR = cr; CG = cg; CB = cb;
@@ -556,15 +357,35 @@
       AudioFX.setBase((CR + CG + CB) / 3);
     }
 
-    (function initColor(){
-      let savedState = null;
-      try { savedState = localStorage.getItem(STATE_STORAGE_KEY); } catch(e){}
+    function colorForBall(ball, idx){
+      if(!hasSplit) return globalColor;
+      if(dimensionStates){
+        const dimId = ball._dim || DIM_IDS[idx] || null;
+        if(dimId && dimensionStates[dimId]){
+          const t = dimensionStates[dimId].type || dimensionStates[dimId];
+          if(QUANTUM_COLORS[t]) return QUANTUM_COLORS[t];
+        }
+      }
+      return globalColor;
+    }
+
+    (function initColors(){
+      let savedState = null, savedDim = null;
+      try {
+        savedState = localStorage.getItem(STATE_STORAGE_KEY);
+        savedDim = localStorage.getItem(DIM_STATE_KEY);
+      } catch(e){}
       if(savedState && QUANTUM_COLORS[savedState]){
-        const c = QUANTUM_COLORS[savedState];
-        applyColor(c[0], c[1], c[2]);
+        globalState = savedState;
+        applyGlobalColor(QUANTUM_COLORS[savedState]);
       } else {
-        const pick = palette[Math.floor(Math.random() * palette.length)];
-        applyColor(pick[0], pick[1], pick[2]);
+        applyGlobalColor(fallbackColor);
+      }
+      if(savedDim){
+        try {
+          const parsed = JSON.parse(savedDim);
+          if(parsed && typeof parsed === 'object') dimensionStates = parsed;
+        } catch(e){}
       }
     })();
 
@@ -592,8 +413,7 @@
 
     function resize(){
       const rect = canvas.getBoundingClientRect();
-      let cssW = rect.width;
-      let cssH = rect.height;
+      let cssW = rect.width, cssH = rect.height;
       if(!isFinite(cssW) || !isFinite(cssH) || cssW < 20 || cssH < 20){
         const vw = window.innerWidth || 800;
         const vh = window.innerHeight || 600;
@@ -834,7 +654,7 @@
       if(hint) hint.style.display = 'none';
 
       AudioFX.split();
-      HapticFX.vibrate([40, 30, 40, 30, 80]); // 分裂：多段震动
+      HapticFX.vibrate([40, 30, 40, 30, 80]);
 
       for(let i=0;i<5;i++){
         pushRing(BASE_CX, BASE_CY, {
@@ -1024,7 +844,6 @@
       aura.targetStrength = 1.3;
       pushRing(p.x, p.y, { duration: 1.3, maxR: safeBaseR()*ball.scale*0.45, width: 1.3, alpha: 0.4, ease: 2.0 });
       AudioFX.startCharge();
-      // ★ 蓄力开始：轻微长震
       HapticFX.vibrate(15);
       try { canvas.setPointerCapture(e.pointerId); } catch(err){}
     });
@@ -1039,9 +858,8 @@
 
       if(hoverBall !== prevHoveredBall){
         prevHoveredBall = hoverBall;
-        if(hoverBall) {
+        if(hoverBall){
           AudioFX.hover();
-          // ★ 悬停切换：极短震动
           HapticFX.vibrate(10);
         }
       }
@@ -1058,9 +876,9 @@
       }
       if(pointer.down){
         pointer.dragDist += pointer.speed;
-        if(charge.active && pointer.dragDist > 12*DPR) {
+        if(charge.active && pointer.dragDist > 12*DPR){
           charge.active = false;
-          HapticFX.vibrate(0); // 取消蓄力震动
+          HapticFX.vibrate(0);
         }
         if(charge.active){ charge.x = p.x; charge.y = p.y; }
         if(activeBall){
@@ -1125,7 +943,6 @@
       if(charging && chargeVal >= CHARGE_FULL){
         const releaseShakeAmp = chargeVal * chargeVal * 26 * DPR;
         AudioFX.superRelease();
-        // ★ 引爆：强烈震动
         HapticFX.vibrate([100, 50, 200]);
         (function fireSuper(x, y, power, sourceBall){
           const BR = safeBaseR();
@@ -1157,7 +974,6 @@
           focusedBall = activeBall;
           activeBall.focusPing = 0.55;
           AudioFX.focus();
-          // ★ 聚焦：清脆短震
           HapticFX.vibrate([20, 30, 20]);
           const BR = safeBaseR();
           const bx = BASE_CX + activeBall.ox * BR;
@@ -1174,7 +990,6 @@
       if(now - pointer.lastTap < 340 && pointer.taps >= 1){
         pointer.taps = 0;
         AudioFX.burst();
-        // ★ 双击：中等震动
         HapticFX.vibrate([30, 20, 30]);
         (function fireBurst(x, y, sourceBall){
           const BR = safeBaseR();
@@ -1195,7 +1010,6 @@
       } else {
         pointer.taps = 1;
         AudioFX.ripple();
-        // ★ 单击：轻微短震
         HapticFX.vibrate(18);
         (function fireRipple(x, y, sourceBall){
           const BR = safeBaseR();
@@ -1216,9 +1030,10 @@
       aura.targetStrength = 0;
       activeBall = null;
       AudioFX.stopCharge();
-      HapticFX.vibrate(0); // 取消震动
+      HapticFX.vibrate(0);
     });
 
+    /* ---------- 绘制基础函数 ---------- */
     function drawSphereFill(){
       const lx = CX - R*0.28, ly = CY - R*0.28;
       const grad = ctx.createRadialGradient(lx,ly,0,lx,ly,R*1.55);
@@ -1358,32 +1173,26 @@
       const v = charge.value;
       const baseR = charge.radius || safeBaseR() * 0.4;
       const r = baseR * (0.14 + 0.06*v) + Math.sin(t*5)*2*DPR;
-
       const isFull = v >= CHARGE_FULL;
       const fullPulse = isFull ? (0.65 + 0.35 * Math.sin(t * 14)) : 1;
-
       ctx.strokeStyle = 'rgba('+CR+','+CG+','+CB+',0.30)';
       ctx.lineWidth = 2.0*DPR;
       ctx.beginPath(); ctx.arc(charge.x, charge.y, r, 0, Math.PI*2); ctx.stroke();
-
       if(isFull){
         ctx.strokeStyle = 'rgba('+PR+','+PG+','+PB+','+(0.35 * fullPulse).toFixed(3)+')';
         ctx.lineWidth = (7 + fullPulse * 4) * DPR;
         ctx.beginPath(); ctx.arc(charge.x, charge.y, r, 0, Math.PI*2); ctx.stroke();
       }
-
       ctx.strokeStyle = 'rgba('+PR+','+PG+','+PB+','+(isFull ? fullPulse : 0.95).toFixed(3)+')';
       ctx.lineWidth = (isFull ? 3.4 : 2.6)*DPR;
       ctx.beginPath();
       ctx.arc(charge.x, charge.y, r, -Math.PI/2, -Math.PI/2 + v*Math.PI*2);
       ctx.stroke();
-
       const g = ctx.createRadialGradient(charge.x, charge.y, 0, charge.x, charge.y, r);
       g.addColorStop(0, 'rgba('+PR+','+PG+','+PB+','+((isFull ? 0.48 * fullPulse : 0.32*v)).toFixed(3)+')');
       g.addColorStop(1, 'rgba('+PR+','+PG+','+PB+',0)');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(charge.x, charge.y, r, 0, Math.PI*2); ctx.fill();
-
       if(isFull){
         const dotR = 3.2 * DPR * fullPulse;
         ctx.fillStyle = 'rgba('+PR+','+PG+','+PB+','+fullPulse.toFixed(3)+')';
@@ -1822,6 +1631,13 @@
     let pulse = 0;
     const t0 = performance.now();
 
+    function setDrawColor(rgb){
+      CR = rgb[0]; CG = rgb[1]; CB = rgb[2];
+      PR = Math.min(255, CR + 30);
+      PG = Math.min(255, CG + 30);
+      PB = Math.min(255, CB + 30);
+    }
+
     function frame(now){
       const dt = Math.min(0.05, Math.max(0.001, (now - lastFrame)/1000));
       lastFrame = now;
@@ -1841,7 +1657,6 @@
         aura.targetStrength = Math.max(aura.targetStrength, 0.6 + charge.value*0.9);
         aura.targetR = safeBaseR()*(0.45 + charge.value*0.18);
         AudioFX.updateCharge(charge.value);
-        // ★ 蓄力过程持续微弱震动（每 100ms 一次，避免过于耗电）
         if(Math.floor(now / 100) !== Math.floor(lastFrame / 100)){
           HapticFX.vibrate(5);
         }
@@ -1870,11 +1685,16 @@
       ctx.save();
       ctx.translate(shakeX, shakeY);
 
-      const drawOrder = balls.slice().sort((a, b) => a.focusAmount - b.focusAmount);
+      const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
       const BR = safeBaseR();
 
-      for(let bi = 0; bi < drawOrder.length; bi++){
-        const ball = drawOrder[bi];
+      for(let k = 0; k < drawOrder.length; k++){
+        const ball = drawOrder[k].b;
+        const idx = drawOrder[k].i;
+
+        const ballColor = colorForBall(ball, idx);
+        setDrawColor(ballColor);
+
         const vis = computeBallVisual(ball);
         CX = BASE_CX + vis.visOx * BR;
         CY = BASE_CY + vis.visOy * BR;
@@ -1959,6 +1779,8 @@
         }
       }
 
+      setDrawColor(globalColor);
+
       const globalRaw = (Math.sin(t * 0.40) + 1) / 2;
       pulse = 0.10 + Math.pow(globalRaw, 3) * 0.16;
       ctx.save();
@@ -2020,16 +1842,14 @@
         AudioFX.stopCharge();
         HapticFX.vibrate(0);
       },
-      // 设置整体量子态（大球颜色）
       setQuantumState: function(state){
         const c = QUANTUM_COLORS[state];
         if(!c) return false;
         globalState = state;
-        applyColor(c[0], c[1], c[2]);
+        applyGlobalColor(c);
         try { localStorage.setItem(STATE_STORAGE_KEY, state); } catch(e){}
         return true;
       },
-      // 设置四个维度各自的量子态（小球颜色）
       setDimensionStates: function(states){
         if(!states || typeof states !== 'object') return false;
         dimensionStates = {};
@@ -2068,7 +1888,6 @@
           return '音效已重置并开启';
         }
       },
-      // 震动控制接口
       haptic: {
         isSupported: function(){ return HapticFX.isSupported(); },
         setEnabled: function(v){ HapticFX.setEnabled(v); },
