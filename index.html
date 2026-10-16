@@ -289,6 +289,44 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   </div>
 </div>
 
+<!-- ★★★ 独立导航脚本：不依赖任何其他模块，保证导航永远可用 ★★★ -->
+<script>
+(function(){
+  function bindNav(){
+    var buttons = document.querySelectorAll('.nav-go');
+    if(buttons.length === 0){
+      console.warn('[Nav] 没找到 .nav-go 按钮');
+      return;
+    }
+    buttons.forEach(function(btn){
+      if(btn._navBound) return;
+      btn._navBound = true;
+      btn.addEventListener('click', function(){
+        var id = btn.dataset.target;
+        document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+        var target = document.getElementById(id);
+        if(target) target.classList.add('active');
+        document.querySelectorAll('.quantum-link').forEach(function(b){
+          b.classList.toggle('active', b.dataset.target === id);
+        });
+        window.scrollTo({top: 0, behavior: 'smooth'});
+        if(id === 'screen-home' && window.QuantumSphere){
+          setTimeout(function(){ window.QuantumSphere.resize(); }, 50);
+          setTimeout(function(){ window.QuantumSphere.resize(); }, 200);
+          setTimeout(function(){ window.QuantumSphere.resize(); }, 500);
+        }
+      });
+    });
+    console.log('[Nav] 导航已绑定，共 ' + buttons.length + ' 个按钮');
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', bindNav);
+  } else {
+    bindNav();
+  }
+})();
+</script>
+
 <!-- ============ 三个外部 JS 模块 ============ -->
 <script src="qbti-core.js"></script>
 <script src="quantum-sphere.js"></script>
@@ -323,7 +361,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     model: 'deepseek-chat'
   };
 
-  /* ============ 工具 ============ */
   function formatTime(ts){
     const d = new Date(ts);
     const pad = n => n < 10 ? '0'+n : ''+n;
@@ -331,26 +368,8 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
-  /* ============ 页面切换 ============ */
-  document.querySelectorAll('.nav-go').forEach(btn => {
-    btn.addEventListener('click', () => showScreen(btn.dataset.target));
-  });
-  function showScreen(id){
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    const target = $(id);
-    if(target) target.classList.add('active');
-    document.querySelectorAll('.quantum-link').forEach(b => {
-      b.classList.toggle('active', b.dataset.target === id);
-    });
-    window.scrollTo({top: 0, behavior: 'smooth'});
-    if(id === 'screen-home' && window.QuantumSphere){
-      setTimeout(() => window.QuantumSphere.resize(), 50);
-      setTimeout(() => window.QuantumSphere.resize(), 200);
-      setTimeout(() => window.QuantumSphere.resize(), 500);
-    }
-  }
+  /* 注：导航已由独立脚本处理，这里不再重复绑定，避免冲突。 */
 
-  /* ============ 维度预览 ============ */
   (function(){
     const el = $('dimPreview');
     if(!el) return;
@@ -366,9 +385,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     ).join('');
   })();
 
-  /* ==================================================
-     ★ 历史记录：保存 / 读取 / 恢复
-     ================================================== */
+  /* ============ 历史记录 ============ */
   function saveResultToUser(result, qs, ds, answers){
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
     const u = window.QAuth.getCurrentUser();
@@ -440,7 +457,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     return true;
   }
 
-  /* ★ 在 intro 页顶部显示"欢迎回来"横幅 */
   function updateRestoreBanner(){
     const existing = document.getElementById('restoreBanner');
     if(existing) existing.remove();
@@ -478,11 +494,14 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 
     document.getElementById('btnViewHistory').addEventListener('click', () => {
       restoreFromHistory(latest);
-      showScreen('screen-result');
+      const target = document.getElementById('screen-result');
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      if(target) target.classList.add('active');
+      window.scrollTo({top: 0, behavior: 'smooth'});
     });
   }
 
-  /* ============ 测验渲染 ============ */
+  /* ============ 测验 ============ */
   $('qTotal').textContent = Q.QUESTIONS.length;
 
   function renderGroupStrip(){
@@ -552,7 +571,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   });
 
-  /* ============ 结果流程 ============ */
   const STABILITY_LABEL = {
     clear:    {text:'明确',       cls:'clear'},
     moderate: {text:'中等',       cls:'moderate'},
@@ -575,12 +593,15 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
     applyQuantumStateToSphere(qs, ds);
 
-    // ★ 保存到当前用户
     saveResultToUser(state.result, qs, ds, state.answers);
 
     renderResult(state.result, null);
     renderQuantumStateBadge(qs, ds);
-    showScreen('screen-result');
+
+    const target = document.getElementById('screen-result');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if(target) target.classList.add('active');
+    window.scrollTo({top: 0, behavior: 'smooth'});
   }
 
   function renderQuantumStateBadge(qs, dimStates){
@@ -663,7 +684,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       return '<div class="vector-card ' + (isTop?'top':'') + '"><div class="vc-letter">' + sf.letter + '</div><div class="vc-name">' + sf.name + '</div><div class="vc-en">' + sf.name + '</div><div class="vc-pct">' + pct + '%</div><div class="vc-bar"><div class="vc-fill" data-w="' + pct + '"></div></div><div class="vc-desc">' + sf.desc + '</div></div>';
     }).join('');
 
-    // ★ "上次测评"提示
     const oldTip = document.getElementById('restoredTip');
     if(oldTip) oldTip.remove();
     if(restoredTs){
@@ -763,7 +783,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.restoredTs = null;
     state.locked = false;
     renderQuestion();
-    showScreen('screen-quiz');
+    const target = document.getElementById('screen-quiz');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if(target) target.classList.add('active');
+    window.scrollTo({top: 0, behavior: 'smooth'});
   });
 
   $('btnRestart').addEventListener('click', () => {
@@ -773,7 +796,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.restoredTs = null;
     state.locked = false;
     updateRestoreBanner();
-    showScreen('screen-intro');
+    const target = document.getElementById('screen-intro');
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if(target) target.classList.add('active');
+    window.scrollTo({top: 0, behavior: 'smooth'});
   });
 
   $('btnCopy').addEventListener('click', async () => {
@@ -850,17 +876,13 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   });
 
-  /* ==================================================
-     ★ 监听登录状态变化
-     ================================================== */
+  /* ============ 监听登录状态 ============ */
   if(window.QAuth && window.QAuth.onChange){
     window.QAuth.onChange(function(info){
       console.log('[QBTI] 登录状态变化:', info);
       if(info.isLoggedIn){
-        // 登录后更新横幅
         updateRestoreBanner();
       } else {
-        // 退出登录：清空当前显示
         state.result = null;
         state.quantumState = null;
         state.dimStates = null;
@@ -871,9 +893,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     });
   }
 
-  /* ==================================================
-     ★ 初始化
-     ================================================== */
+  /* ============ 初始化 ============ */
   renderQuestion();
   updateRestoreBanner();
   console.log('[QBTI] 初始化完成');
