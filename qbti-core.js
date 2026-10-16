@@ -275,16 +275,57 @@ window.QBTI = (function(){
     }).join('');
     return h;
   }
-  function localReport(res){
+
+  /* ==========================================================
+     本地兜底报告（面向家长，含真实性段落）
+     ========================================================== */
+  function localReport(res, validity){
     const sorted = SUBDIMS.slice().sort((a,b)=>res.dominanceScore[a.id]-res.dominanceScore[b.id]);
     const low3 = sorted.slice(0,3);
     const high3 = sorted.slice(-3).reverse();
     const baseCode = res.letters.join('');
     const typeName = TYPE_NAMES[baseCode]||'';
     const fullCode = baseCode+'-'+res.suffix.letter;
-    return '【你的量子态画像】\n你的类型是 '+fullCode+' · '+typeName+'（'+res.suffix.name+'），'+res.suffix.desc+'\n最强的三个维度：'+high3.map(s=>s.name+'（'+res.dominanceScore[s.id].toFixed(1)+'）').join('、')+'。\n\n【你的能量势垒】\n相对较弱：'+low3.map(s=>s.name+'（'+res.dominanceScore[s.id].toFixed(1)+'）').join('、')+'。这些不是缺点，而是势垒。\n\n【量子隧穿路径】\n▸ 把任务切成 15 分钟的小块。\n▸ 找一个能立刻看到反馈的小项目。\n▸ 允许自己"跳过"。\n\n【给观测者的话】\n请给他一个不被评价的空间：不问成绩，只问"你今天对什么好奇"。';
+
+    let validityBlock = '';
+    if(validity){
+      validityBlock =
+        '【一、真实度评分】\n'
+        + '**' + validity.authenticity + ' / 100（' + validity.levelText + '）**\n\n'
+        + '评分依据：\n'
+        + (validity.parentReasons.length > 0
+            ? validity.parentReasons.map(r => '▸ ' + r).join('\n')
+            : '▸ 未发现明显疑点，作答状态自然')
+        + '\n\n' + validity.advice + '\n\n';
+    } else {
+      validityBlock = '【一、真实度评分】\n本次未采集到作答过程数据，无法评估真实性。\n\n';
+    }
+
+    return validityBlock
+      + '【二、孩子的量子态画像】\n'
+      + '本次测评类型为 **' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）**。'
+      + res.suffix.desc + '\n'
+      + '孩子在以下三个维度上表现最突出：'
+      + high3.map(s=>s.name+'（'+res.dominanceScore[s.id].toFixed(1)+'）').join('、') + '。\n\n'
+      + '【三、孩子的能量势垒】\n'
+      + '相对较弱的维度是：'
+      + low3.map(s=>s.name+'（'+res.dominanceScore[s.id].toFixed(1)+'）').join('、')
+      + '。这些并不是缺点，而是可以被理解和支持的"势垒"，也是孩子未来可以自然生长的方向。\n\n'
+      + '【四、量子隧穿路径】\n'
+      + '▸ 把大任务切成 15 分钟的小块，让孩子先体验一次"开始"的轻盈。\n'
+      + '▸ 找一个能立刻看到反馈的小项目，用"做成一件事"来喂养内驱力。\n'
+      + '▸ 允许孩子在卡住的时候"跳过"，而不必每道题都死磕。\n'
+      + '▸ 用"你今天对什么好奇"代替"你今天学了什么"。\n\n'
+      + '【五、给家长的话】\n'
+      + '请给孩子一个不被评价的空间。每一次排名、每一张试卷，都是一次强观测；'
+      + '而强观测会让叠加态坍缩。您现在看到的这份报告，只是孩子无数可能中的一种投影。'
+      + '与其追问"你是什么类型"，不如陪他一起去探索"你还可能是谁"。';
   }
-  function buildPrompt(res){
+
+  /* ==========================================================
+     构建 AI 提示词（面向家长，含真实性数据）
+     ========================================================== */
+  function buildPrompt(res, validity){
     const baseCode = res.letters.join('');
     const typeName = TYPE_NAMES[baseCode]||'';
     const fullCode = baseCode+'-'+res.suffix.letter;
@@ -294,10 +335,40 @@ window.QBTI = (function(){
       return d.name+'：'+d.letters.map(l=>l+'='+r[l]+'%').join(' / ')+' → 主导 '+info.lead+'（差值 '+info.gap+'%）';
     }).join('\n');
     const vecLines = SUFFIXES.map(sf=>sf.letter+' '+sf.name+'：'+res.suffixRatio[sf.letter]+'%').join('\n');
-    return '你是一位教育引导顾问，擅长用"量子态"隐喻理解青少年的学习状态。以下是某位学生完成的 QBTI 测评结果：\n'
-      +'【人格代码】'+fullCode+'\n【类型名称】'+typeName+' · '+res.suffix.name+'\n'
-      +'【四大维度倾向】\n'+dimLines+'\n【四个发展向量占比】\n'+vecLines+'\n'
-      +'请输出约600-800字中文引导报告，含【你的量子态画像】【你的能量势垒】【量子隧穿路径】【给观测者的话】四部分。语气温暖、不评判、不说教。';
+
+    let validitySection = '';
+    if(validity){
+      const timeInfo = (validity.totalTime != null && validity.avgTime != null)
+        ? ('总用时约 ' + Math.round(validity.totalTime) + ' 秒，平均每题 ' + validity.avgTime.toFixed(1) + ' 秒')
+        : '（未采集到作答时间数据）';
+      validitySection =
+        '\n【系统真实度检测结果】（由前端算法自动生成，请你在报告中引用并解读）\n'
+        + '真实度评分：' + validity.authenticity + ' / 100（' + validity.levelText + '）\n'
+        + '作答时间：' + timeInfo + '\n'
+        + '检测到的疑点：' + (validity.parentReasons.length > 0 ? validity.parentReasons.join('；') : '未发现明显疑点') + '\n'
+        + '系统建议：' + validity.advice + '\n';
+    }
+
+    return '你是一位教育引导顾问，擅长用"量子态"隐喻理解青少年的学习状态。\n'
+      + '以下是某位学生完成的 QBTI 测评结果。请撰写一份**面向家长**的引导报告。\n\n'
+      + '【人格代码】' + fullCode + '\n'
+      + '【类型名称】' + typeName + ' · ' + res.suffix.name + '\n'
+      + '【四大维度倾向】\n' + dimLines + '\n'
+      + '【四个发展向量占比】\n' + vecLines + '\n'
+      + validitySection + '\n'
+      + '请输出约 800-1000 字中文报告，严格包含以下五个部分，每部分用【】标题：\n\n'
+      + '【一、真实度评分】\n'
+      + '直接引用系统真实度评分（' + (validity ? validity.authenticity : '--') + ' / 100），用 2-3 句话向家长说明评分依据。\n'
+      + '若评分偏低，语气要温和，避免让家长产生"孩子在撒谎"的对抗感——而是把它解释成"这一次作答可能没有充分思考"。\n\n'
+      + '【二、孩子的量子态画像】\n'
+      + '解读孩子的人格代码与类型，用家长能听懂的语言描述孩子的学习特质。\n\n'
+      + '【三、孩子的能量势垒】\n'
+      + '指出相对较弱的维度，强调这些不是缺点，而是可以被理解和支持的势垒。\n\n'
+      + '【四、量子隧穿路径】\n'
+      + '给出 3-4 条具体可操作的支持建议，面向家长可以如何在日常生活中帮助孩子。\n\n'
+      + '【五、给家长的话】\n'
+      + '用温暖、不评判、不说教的语气，提醒家长如何成为孩子成长路上的"温柔的观测者"，而不是"强观测者"。\n\n'
+      + '整体语气：温暖、具体、不评判、不说教、避免使用过于专业的术语。';
   }
 
   /* ==========================================================
@@ -426,11 +497,17 @@ window.QBTI = (function(){
   }
 
   /* ==========================================================
-     ★ 问卷有效性分析（谎话识别）
+     ★ 问卷有效性分析（面向家长 · 真实性 0-100）
      ------------------------------------------------------------
-     返回 { score, level, flags, details }
-     score: 0-100，越高越可疑
-     level: 'trust' | 'low' | 'medium' | 'high'
+     返回 {
+       authenticity: 0-100 真实度（越高越可信）
+       level: 'high'|'medium'|'low'|'very_low'
+       levelText: 中文等级
+       flags: 技术标记数组
+       parentReasons: 家长能听懂的理由数组
+       advice: 面向家长的建议
+       avgTime, totalTime, details
+     }
      ========================================================== */
   function analyzeResponseValidity(answers, timings){
     const total = QUESTIONS.length;
@@ -440,8 +517,14 @@ window.QBTI = (function(){
       if(v == null){
         return {
           score: 100,
-          level: 'high',
+          authenticity: 0,
+          level: 'very_low',
+          levelText: '未完成',
           flags: ['未完成全部题目'],
+          parentReasons: ['孩子未完成全部题目，无法评估真实性'],
+          advice: '建议让孩子在一个安静、不被打扰的时间，重新完整地完成一次测评。',
+          avgTime: null,
+          totalTime: null,
           details: { missing: total - vals.length }
         };
       }
@@ -483,7 +566,7 @@ window.QBTI = (function(){
     const M13 = answers[13], M17 = answers[17], M19 = answers[19];
     if(M13 != null && M17 != null && M19 != null){
       const m13High = M13 >= 4, m17High = M17 >= 4;
-      const m19High = M19 >= 4;   // 第 19 题同意 = 低意义感
+      const m19High = M19 >= 4;
       if(m13High && m17High && m19High){
         suspicious += 25; flags.push('意义感题目与反向题存在明显矛盾');
       }
@@ -506,26 +589,71 @@ window.QBTI = (function(){
     else if(contradictions >= 3){ suspicious += 10; flags.push('部分同维度题目答案不一致'); }
 
     /* 7. 作答时间 */
-    if(timings && Object.keys(timings).length === total){
-      const times = Object.values(timings);
-      const avg = times.reduce((a,b) => a + b, 0) / times.length;
-      const totalTime = times.reduce((a,b) => a + b, 0);
-      if(avg < 1.5){ suspicious += 25; flags.push('平均作答时间过短'); }
-      else if(avg < 2.5){ suspicious += 12; flags.push('平均作答时间偏短'); }
-      if(totalTime < 180){ suspicious += 15; flags.push('总作答时间不足 3 分钟'); }
+    let avgTime = null, totalTime = null;
+    if(timings){
+      const timeVals = Object.values(timings).filter(t => typeof t === 'number' && t > 0);
+      if(timeVals.length >= total * 0.7){
+        avgTime = timeVals.reduce((a,b) => a+b, 0) / timeVals.length;
+        totalTime = timeVals.reduce((a,b) => a+b, 0);
+        if(avgTime < 1.5){ suspicious += 25; flags.push('平均作答时间过短'); }
+        else if(avgTime < 2.5){ suspicious += 12; flags.push('平均作答时间偏短'); }
+        if(totalTime < 180){ suspicious += 15; flags.push('总作答时间不足 3 分钟'); }
+      }
     }
 
-    const score = Math.min(100, suspicious);
-    let level;
-    if(score >= 70) level = 'high';
-    else if(score >= 45) level = 'medium';
-    else if(score >= 25) level = 'low';
-    else level = 'trust';
+    const suspiciousScore = Math.min(100, suspicious);
+    const authenticity = Math.max(0, 100 - suspiciousScore);
+
+    /* 分档 */
+    let level, levelText;
+    if(authenticity >= 85){ level = 'high'; levelText = '高可信'; }
+    else if(authenticity >= 65){ level = 'medium'; levelText = '基本可信'; }
+    else if(authenticity >= 40){ level = 'low'; levelText = '可信度偏低'; }
+    else { level = 'very_low'; levelText = '可信度存疑'; }
+
+    /* 技术标记 → 家长能听懂的理由 */
+    const FLAG_TRANSLATIONS = {
+      '几乎只使用 1–2 种选项': '作答选项高度集中，可能未认真区分每道题',
+      '选项分布过于集中': '作答选项分布较为集中，可能未仔细阅读每道题',
+      '作答几乎无波动': '所有题目作答几乎没有变化，可能未仔细阅读题目',
+      '作答波动偏小': '作答波动较小，可能思考不够充分',
+      '存在长时间连续相同选择': '有连续多道题选择了完全相同的选项',
+      '存在较长连续相同选择': '有较长一段题目选择了相同选项',
+      '几乎全部选择同意/非常同意': '几乎所有题目都选择"同意"，可能存在迎合倾向',
+      '同意比例偏高': '选择"同意"的比例偏高，可能倾向于迎合题目',
+      '几乎全部选择不同意': '几乎所有题目都选择"不同意"，可能存在消极作答倾向',
+      '意义感题目与反向题存在明显矛盾': '在意义感相关题目上出现前后矛盾',
+      '多组同维度题目答案差异过大': '在多组测量同一特质的题目上答案差异较大',
+      '部分同维度题目答案不一致': '部分同维度题目答案存在不一致',
+      '平均作答时间过短': '平均每题作答时间过短，可能未充分思考',
+      '平均作答时间偏短': '平均每题作答时间略短，思考可能不够充分',
+      '总作答时间不足 3 分钟': '整体作答时间偏短，可能未认真对待',
+      '未完成全部题目': '未完成全部题目'
+    };
+    const parentReasons = flags.map(f => FLAG_TRANSLATIONS[f] || f);
+
+    /* 面向家长的建议 */
+    let advice;
+    if(level === 'high'){
+      advice = '孩子的作答状态自然、真实，可以较为放心地参考本次测评结果。';
+    } else if(level === 'medium'){
+      advice = '孩子的作答整体可信，但存在少量值得留意的细节。建议以开放的心态与孩子交流，避免直接质疑。';
+    } else if(level === 'low'){
+      advice = '本次作答可信度偏低，可能存在敷衍或迎合的情况。建议换一个孩子情绪放松的时机重新测评，避免在测评中给孩子压力。';
+    } else {
+      advice = '本次作答存在明显疑点，结果可能无法真实反映孩子的状态。建议先和孩子聊聊他/她最近的状态，而不是直接使用这份报告。';
+    }
 
     return {
-      score,
+      score: suspiciousScore,
+      authenticity,
       level,
+      levelText,
       flags,
+      parentReasons,
+      advice,
+      avgTime,
+      totalTime,
       details: { std, unique, maxRun, highRatio, contradictions }
     };
   }

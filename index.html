@@ -243,14 +243,14 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       </div>
       <div class="vector-grid" id="vectorGrid"></div>
     </div>
-    <div class="section-title">AI 引导报告</div>
+    <div class="section-title">AI 引导报告 · 面向家长</div>
     <div class="ai-panel">
       <div class="ai-head">
         <h3>个性化波函数解读</h3>
         <button class="btn sm" id="btnAI">生成报告</button>
       </div>
       <div class="ai-body" id="aiBody">
-        <div class="ai-empty">点击「生成报告」，由 AI 基于你的十二维量子态，输出专属的引导路径。</div>
+        <div class="ai-empty">点击「生成报告」，AI 将基于孩子的十二维量子态与作答真实性，输出一份面向家长的引导路径。</div>
       </div>
     </div>
     <div class="result-actions">
@@ -347,6 +347,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   const state = {
     idx: 0,
     answers: {},
+    timings: {},            // 每题作答秒数
+    questionShownAt: {},    // 每题首次展示的时间戳（毫秒）
+    validity: null,         // 真实性分析结果
     locked: false,
     result: null,
     quantumState: null,
@@ -399,6 +402,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     history.push({
       ts: Date.now(),
       answers: Object.assign({}, answers),
+      timings: state.timings ? Object.assign({}, state.timings) : {},
       code: result.letters.join(''),
       suffix: result.suffix.letter,
       quantumState: qs ? qs.type : null,
@@ -438,8 +442,13 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   function restoreFromHistory(entry){
     if(!entry || !entry.answers) return false;
     state.answers = Object.assign({}, entry.answers);
+    state.timings = entry.timings ? Object.assign({}, entry.timings) : {};
+    state.questionShownAt = {};
     state.result = Q.computeResult(state.answers);
     state.restoredTs = entry.ts || null;
+
+    // 恢复时也跑一遍真实性检测
+    state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
 
     let qs = null, ds = null;
     if(Q.analyzeQuantumState){
@@ -517,6 +526,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 
   function renderQuestion(){
     const q = Q.QUESTIONS[state.idx];
+    // 记录首次展示时间
+    if(!state.questionShownAt[q.id]){
+      state.questionShownAt[q.id] = Date.now();
+    }
     $('qText').textContent = q.text;
     $('qIdx').textContent = state.idx + 1;
     $('progFill').style.width = (state.idx / Q.QUESTIONS.length * 100) + '%';
@@ -543,6 +556,14 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.locked = true;
     const q = Q.QUESTIONS[state.idx];
     state.answers[q.id] = val;
+
+    // 首次作答记录本题用时（重复改答案不覆盖）
+    if(state.timings[q.id] == null && state.questionShownAt[q.id]){
+      state.timings[q.id] = Math.max(0.1,
+        (Date.now() - state.questionShownAt[q.id]) / 1000
+      );
+    }
+
     $('options').querySelectorAll('.opt').forEach(el => el.classList.remove('selected'));
     const sel = $('options').querySelector('[data-v="' + val + '"]');
     if(sel) sel.classList.add('selected');
@@ -580,6 +601,11 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   function finish(){
     state.result = Q.computeResult(state.answers);
     state.restoredTs = null;
+
+    // 运行真实性检测
+    state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
+    console.log('[QBTI] 真实度：' + state.validity.authenticity + ' 分（' + state.validity.levelText + '）',
+                '| 疑点：', state.validity.flags);
 
     let qs = null, ds = null;
     if(Q.analyzeQuantumState){
@@ -647,6 +673,57 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     if(hero) hero.appendChild(wrap);
   }
 
+  function renderValidityCard(v){
+    const old = document.getElementById('validityCard');
+    if(old) old.remove();
+    if(!v) return;
+
+    const colorMap = {
+      high:     '#50DC8C',
+      medium:   '#FFD98A',
+      low:      '#FF8A48',
+      very_low: '#EB414B'
+    };
+    const c = colorMap[v.level] || '#8B90B8';
+
+    const card = document.createElement('div');
+    card.id = 'validityCard';
+    card.style.cssText = [
+      'margin:24px auto 0;padding:22px 24px;border-radius:18px;',
+      'border:1px solid ' + c + '55;background:' + c + '0F;',
+      'max-width:720px;text-align:left;'
+    ].join('');
+
+    const reasonsHTML = (v.parentReasons && v.parentReasons.length > 0)
+      ? v.parentReasons.map(r => '▸ ' + Q.escapeHTML(r)).join('<br>')
+      : '▸ 未发现明显疑点，作答状态自然';
+
+    const timeLine = (v.totalTime != null && v.avgTime != null)
+      ? ('作答用时约 ' + Math.round(v.totalTime) + ' 秒 · 平均每题 ' + v.avgTime.toFixed(1) + ' 秒')
+      : '';
+
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px;">'
+      + '<div style="font-size:12px;letter-spacing:.18em;color:#8B90B8;text-transform:uppercase;">Response Authenticity · 作答真实度</div>'
+      + '<div style="font-size:26px;font-weight:800;color:' + c + ';line-height:1;">'
+      + v.authenticity + '<span style="font-size:14px;opacity:.55;font-weight:600;"> / 100</span>'
+      + '</div>'
+      + '</div>'
+      + '<div style="font-size:13px;color:' + c + ';font-weight:700;margin-bottom:8px;">'
+      + '● ' + Q.escapeHTML(v.levelText)
+      + (timeLine ? ' <span style="font-weight:400;opacity:.7;margin-left:8px;font-size:12px;">' + Q.escapeHTML(timeLine) + '</span>' : '')
+      + '</div>'
+      + '<div style="font-size:13px;color:#C9CEEE;line-height:1.75;">'
+      + reasonsHTML
+      + '</div>'
+      + '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.08);font-size:12.5px;color:#A8AEDA;line-height:1.7;">'
+      + '给家长的建议：' + Q.escapeHTML(v.advice)
+      + '</div>';
+
+    const hero = document.querySelector('.result-hero');
+    if(hero) hero.appendChild(card);
+  }
+
   function renderResult(res, restoredTs){
     const baseCode = res.letters.join('');
     const typeName = Q.TYPE_NAMES[baseCode] || '未知类型';
@@ -695,12 +772,15 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       if(hero) hero.appendChild(tip);
     }
 
+    // 渲染真实性卡片
+    renderValidityCard(state.validity);
+
     requestAnimationFrame(() => {
       document.querySelectorAll('.dsc-seg').forEach((el, i) => setTimeout(() => { el.style.width = el.dataset.w + '%'; }, 60 + i*40));
       document.querySelectorAll('.vc-fill').forEach((el, i) => setTimeout(() => { el.style.width = el.dataset.w + '%'; }, 320 + i*80));
     });
 
-    $('aiBody').innerHTML = '<div class="ai-empty">点击「生成报告」，由 AI 基于你的十二维量子态，输出专属的引导路径。</div>';
+    $('aiBody').innerHTML = '<div class="ai-empty">点击「生成报告」，AI 将基于孩子的十二维量子态与作答真实性，输出一份面向家长的引导路径。</div>';
     $('btnAI').disabled = false;
     $('btnAI').textContent = '生成报告';
   }
@@ -734,11 +814,11 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         body: JSON.stringify({
           model: cfg.model,
           messages: [
-            {role: 'system', content: '你是一位擅长用隐喻理解青少年的教育引导顾问，语气温暖、具体、不评判。'},
+            {role: 'system', content: '你是一位擅长用隐喻理解青少年学习状态的教育引导顾问，语气温暖、具体、不评判。你的报告面向家长，帮助家长理解孩子，而不是评判孩子。'},
             {role: 'user', content: prompt}
           ],
           temperature: 0.85,
-          max_tokens: 1800,
+          max_tokens: 2400,
           stream: false
         })
       });
@@ -758,9 +838,14 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     const btn = $('btnAI');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>生成中…';
-    $('aiBody').innerHTML = '<div class="ai-empty"><span class="spinner"></span>正在解析你的波函数…</div>';
+    $('aiBody').innerHTML = '<div class="ai-empty"><span class="spinner"></span>正在解析孩子的波函数与作答真实性…</div>';
+
+    // 确保拿到真实性数据（兜底再算一遍）
+    const validity = state.validity || Q.analyzeResponseValidity(state.answers, state.timings);
+    state.validity = validity;
+
     try {
-      const text = await callAPI(Q.buildPrompt(state.result));
+      const text = await callAPI(Q.buildPrompt(state.result, validity));
       $('aiBody').innerHTML = Q.renderMD(text);
     } catch(err){
       const msg = String(err.message || err);
@@ -768,7 +853,11 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       if(msg.indexOf('CORS_OR_NETWORK') >= 0){
         extra = '<br><br><span style="color:#FFD98A">⚠ 浏览器跨域限制。用本地服务器打开或换允许 CORS 的代理地址。下方已切换本地报告。</span>';
       }
-      $('aiBody').innerHTML = '<div class="ai-empty" style="color:#FF9BB5">AI 调用失败：' + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim()) + extra + '</div>' + Q.renderMD(Q.localReport(state.result));
+      $('aiBody').innerHTML =
+        '<div class="ai-empty" style="color:#FF9BB5">AI 调用失败：'
+        + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim())
+        + extra + '</div>'
+        + Q.renderMD(Q.localReport(state.result, validity));
     } finally {
       btn.disabled = false;
       btn.textContent = '重新生成';
@@ -779,6 +868,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   $('btnStart').addEventListener('click', () => {
     state.idx = 0;
     state.answers = {};
+    state.timings = {};
+    state.questionShownAt = {};
+    state.validity = null;
     state.result = null;
     state.restoredTs = null;
     state.locked = false;
@@ -792,6 +884,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   $('btnRestart').addEventListener('click', () => {
     state.idx = 0;
     state.answers = {};
+    state.timings = {};
+    state.questionShownAt = {};
+    state.validity = null;
     state.result = null;
     state.restoredTs = null;
     state.locked = false;
@@ -813,7 +908,25 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       return d.name + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → 主导 ' + info.lead + '（差值 ' + info.gap + '%）';
     }).join('\n');
     const vecLines = Q.SUFFIXES.map(sf => sf.letter + ' ' + sf.name + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
-    const txt = 'QBTI 量子人格测评结果\n类型：' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）\n发展方向：' + res.suffix.desc + '\n\n四大维度倾向：\n' + dimLines + '\n\n四个发展向量占比：\n' + vecLines;
+
+    let validityLines = '';
+    if(state.validity){
+      const v = state.validity;
+      validityLines =
+        '\n\n作答真实度：' + v.authenticity + ' / 100（' + v.levelText + '）\n'
+        + '评分依据：\n'
+        + (v.parentReasons.length > 0
+            ? v.parentReasons.map(r => '▸ ' + r).join('\n')
+            : '▸ 未发现明显疑点')
+        + '\n给家长的建议：' + v.advice;
+    }
+
+    const txt = 'QBTI 量子人格测评结果（面向家长）\n'
+      + '类型：' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）\n'
+      + '发展方向：' + res.suffix.desc + '\n\n'
+      + '四大维度倾向：\n' + dimLines + '\n\n'
+      + '四个发展向量占比：\n' + vecLines
+      + validityLines;
     try {
       await navigator.clipboard.writeText(txt);
       const b = $('btnCopy');
@@ -886,6 +999,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         state.result = null;
         state.quantumState = null;
         state.dimStates = null;
+        state.validity = null;
         state.restoredTs = null;
         const banner = document.getElementById('restoreBanner');
         if(banner) banner.remove();
