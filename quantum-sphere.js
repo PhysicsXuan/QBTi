@@ -329,7 +329,6 @@
     const STATE_STORAGE_KEY = 'qbti_quantum_state';
     const DIM_STATE_KEY = 'qbti_dimension_states';
 
-    // ★ 全局状态变量（之前缺失的就是这些）
     let globalState = 'default';
     let dimensionStates = null;
     let fallbackColor = palette[Math.floor(Math.random() * palette.length)];
@@ -616,7 +615,8 @@
         short: opts.short || '',
         _dim: opts.dim || null,
         focusAmount: 0,
-        focusPing: 0
+        focusPing: 0,
+        exploded: false // 👈 新增：记录小球是否已爆炸
       };
     }
 
@@ -730,6 +730,7 @@
       let best = null;
       let bestR = 0;
       for(const b of balls){
+        if (b.exploded) continue; // 👈 爆炸的球体不再响应交互
         const v = computeBallVisual(b);
         const bx = BASE_CX + v.visOx * safeBaseR();
         const by = BASE_CY + v.visOy * safeBaseR();
@@ -961,7 +962,18 @@
           if(!hasSplit) screenShake = Math.max(screenShake, 0.85);
           for(let i=0;i<64;i++){ pushSpark(x, y, { speed: 2.4 + Math.random()*6.5, duration: 1.2 + Math.random()*1.2, size: 1.2 + Math.random()*2.4 }); }
         })(cx, cy, chargeVal, activeBall);
-        if(!hasSplit){ hasSplit = true; splitSpheres(releaseShakeAmp); }
+        
+        if(!hasSplit){ 
+          hasSplit = true; 
+          splitSpheres(releaseShakeAmp); 
+        } else if (activeBall) {
+          // 👈 四个小球状态下的爆炸逻辑
+          activeBall.exploded = true;
+          if (focusedBall === activeBall) focusedBall = null;
+          hoveredBall = null;
+          prevHoveredBall = null;
+        }
+        
         activeBall = null; return;
       }
 
@@ -1750,30 +1762,35 @@
         ctx.scale(breathS, breathS);
         ctx.translate(-CX, -CY);
 
-        drawSphereFill();
-        drawPulseRings(t);
-        drawInnerBands(t);
-        drawLatitudes();
-        drawLongitudes();
-        drawNodeNetwork(t);
-        drawCircuits(t);
+        // 👈 关键修改：判断是否已爆炸，决定绘制内容
+        if (!ball.exploded) {
+          drawSphereFill();
+          drawPulseRings(t);
+          drawInnerBands(t);
+          drawLatitudes();
+          drawLongitudes();
+          drawNodeNetwork(t);
+          drawCircuits(t);
+          drawOrbitRings(now);
+          drawCoreOrbiters();
+          drawOutline();
+          drawCore(now);
+        }
+
+        // 无论是否爆炸，都保留粒子效果（爆炸后只留下纯粒子）
         drawParticles(now, t);
         drawFlowParticles(now, t);
         drawPulsePoints(t);
-        drawOrbitRings(now);
-        drawCoreOrbiters();
-        drawOutline();
-        drawCore(now);
 
-        if(ball.focusAmount > 0.02){
+        if(ball.focusAmount > 0.02 && !ball.exploded){
           drawFocusRing(t, ball.focusAmount * vis.visAlpha, ball.focusPing);
         }
-        if(hasSplit && hoveredBall === ball && focusedBall !== ball && hoverT > 0.05){
+        if(hasSplit && hoveredBall === ball && focusedBall !== ball && hoverT > 0.05 && !ball.exploded){
           drawHoverRing(t, hoverT * vis.visAlpha);
         }
         ctx.restore();
 
-        if(hasSplit && ball.name){
+        if(hasSplit && ball.name && !ball.exploded){
           const labelAlpha = ball.focusAmount > 0.5 ? 1 : Math.max(0.35, vis.visAlpha);
           drawBallLabel(ball, effCx, effCy, R * breathS, labelAlpha, ball.focusAmount > 0.5, ball.focusAmount);
         }
