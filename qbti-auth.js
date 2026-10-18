@@ -1,5 +1,5 @@
 /* ============================================================
-   QAuth —— QBTI 学生登录/注册/绑定家长
+   QAuth —— QBTI 学生登录/注册/绑定家长 (含二维码生成)
    ============================================================ */
 (function(){
   'use strict';
@@ -155,7 +155,6 @@
 .qauth-switch{margin-top:16px;text-align:center;font-size:12.5px;color:var(--muted,#8B90B8);}
 .qauth-switch a{color:var(--q-color,rgb(255,138,72));cursor:pointer;font-weight:600;text-decoration:none;}
 .qauth-switch a:hover{text-decoration:underline}
-.qauth-legal{font-size:11px;color:rgba(255,255,255,.35);margin-top:16px;line-height:1.7;text-align:center;}
 .qauth-profile-row{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:10px;}
 .qauth-profile-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--q-color,rgb(255,138,72)),rgba(var(--q-r,255),var(--q-g,138),var(--q-b,72),.5));display:grid;place-items:center;font-size:17px;font-weight:800;color:#fff;flex-shrink:0;}
 .qauth-profile-info{flex:1;min-width:0}
@@ -207,6 +206,7 @@
 .qauth-invite-kicker{font-size:11px;letter-spacing:.22em;color:var(--muted,#8B90B8);text-transform:uppercase;margin-bottom:14px;}
 .qauth-invite-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:18px;}
 .qauth-invite-code{font-size:40px;font-weight:800;letter-spacing:.24em;color:var(--q-color,rgb(255,138,72));margin:18px 0;user-select:all;font-family:ui-monospace,Menlo,monospace;}
+.qauth-qrcode-wrap{margin:0 auto 20px;width:200px;height:200px;background:#fff;padding:10px;border-radius:12px;display:flex;align-items:center;justify-content:center;}
 .qauth-invite-meta{font-size:12px;color:var(--muted,#8B90B8);line-height:1.7;margin-bottom:20px;}
 .qauth-invite-actions{display:flex;gap:10px;flex-wrap:wrap;}
 .qauth-invite-actions button{flex:1;min-width:120px;padding:11px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s;}
@@ -566,7 +566,6 @@
     updateFloatButton();
   }
 
-  /* ---------- Profile 渲染（含家长绑定区域） ---------- */
   function renderProfileContent(){
     const wrap = document.getElementById('qauthProfileContent');
     if(!wrap) return;
@@ -622,7 +621,7 @@
 
       if(list.length === 0){
         listEl.className = 'qauth-bind-empty';
-        listEl.textContent = '尚未绑定家长。点击下方按钮生成邀请码，把邀请码发给家长，即可完成绑定。';
+        listEl.textContent = '尚未绑定家长。点击下方按钮生成邀请码，或让家长扫描二维码。';
       } else {
         listEl.className = '';
         listEl.innerHTML = list.map(p => {
@@ -644,7 +643,7 @@
 
       if(genBtn){
         genBtn.disabled = list.length >= 2;
-        genBtn.textContent = list.length >= 2 ? '已达绑定上限（2/2）' : '生成绑定邀请码';
+        genBtn.textContent = list.length >= 2 ? '已达绑定上限（2/2）' : '生成邀请码 / 二维码';
       }
     } catch(err){
       listEl.className = 'qauth-bind-empty';
@@ -682,33 +681,62 @@
     }
   }
 
+  /* 动态加载二维码生成库 */
+  function loadQRCodeLib(callback){
+    if(window.QRCode) { callback(); return; }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    script.onload = callback;
+    document.head.appendChild(script);
+  }
+
   function showInviteModal(code, expiresAt){
     const old = document.getElementById('qauthInviteMask');
     if(old) old.remove();
+
+    const shareUrl = window.location.origin + '/parent?code=' + code;
 
     const mask = document.createElement('div');
     mask.id = 'qauthInviteMask';
     mask.className = 'qauth-invite-mask';
     mask.innerHTML = `
       <div class="qauth-invite-card">
-        <div class="qauth-invite-kicker">Bind Parent · 绑定邀请码</div>
-        <div class="qauth-invite-title">把这个邀请码发给家长</div>
+        <div class="qauth-invite-kicker">Bind Parent · 绑定家长</div>
+        <div class="qauth-invite-title">请家长使用摄像头扫描此二维码</div>
+        
+        <div class="qauth-qrcode-wrap" id="qrcodeBox"></div>
+        
         <div class="qauth-invite-code">${escapeHTML(code)}</div>
         <div class="qauth-invite-meta">
-          有效期至 ${new Date(expiresAt).toLocaleString()}<br>
-          家长登录「家长端」后，点击「绑定孩子」，输入此邀请码即可完成绑定
+          邀请码有效期至 ${new Date(expiresAt).toLocaleString()}<br>
+          家长登录「家长端」后，点击「扫码绑定」即可自动完成
         </div>
         <div class="qauth-invite-actions">
-          <button type="button" class="qauth-invite-copy" id="qauthInviteCopy">复制邀请码</button>
+          <button type="button" class="qauth-invite-copy" id="qauthInviteCopy">复制邀请链接</button>
           <button type="button" class="qauth-invite-close" id="qauthInviteClose">关闭</button>
         </div>
       </div>
     `;
     document.body.appendChild(mask);
 
+    // 渲染二维码
+    loadQRCodeLib(() => {
+      const box = document.getElementById('qrcodeBox');
+      if(box && window.QRCode) {
+        new QRCode(box, {
+          text: shareUrl,
+          width: 180,
+          height: 180,
+          colorDark : "#000000",
+          colorLight : "#ffffff",
+          correctLevel : QRCode.CorrectLevel.H
+        });
+      }
+    });
+
     document.getElementById('qauthInviteCopy').addEventListener('click', async () => {
       try {
-        await navigator.clipboard.writeText(code);
+        await navigator.clipboard.writeText(shareUrl);
         document.getElementById('qauthInviteCopy').textContent = '已复制 ✓';
       } catch(e){
         alert('复制失败，请手动记录邀请码：' + code);
@@ -735,10 +763,6 @@
       toast('解绑失败：' + err.message, 'err');
     }
   }
-
-  function renderProfileContentFallback(){ renderProfileContent(); }
-  // 保留旧引用名
-  const renderProfile = renderProfileContent;
 
   function updateFloatButton(){
     const btn = document.getElementById('qauthFloatBtn');
