@@ -344,6 +344,7 @@
     function applyColor(cr, cg, cb){
       CR = cr; CG = cg; CB = cb;
       PR = CR; PG = CG; PB = CB;
+      globalColor = [cr, cg, cb]; // 👈 修复：同步更新全局颜色，供星云模式使用
       document.documentElement.style.setProperty('--q-r', CR);
       document.documentElement.style.setProperty('--q-g', CG);
       document.documentElement.style.setProperty('--q-b', CB);
