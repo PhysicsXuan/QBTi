@@ -309,11 +309,6 @@
     AudioFX.loadPreference();
     injectSoundToggle();
 
-    try {
-      console.log('[QuantumSphere] 音效状态:', AudioFX.debugState());
-      console.log('[QuantumSphere] 震动支持:', HapticFX.isSupported() ? '是' : '否');
-    } catch(e){}
-
     const ctx = canvas.getContext('2d');
     const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -406,6 +401,11 @@
     let hasSplit = false;
     let flash = 0;
 
+    // 新增：纯星云状态
+    let soloNebula = false;
+    let explodedBall = null;
+    let soloR = 0;
+
     function safeBaseR(){
       return (isFinite(BASE_R) && BASE_R > MIN_BASE_R) ? BASE_R : MIN_BASE_R;
     }
@@ -432,7 +432,7 @@
         aura.r = BASE_R * 0.4;
         aura.targetR = BASE_R * 0.4;
       }
-      if(hasSplit) updateLayoutTargets(true);
+      if(hasSplit && !soloNebula) updateLayoutTargets(true);
     }
 
     const YAW_BASE = 0.28, TILT_BASE = -0.42, CAM = 3.2;
@@ -615,8 +615,7 @@
         short: opts.short || '',
         _dim: opts.dim || null,
         focusAmount: 0,
-        focusPing: 0,
-        exploded: false // 👈 新增：记录小球是否已爆炸
+        focusPing: 0
       };
     }
 
@@ -727,10 +726,10 @@
     }
 
     function findBall(x, y){
+      if (soloNebula) return null; // 星云状态没有实体球
       let best = null;
       let bestR = 0;
       for(const b of balls){
-        if (b.exploded) continue; // 👈 爆炸的球体不再响应交互
         const v = computeBallVisual(b);
         const bx = BASE_CX + v.visOx * safeBaseR();
         const by = BASE_CY + v.visOy * safeBaseR();
@@ -828,6 +827,18 @@
     canvas.addEventListener('pointerdown', e=>{
       AudioFX.unlock();
       const p = localPos(e);
+      
+      // 星云状态下，点击直接触发涟漪
+      if (soloNebula) {
+        pointer.x = p.x; pointer.y = p.y;
+        AudioFX.ripple();
+        HapticFX.vibrate(18);
+        pushRing(p.x, p.y, { duration: 2.5, maxR: Math.max(W, H) * 0.8, width: 2.2, alpha: 0.85, glow: 1.0, ease: 2.6 });
+        pushRing(p.x, p.y, { delay: 0.14, duration: 2.2, maxR: Math.max(W, H) * 0.6, width: 1.3, alpha: 0.45, color:'base', ease: 2.4 });
+        for(let i=0;i<18;i++){ pushSpark(p.x, p.y, { speed: 1.8 + Math.random()*3.8, duration: 0.9 + Math.random()*0.6, size: 0.9 + Math.random()*1.8 }); }
+        return;
+      }
+
       const ball = findBall(p.x, p.y);
       pointer.x = p.x; pointer.y = p.y;
       pointer.vx = 0; pointer.vy = 0;
@@ -855,6 +866,18 @@
       pointer.vx = dx; pointer.vy = dy;
       pointer.speed = Math.sqrt(dx*dx + dy*dy);
       pointer.x = p.x; pointer.y = p.y;
+
+      if (soloNebula) {
+        // 星云状态下，鼠标移动推开粒子
+        aura.x = p.x; aura.y = p.y;
+        aura.targetStrength = 0.5;
+        aura.targetR = 150 * DPR;
+        if (pointer.down && pointer.speed > 6 * DPR) {
+           for(let i=0;i<3;i++){ pushSpark(p.x, p.y, { angle: Math.atan2(-pointer.vy, -pointer.vx) + (Math.random()-0.5)*1.6, speed: 1.2 + Math.random()*2.8, size: 0.8 + Math.random()*1.5 }); }
+        }
+        return;
+      }
+
       const hoverBall = findBall(p.x, p.y);
 
       if(hoverBall !== prevHoveredBall){
@@ -919,7 +942,8 @@
       aura.targetR = safeBaseR()*0.40;
       aura.targetStrength = pointer.inside ? 1.0 : 0;
       try { canvas.releasePointerCapture(e.pointerId); } catch(err){}
-      if(!wasDown) return;
+      if(!wasDown || soloNebula) return;
+      
       AudioFX.stopCharge();
       if(!activeBall){
         charge.active = false; charge.value = 0;
@@ -945,6 +969,7 @@
         const releaseShakeAmp = chargeVal * chargeVal * 26 * DPR;
         AudioFX.superRelease();
         HapticFX.vibrate([100, 50, 200]);
+        
         (function fireSuper(x, y, power, sourceBall){
           const BR = safeBaseR();
           const k = 0.62 + power*0.38;
@@ -964,14 +989,25 @@
         })(cx, cy, chargeVal, activeBall);
         
         if(!hasSplit){ 
+          // 大球分裂
           hasSplit = true; 
           splitSpheres(releaseShakeAmp); 
-        } else if (activeBall) {
-          // 👈 四个小球状态下的爆炸逻辑
-          activeBall.exploded = true;
-          if (focusedBall === activeBall) focusedBall = null;
+        } else {
+          // 小球爆炸，进入星云模式
+          soloNebula = true;
+          explodedBall = activeBall;
+          soloR = safeBaseR() * activeBall.scale; 
+          
+          // 全局主色变更为这个球的颜色
+          const bColor = colorForBall(activeBall, balls.indexOf(activeBall));
+          applyColor(bColor[0], bColor[1], bColor[2]);
+          
+          // 清空其余状态
+          focusedBall = null;
           hoveredBall = null;
           prevHoveredBall = null;
+          flash = 1;
+          screenShake = Math.max(screenShake, 1.5);
         }
         
         activeBall = null; return;
@@ -1181,7 +1217,7 @@
     }
 
     function drawCharge(t){
-      if(!charge.active || charge.value <= 0.001) return;
+      if(!charge.active || charge.value <= 0.001 || soloNebula) return;
       const v = charge.value;
       const baseR = charge.radius || safeBaseR() * 0.4;
       const r = baseR * (0.14 + 0.06*v) + Math.sin(t*5)*2*DPR;
@@ -1697,73 +1733,96 @@
       ctx.save();
       ctx.translate(shakeX, shakeY);
 
-      const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
       const BR = safeBaseR();
 
-      for(let k = 0; k < drawOrder.length; k++){
-        const ball = drawOrder[k].b;
-        const idx = drawOrder[k].i;
+      if (soloNebula) {
+        // 👈 纯星云状态绘制
+        CX = BASE_CX;
+        CY = BASE_CY;
+        // 半径平滑放大到覆盖全屏
+        soloR += (Math.max(W, H) * 1.8 - soloR) * 0.015;
+        R = soloR;
 
-        const ballColor = colorForBall(ball, idx);
-        setDrawColor(ballColor);
+        currentYaw = YAW_BASE + t * 0.05; // 慢速旋转
+        tiltCur = TILT_BASE + Math.sin(t * 0.15) * 0.08;
 
-        const vis = computeBallVisual(ball);
-        CX = BASE_CX + vis.visOx * BR;
-        CY = BASE_CY + vis.visOy * BR;
-        R = BR * vis.visScale;
-        if(!isFinite(CX) || !isFinite(CY) || !isFinite(R) || R <= 0.5) continue;
+        // 使用全局颜色（已在此之前被设为爆炸球的颜色）
+        setDrawColor(globalColor);
 
-        currentYaw = YAW_BASE + t*0.075 + ball.yawPhase + ball.yawOffset;
-        tiltCur = TILT_BASE + ball.tiltOffset + Math.sin(t*0.23 + ball.seed)*0.045;
+        const globalRaw = (Math.sin(t * 0.4) + 1) / 2;
+        pulse = 0.2 + Math.pow(globalRaw, 3) * 0.2; // 星云脉动
 
-        const localPulse = getBallPulse(ball, now);
+        // 只画粒子，不画任何实体线条
+        drawParticles(now, t);
+        drawFlowParticles(now, t);
+        drawPulsePoints(t);
+        
+      } else {
+        // 普通球体状态绘制
+        const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
 
-        let ambientPulse = 0;
-        if(!hasSplit){
-          const breathRaw = (Math.sin(t * 0.40 + ball.breathSeed) + 1) / 2;
-          ambientPulse = Math.pow(breathRaw, 3);
-        }
-        const chargePulse = (charge.active && activeBall === ball && !hasSplit) ? charge.value * 0.28 : 0;
-        pulse = Math.min(1, ambientPulse + localPulse * 0.92 + chargePulse + ball.focusAmount * 0.18 + ball.focusPing * 0.20);
+        for(let k = 0; k < drawOrder.length; k++){
+          const ball = drawOrder[k].b;
+          const idx = drawOrder[k].i;
 
-        let breathY = 0, breathS = 1;
-        if(!hasSplit){
-          breathY = Math.sin(t * 0.40 + ball.breathSeed) * 6 * DPR;
-          breathS = 1 + Math.sin(t * 0.40 + ball.breathSeed) * 0.006 - localPulse*0.034;
-        } else {
-          breathS = 1 - localPulse*0.05 + ball.focusPing * 0.018;
-        }
+          const ballColor = colorForBall(ball, idx);
+          setDrawColor(ballColor);
 
-        let chargeShakeX = 0, chargeShakeY = 0;
-        if(charge.active && activeBall === ball && !hasSplit){
-          const shakeAmp = charge.value * charge.value * 26 * DPR;
-          const sx1 = Math.sin(t*63 + ball.seed*1.7);
-          const sy1 = Math.cos(t*71 + ball.seed*2.3);
-          const sx2 = Math.sin(t*113 + ball.seed*3.1) * 0.5;
-          const sy2 = Math.cos(t*127 + ball.seed*4.7) * 0.5;
-          chargeShakeX = (sx1 + sx2) * shakeAmp;
-          chargeShakeY = (sy1 + sy2) * shakeAmp;
-        }
+          const vis = computeBallVisual(ball);
+          CX = BASE_CX + vis.visOx * BR;
+          CY = BASE_CY + vis.visOy * BR;
+          R = BR * vis.visScale;
+          if(!isFinite(CX) || !isFinite(CY) || !isFinite(R) || R <= 0.5) continue;
 
-        if(ball.jitterAmp > 0.1){ ball.jitterAmp *= Math.exp(-dt * ball.jitterDecay); }
-        else { ball.jitterAmp = 0; }
-        let jitterX = 0, jitterY = 0;
-        if(ball.jitterAmp > 0.1){
-          jitterX = Math.sin(t*68 + ball.jitterPhaseX) * ball.jitterAmp;
-          jitterY = Math.cos(t*76 + ball.jitterPhaseY) * ball.jitterAmp;
-        }
+          currentYaw = YAW_BASE + t*0.075 + ball.yawPhase + ball.yawOffset;
+          tiltCur = TILT_BASE + ball.tiltOffset + Math.sin(t*0.23 + ball.seed)*0.045;
 
-        const effCx = CX + chargeShakeX + jitterX;
-        const effCy = CY + breathY + chargeShakeY + jitterY;
+          const localPulse = getBallPulse(ball, now);
 
-        ctx.save();
-        ctx.globalAlpha = vis.visAlpha;
-        ctx.translate(effCx, effCy);
-        ctx.scale(breathS, breathS);
-        ctx.translate(-CX, -CY);
+          let ambientPulse = 0;
+          if(!hasSplit){
+            const breathRaw = (Math.sin(t * 0.40 + ball.breathSeed) + 1) / 2;
+            ambientPulse = Math.pow(breathRaw, 3);
+          }
+          const chargePulse = (charge.active && activeBall === ball && !hasSplit) ? charge.value * 0.28 : 0;
+          pulse = Math.min(1, ambientPulse + localPulse * 0.92 + chargePulse + ball.focusAmount * 0.18 + ball.focusPing * 0.20);
 
-        // 👈 关键修改：判断是否已爆炸，决定绘制内容
-        if (!ball.exploded) {
+          let breathY = 0, breathS = 1;
+          if(!hasSplit){
+            breathY = Math.sin(t * 0.40 + ball.breathSeed) * 6 * DPR;
+            breathS = 1 + Math.sin(t * 0.40 + ball.breathSeed) * 0.006 - localPulse*0.034;
+          } else {
+            breathS = 1 - localPulse*0.05 + ball.focusPing * 0.018;
+          }
+
+          let chargeShakeX = 0, chargeShakeY = 0;
+          if(charge.active && activeBall === ball && !hasSplit){
+            const shakeAmp = charge.value * charge.value * 26 * DPR;
+            const sx1 = Math.sin(t*63 + ball.seed*1.7);
+            const sy1 = Math.cos(t*71 + ball.seed*2.3);
+            const sx2 = Math.sin(t*113 + ball.seed*3.1) * 0.5;
+            const sy2 = Math.cos(t*127 + ball.seed*4.7) * 0.5;
+            chargeShakeX = (sx1 + sx2) * shakeAmp;
+            chargeShakeY = (sy1 + sy2) * shakeAmp;
+          }
+
+          if(ball.jitterAmp > 0.1){ ball.jitterAmp *= Math.exp(-dt * ball.jitterDecay); }
+          else { ball.jitterAmp = 0; }
+          let jitterX = 0, jitterY = 0;
+          if(ball.jitterAmp > 0.1){
+            jitterX = Math.sin(t*68 + ball.jitterPhaseX) * ball.jitterAmp;
+            jitterY = Math.cos(t*76 + ball.jitterPhaseY) * ball.jitterAmp;
+          }
+
+          const effCx = CX + chargeShakeX + jitterX;
+          const effCy = CY + breathY + chargeShakeY + jitterY;
+
+          ctx.save();
+          ctx.globalAlpha = vis.visAlpha;
+          ctx.translate(effCx, effCy);
+          ctx.scale(breathS, breathS);
+          ctx.translate(-CX, -CY);
+
           drawSphereFill();
           drawPulseRings(t);
           drawInnerBands(t);
@@ -1771,35 +1830,30 @@
           drawLongitudes();
           drawNodeNetwork(t);
           drawCircuits(t);
+          drawParticles(now, t);
+          drawFlowParticles(now, t);
+          drawPulsePoints(t);
           drawOrbitRings(now);
           drawCoreOrbiters();
           drawOutline();
           drawCore(now);
-        }
 
-        // 无论是否爆炸，都保留粒子效果（爆炸后只留下纯粒子）
-        drawParticles(now, t);
-        drawFlowParticles(now, t);
-        drawPulsePoints(t);
+          if(ball.focusAmount > 0.02){
+            drawFocusRing(t, ball.focusAmount * vis.visAlpha, ball.focusPing);
+          }
+          if(hasSplit && hoveredBall === ball && focusedBall !== ball && hoverT > 0.05){
+            drawHoverRing(t, hoverT * vis.visAlpha);
+          }
+          ctx.restore();
 
-        if(ball.focusAmount > 0.02 && !ball.exploded){
-          drawFocusRing(t, ball.focusAmount * vis.visAlpha, ball.focusPing);
-        }
-        if(hasSplit && hoveredBall === ball && focusedBall !== ball && hoverT > 0.05 && !ball.exploded){
-          drawHoverRing(t, hoverT * vis.visAlpha);
-        }
-        ctx.restore();
-
-        if(hasSplit && ball.name && !ball.exploded){
-          const labelAlpha = ball.focusAmount > 0.5 ? 1 : Math.max(0.35, vis.visAlpha);
-          drawBallLabel(ball, effCx, effCy, R * breathS, labelAlpha, ball.focusAmount > 0.5, ball.focusAmount);
+          if(hasSplit && ball.name){
+            const labelAlpha = ball.focusAmount > 0.5 ? 1 : Math.max(0.35, vis.visAlpha);
+            drawBallLabel(ball, effCx, effCy, R * breathS, labelAlpha, ball.focusAmount > 0.5, ball.focusAmount);
+          }
         }
       }
 
-      setDrawColor(globalColor);
-
-      const globalRaw = (Math.sin(t * 0.40) + 1) / 2;
-      pulse = 0.10 + Math.pow(globalRaw, 3) * 0.16;
+      // 通用特效：光晕、拖尾、冲击波、火花等
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       drawAura(t);
@@ -1849,6 +1903,8 @@
       isSplit: function(){ return hasSplit; },
       reset: function(){
         hasSplit = false;
+        soloNebula = false;
+        explodedBall = null;
         focusedBall = null;
         hoveredBall = null;
         prevHoveredBall = null;
@@ -1863,7 +1919,7 @@
         const c = QUANTUM_COLORS[state];
         if(!c) return false;
         globalState = state;
-        applyGlobalColor(c);
+        if (!soloNebula) applyGlobalColor(c); // 星云状态下不覆盖局部爆炸颜色
         try { localStorage.setItem(STATE_STORAGE_KEY, state); } catch(e){}
         return true;
       },
@@ -1889,7 +1945,7 @@
         globalState = 'default';
         dimensionStates = null;
         fallbackColor = palette[Math.floor(Math.random() * palette.length)];
-        applyGlobalColor(fallbackColor);
+        if (!soloNebula) applyGlobalColor(fallbackColor);
       },
       sound: {
         isEnabled: function(){ return AudioFX.isEnabled(); },
