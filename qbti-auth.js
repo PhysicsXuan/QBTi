@@ -414,6 +414,17 @@
     sendBtn.textContent = '发送中…';
 
     try {
+      // 检查该邮箱是否已被家长端注册
+      const checkRes = await fetch(API_BASE + '/api/check-email?email=' + encodeURIComponent(data.email) + '&role=student');
+      const checkData = await checkRes.json();
+      if (!checkData.available) {
+         setFieldError(form, 'email', checkData.msg || '该邮箱已被占用');
+         toast(checkData.msg || '该邮箱已被占用', 'err');
+         sendBtn.disabled = false;
+         sendBtn.textContent = originalText;
+         return;
+      }
+
       const res = await fetch(API_BASE + '/api/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -510,6 +521,14 @@
       };
       users.push(user);
       saveUsers(users);
+      
+      // 同步学生邮箱到服务端用于排他性校验
+      fetch(API_BASE + '/api/student/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, username: user.username })
+      }).catch(err => console.warn('同步邮箱失败:', err));
+
       saveSession(user.email);
       currentUser = publicUser(user);
       submitBtn.disabled = false;
@@ -681,7 +700,6 @@
     }
   }
 
-  /* 动态加载二维码生成库 */
   function loadQRCodeLib(callback){
     if(window.QRCode) { callback(); return; }
     const script = document.createElement('script');
@@ -719,7 +737,6 @@
     `;
     document.body.appendChild(mask);
 
-    // 渲染二维码
     loadQRCodeLib(() => {
       const box = document.getElementById('qrcodeBox');
       if(box && window.QRCode) {
