@@ -289,15 +289,11 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   </div>
 </div>
 
-<!-- ★★★ 独立导航脚本：不依赖任何其他模块，保证导航永远可用 ★★★ -->
 <script>
 (function(){
   function bindNav(){
     var buttons = document.querySelectorAll('.nav-go');
-    if(buttons.length === 0){
-      console.warn('[Nav] 没找到 .nav-go 按钮');
-      return;
-    }
+    if(buttons.length === 0) return;
     buttons.forEach(function(btn){
       if(btn._navBound) return;
       btn._navBound = true;
@@ -319,48 +315,40 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     });
     console.log('[Nav] 导航已绑定，共 ' + buttons.length + ' 个按钮');
   }
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', bindNav);
-  } else {
-    bindNav();
-  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindNav);
+  else bindNav();
 })();
 </script>
 
-<!-- ============ 三个外部 JS 模块 ============ -->
 <script src="qbti-core.js"></script>
 <script src="quantum-sphere.js"></script>
 <script src="qbti-auth.js"></script>
 
-<!-- ============ 主控制脚本 ============ -->
 <script>
 (function(){
   'use strict';
   const Q = window.QBTI;
   const $ = id => document.getElementById(id);
-
-  if(!Q){
-    console.error('[QBTI] qbti-core.js 未加载');
-    return;
-  }
+  if(!Q){ console.error('[QBTI] qbti-core.js 未加载'); return; }
 
   const state = {
     idx: 0,
     answers: {},
-    timings: {},            // 每题作答秒数
-    questionShownAt: {},    // 每题首次展示的时间戳（毫秒）
-    validity: null,         // 真实性分析结果
+    timings: {},
+    questionShownAt: {},
+    validity: null,
     locked: false,
     result: null,
     quantumState: null,
     dimStates: null,
+    aiReportText: null,
     restoredTs: null
   };
   const CFG_KEY = 'qbti_config_v2';
   const RESULT_KEY_PREFIX = 'qbti_results_';
   const DEFAULT_CFG = {
     url: 'https://api.deepseek.com/chat/completions',
-    key: 'sk-72cc39d1b5854b6ea9132c3a02e6e319',
+    key: '',
     model: 'deepseek-chat'
   };
 
@@ -370,8 +358,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
-
-  /* 注：导航已由独立脚本处理，这里不再重复绑定，避免冲突。 */
 
   (function(){
     const el = $('dimPreview');
@@ -388,7 +374,46 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     ).join('');
   })();
 
-  /* ============ 历史记录 ============ */
+  /* ---------- 报告同步到后端 ---------- */
+  async function syncReportToServer(){
+    if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
+    const u = window.QAuth.getCurrentUser();
+    if(!u || !u.email || !state.result) return;
+
+    const payload = {
+      code: state.result.letters.join('') + '-' + state.result.suffix.letter,
+      baseCode: state.result.letters.join(''),
+      suffixLetter: state.result.suffix.letter,
+      suffixName: state.result.suffix.name,
+      typeName: Q.TYPE_NAMES[state.result.letters.join('')] || '',
+      dimGroupRatio: state.result.dimGroupRatio,
+      dimLeadInfo: state.result.dimLeadInfo,
+      suffixRatio: state.result.suffixRatio,
+      suffixGap: state.result.suffixGap,
+      quantumState: state.quantumState ? state.quantumState.type : null,
+      dimStates: state.dimStates ? state.dimStates.types : null,
+      validity: state.validity || null,
+      aiReport: state.aiReportText || null
+    };
+
+    try {
+      const res = await fetch('/api/report/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentEmail: u.email,
+          studentUsername: u.username,
+          payload
+        })
+      });
+      if(res.ok) console.log('[QBTI] 报告已同步到服务器');
+      else console.warn('[QBTI] 报告同步返回异常', res.status);
+    } catch(e){
+      console.warn('[QBTI] 报告同步失败', e);
+    }
+  }
+
+  /* ---------- 历史记录 ---------- */
   function saveResultToUser(result, qs, ds, answers){
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
     const u = window.QAuth.getCurrentUser();
@@ -409,10 +434,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       dimStates: ds
     });
     if(history.length > 10) history = history.slice(-10);
-    try {
-      localStorage.setItem(key, JSON.stringify(history));
-      console.log('[QBTI] 结果已保存到账户 ' + u.email);
-    } catch(e){}
+    try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
   }
 
   function getLatestResultFromUser(){
@@ -431,12 +453,8 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 
   function applyQuantumStateToSphere(qs, ds){
     if(!window.QuantumSphere) return;
-    if(qs && window.QuantumSphere.setQuantumState){
-      window.QuantumSphere.setQuantumState(qs.type);
-    }
-    if(ds && window.QuantumSphere.setDimensionStates){
-      window.QuantumSphere.setDimensionStates(ds);
-    }
+    if(qs && window.QuantumSphere.setQuantumState) window.QuantumSphere.setQuantumState(qs.type);
+    if(ds && window.QuantumSphere.setDimensionStates) window.QuantumSphere.setDimensionStates(ds);
   }
 
   function restoreFromHistory(entry){
@@ -446,8 +464,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.questionShownAt = {};
     state.result = Q.computeResult(state.answers);
     state.restoredTs = entry.ts || null;
-
-    // 恢复时也跑一遍真实性检测
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
 
     let qs = null, ds = null;
@@ -469,11 +485,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   function updateRestoreBanner(){
     const existing = document.getElementById('restoreBanner');
     if(existing) existing.remove();
-
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
     const latest = getLatestResultFromUser();
     if(!latest) return;
-
     const hero = document.querySelector('#screen-intro .hero');
     if(!hero) return;
 
@@ -500,7 +514,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       + '<button id="btnViewHistory" class="btn sm primary" type="button">查看上次结果</button>';
 
     hero.insertBefore(banner, hero.firstChild);
-
     document.getElementById('btnViewHistory').addEventListener('click', () => {
       restoreFromHistory(latest);
       const target = document.getElementById('screen-result');
@@ -510,7 +523,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     });
   }
 
-  /* ============ 测验 ============ */
+  /* ---------- 测验 ---------- */
   $('qTotal').textContent = Q.QUESTIONS.length;
 
   function renderGroupStrip(){
@@ -518,18 +531,14 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     const labels = ['潜能开放度','内在驱动力','学习自主性','未知应对方式'];
     $('groupStrip').innerHTML = [1,2,3,4].map(g => {
       let cls = 'group-dot';
-      if(g < cur) cls += ' done';
-      else if(g === cur) cls += ' active';
+      if(g < cur) cls += ' done'; else if(g === cur) cls += ' active';
       return '<span class="' + cls + '"><span class="gd-num">0' + g + '</span> ' + labels[g-1] + '</span>';
     }).join('');
   }
 
   function renderQuestion(){
     const q = Q.QUESTIONS[state.idx];
-    // 记录首次展示时间
-    if(!state.questionShownAt[q.id]){
-      state.questionShownAt[q.id] = Date.now();
-    }
+    if(!state.questionShownAt[q.id]) state.questionShownAt[q.id] = Date.now();
     $('qText').textContent = q.text;
     $('qIdx').textContent = state.idx + 1;
     $('progFill').style.width = (state.idx / Q.QUESTIONS.length * 100) + '%';
@@ -556,14 +565,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.locked = true;
     const q = Q.QUESTIONS[state.idx];
     state.answers[q.id] = val;
-
-    // 首次作答记录本题用时（重复改答案不覆盖）
     if(state.timings[q.id] == null && state.questionShownAt[q.id]){
-      state.timings[q.id] = Math.max(0.1,
-        (Date.now() - state.questionShownAt[q.id]) / 1000
-      );
+      state.timings[q.id] = Math.max(0.1, (Date.now() - state.questionShownAt[q.id]) / 1000);
     }
-
     $('options').querySelectorAll('.opt').forEach(el => el.classList.remove('selected'));
     const sel = $('options').querySelector('[data-v="' + val + '"]');
     if(sel) sel.classList.add('selected');
@@ -585,11 +589,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     if(!$('screen-quiz').classList.contains('active')) return;
     const n = parseInt(e.key, 10);
     if(n >= 1 && n <= 5){ e.preventDefault(); answer(n); }
-    if(e.key === 'Backspace' && state.idx > 0){
-      e.preventDefault();
-      state.idx--;
-      renderQuestion();
-    }
+    if(e.key === 'Backspace' && state.idx > 0){ e.preventDefault(); state.idx--; renderQuestion(); }
   });
 
   const STABILITY_LABEL = {
@@ -601,8 +601,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   function finish(){
     state.result = Q.computeResult(state.answers);
     state.restoredTs = null;
-
-    // 运行真实性检测
+    state.aiReportText = null;
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
     console.log('[QBTI] 真实度：' + state.validity.authenticity + ' 分（' + state.validity.levelText + '）',
                 '| 疑点：', state.validity.flags);
@@ -618,11 +617,12 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       state.dimStates = { raw: raw, types: ds };
     }
     applyQuantumStateToSphere(qs, ds);
-
     saveResultToUser(state.result, qs, ds, state.answers);
-
     renderResult(state.result, null);
     renderQuantumStateBadge(qs, ds);
+
+    // 自动同步到服务器（供绑定家长查看）
+    syncReportToServer();
 
     const target = document.getElementById('screen-result');
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -639,14 +639,12 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     };
     const info = labels[qs.type];
     if(!info) return;
-
     const old = document.getElementById('quantumStateBadge');
     if(old) old.remove();
 
     const wrap = document.createElement('div');
     wrap.id = 'quantumStateBadge';
     wrap.style.cssText = 'margin:20px auto 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;';
-
     const total = document.createElement('div');
     total.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:99px;font-size:13.5px;font-weight:700;letter-spacing:.06em;border:1px solid ' + info.color + '44;background:' + info.color + '14;color:' + info.color + ';';
     total.innerHTML = '<span style="text-shadow:0 0 8px ' + info.color + '">●</span>整体 · ' + info.text
@@ -668,7 +666,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       });
       wrap.appendChild(dimRow);
     }
-
     const hero = document.querySelector('.result-hero');
     if(hero) hero.appendChild(wrap);
   }
@@ -677,15 +674,8 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     const old = document.getElementById('validityCard');
     if(old) old.remove();
     if(!v) return;
-
-    const colorMap = {
-      high:     '#50DC8C',
-      medium:   '#FFD98A',
-      low:      '#FF8A48',
-      very_low: '#EB414B'
-    };
+    const colorMap = { high:'#50DC8C', medium:'#FFD98A', low:'#FF8A48', very_low:'#EB414B' };
     const c = colorMap[v.level] || '#8B90B8';
-
     const card = document.createElement('div');
     card.id = 'validityCard';
     card.style.cssText = [
@@ -693,33 +683,25 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       'border:1px solid ' + c + '55;background:' + c + '0F;',
       'max-width:720px;text-align:left;'
     ].join('');
-
     const reasonsHTML = (v.parentReasons && v.parentReasons.length > 0)
       ? v.parentReasons.map(r => '▸ ' + Q.escapeHTML(r)).join('<br>')
       : '▸ 未发现明显疑点，作答状态自然';
-
     const timeLine = (v.totalTime != null && v.avgTime != null)
-      ? ('作答用时约 ' + Math.round(v.totalTime) + ' 秒 · 平均每题 ' + v.avgTime.toFixed(1) + ' 秒')
-      : '';
-
+      ? ('作答用时约 ' + Math.round(v.totalTime) + ' 秒 · 平均每题 ' + v.avgTime.toFixed(1) + ' 秒') : '';
     card.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px;">'
       + '<div style="font-size:12px;letter-spacing:.18em;color:#8B90B8;text-transform:uppercase;">Response Authenticity · 作答真实度</div>'
       + '<div style="font-size:26px;font-weight:800;color:' + c + ';line-height:1;">'
       + v.authenticity + '<span style="font-size:14px;opacity:.55;font-weight:600;"> / 100</span>'
-      + '</div>'
-      + '</div>'
+      + '</div></div>'
       + '<div style="font-size:13px;color:' + c + ';font-weight:700;margin-bottom:8px;">'
       + '● ' + Q.escapeHTML(v.levelText)
       + (timeLine ? ' <span style="font-weight:400;opacity:.7;margin-left:8px;font-size:12px;">' + Q.escapeHTML(timeLine) + '</span>' : '')
       + '</div>'
-      + '<div style="font-size:13px;color:#C9CEEE;line-height:1.75;">'
-      + reasonsHTML
-      + '</div>'
+      + '<div style="font-size:13px;color:#C9CEEE;line-height:1.75;">' + reasonsHTML + '</div>'
       + '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.08);font-size:12.5px;color:#A8AEDA;line-height:1.7;">'
       + '给家长的建议：' + Q.escapeHTML(v.advice)
       + '</div>';
-
     const hero = document.querySelector('.result-hero');
     if(hero) hero.appendChild(card);
   }
@@ -742,8 +724,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       const segments = d.letters.map(l => {
         const pct = ratios[l]; const color = colors[l];
         let sc = '';
-        if(pct < 8) sc = 'tiny';
-        else if(pct < 14) sc = 'small';
+        if(pct < 8) sc = 'tiny'; else if(pct < 14) sc = 'small';
         return '<div class="dsc-seg ' + sc + '" style="width:0%;background:' + color + ';" data-w="' + pct + '"><span class="dsc-seg-letter">' + l + '</span><span class="dsc-seg-pct">' + pct + '%</span></div>';
       }).join('');
       const legend = d.letters.map(l => {
@@ -772,7 +753,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       if(hero) hero.appendChild(tip);
     }
 
-    // 渲染真实性卡片
     renderValidityCard(state.validity);
 
     requestAnimationFrame(() => {
@@ -785,7 +765,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     $('btnAI').textContent = '生成报告';
   }
 
-  /* ============ AI 报告 ============ */
+  /* ---------- AI ---------- */
   function getCfg(){
     const cfg = Object.assign({}, DEFAULT_CFG);
     try {
@@ -799,13 +779,11 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     } catch(e){}
     return cfg;
   }
-  function saveCfg(cfg){
-    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-  }
+  function saveCfg(cfg){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
 
   async function callAPI(prompt){
     const cfg = getCfg();
-    if(!cfg.key) throw new Error('未配置 API Key');
+    if(!cfg.key) throw new Error('未配置 API Key，请点击右下角 ⚙ 配置');
     let res;
     try {
       res = await fetch(cfg.url, {
@@ -840,13 +818,15 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     btn.innerHTML = '<span class="spinner"></span>生成中…';
     $('aiBody').innerHTML = '<div class="ai-empty"><span class="spinner"></span>正在解析孩子的波函数与作答真实性…</div>';
 
-    // 确保拿到真实性数据（兜底再算一遍）
     const validity = state.validity || Q.analyzeResponseValidity(state.answers, state.timings);
     state.validity = validity;
 
     try {
       const text = await callAPI(Q.buildPrompt(state.result, validity));
+      state.aiReportText = text;
       $('aiBody').innerHTML = Q.renderMD(text);
+      // 报告生成后，再次同步（含 AI 报告）
+      syncReportToServer();
     } catch(err){
       const msg = String(err.message || err);
       let extra = '';
@@ -858,13 +838,16 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim())
         + extra + '</div>'
         + Q.renderMD(Q.localReport(state.result, validity));
+      // 本地兜底报告也同步
+      state.aiReportText = Q.localReport(state.result, validity);
+      syncReportToServer();
     } finally {
       btn.disabled = false;
       btn.textContent = '重新生成';
     }
   });
 
-  /* ============ 按钮事件 ============ */
+  /* ---------- 按钮 ---------- */
   $('btnStart').addEventListener('click', () => {
     state.idx = 0;
     state.answers = {};
@@ -872,6 +855,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.questionShownAt = {};
     state.validity = null;
     state.result = null;
+    state.aiReportText = null;
     state.restoredTs = null;
     state.locked = false;
     renderQuestion();
@@ -888,6 +872,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.questionShownAt = {};
     state.validity = null;
     state.result = null;
+    state.aiReportText = null;
     state.restoredTs = null;
     state.locked = false;
     updateRestoreBanner();
@@ -908,25 +893,18 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       return d.name + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → 主导 ' + info.lead + '（差值 ' + info.gap + '%）';
     }).join('\n');
     const vecLines = Q.SUFFIXES.map(sf => sf.letter + ' ' + sf.name + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
-
     let validityLines = '';
     if(state.validity){
       const v = state.validity;
-      validityLines =
-        '\n\n作答真实度：' + v.authenticity + ' / 100（' + v.levelText + '）\n'
-        + '评分依据：\n'
-        + (v.parentReasons.length > 0
-            ? v.parentReasons.map(r => '▸ ' + r).join('\n')
-            : '▸ 未发现明显疑点')
+      validityLines = '\n\n作答真实度：' + v.authenticity + ' / 100（' + v.levelText + '）\n评分依据：\n'
+        + (v.parentReasons.length > 0 ? v.parentReasons.map(r => '▸ ' + r).join('\n') : '▸ 未发现明显疑点')
         + '\n给家长的建议：' + v.advice;
     }
-
     const txt = 'QBTI 量子人格测评结果（面向家长）\n'
       + '类型：' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）\n'
       + '发展方向：' + res.suffix.desc + '\n\n'
       + '四大维度倾向：\n' + dimLines + '\n\n'
-      + '四个发展向量占比：\n' + vecLines
-      + validityLines;
+      + '四个发展向量占比：\n' + vecLines + validityLines;
     try {
       await navigator.clipboard.writeText(txt);
       const b = $('btnCopy');
@@ -935,7 +913,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     } catch(e){ alert('复制失败'); }
   });
 
-  /* ============ API 设置弹窗 ============ */
+  /* ---------- API 设置 ---------- */
   $('btnGear').addEventListener('click', () => {
     const cfg = getCfg();
     $('inpUrl').value = cfg.url;
@@ -971,10 +949,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
         body: JSON.stringify({model, messages:[{role:'user',content:'ping'}], max_tokens:5, stream:false})
       });
-      if(!r.ok){
-        const t = await r.text().catch(() => '');
-        throw new Error('HTTP ' + r.status + ' · ' + t.slice(0,120));
-      }
+      if(!r.ok){ const t = await r.text().catch(() => ''); throw new Error('HTTP ' + r.status + ' · ' + t.slice(0,120)); }
       tr.className = 'test-result show ok';
       tr.textContent = '✓ 连接成功，API 可用。';
     } catch(err){
@@ -989,7 +964,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   });
 
-  /* ============ 监听登录状态 ============ */
+  /* ---------- 登录状态 ---------- */
   if(window.QAuth && window.QAuth.onChange){
     window.QAuth.onChange(function(info){
       console.log('[QBTI] 登录状态变化:', info);
@@ -1000,6 +975,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         state.quantumState = null;
         state.dimStates = null;
         state.validity = null;
+        state.aiReportText = null;
         state.restoredTs = null;
         const banner = document.getElementById('restoreBanner');
         if(banner) banner.remove();
@@ -1007,13 +983,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     });
   }
 
-  /* ============ 初始化 ============ */
   renderQuestion();
   updateRestoreBanner();
   console.log('[QBTI] 初始化完成');
-  console.log(' - QBTI 模块:', !!window.QBTI);
-  console.log(' - QuantumSphere 模块:', !!window.QuantumSphere);
-  console.log(' - QAuth 模块:', !!window.QAuth);
 })();
 </script>
 </body>
