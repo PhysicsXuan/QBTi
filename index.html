@@ -137,7 +137,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .quantum-nav-inner{width:min(1180px,calc(100% - 40px));display:flex;align-items:center;justify-content:space-between;}
 .quantum-brand{border:0;background:none;color:#fff;cursor:pointer;font-size:15px;font-weight:700;letter-spacing:.22em;padding:8px 0;}
 .quantum-links{display:flex;align-items:center;gap:8px}
-.quantum-link{border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;padding:10px 17px;border-radius:999px;font:inherit;font-size:13px;letter-spacing:.08em;transition:.25s;}
+.quantum-link{border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;padding:10px 17px;border-radius:999px;font:inherit;font-size:13px;letter-spacing:.08em;transition:.25s;text-decoration:none;display:inline-flex;align-items:center;}
 .quantum-link:hover{color:#fff;background:rgba(255,255,255,.06)}
 .quantum-link.active{color:#fff;background:rgba(255,255,255,.09)}
 #screen-home{display:none;max-width:none !important;width:100% !important;min-height:100vh;height:100vh;padding:0 !important;margin:0 !important;position:relative;overflow:hidden;align-items:center;justify-content:center;background:#000 !important;}
@@ -179,6 +179,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       <button class="quantum-link nav-go active" data-target="screen-home">主页</button>
       <button class="quantum-link nav-go" data-target="screen-intro">QBTI</button>
       <button class="quantum-link nav-go" data-target="screen-contact">联系我们</button>
+      <a class="quantum-link" href="/parent">家长端 →</a>
     </div>
   </div>
 </nav>
@@ -393,7 +394,8 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       quantumState: state.quantumState ? state.quantumState.type : null,
       dimStates: state.dimStates ? state.dimStates.types : null,
       validity: state.validity || null,
-      aiReport: state.aiReportText || null
+      aiReport: state.aiReportText || null,
+      fullResult: state.result // 👈 关键：包含完整计算结果
     };
 
     try {
@@ -407,7 +409,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         })
       });
       if(res.ok) console.log('[QBTI] 报告已同步到服务器');
-      else console.warn('[QBTI] 报告同步返回异常', res.status);
     } catch(e){
       console.warn('[QBTI] 报告同步失败', e);
     }
@@ -621,7 +622,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     renderResult(state.result, null);
     renderQuantumStateBadge(qs, ds);
 
-    // 自动同步到服务器（供绑定家长查看）
+    // 自动同步到服务器
     syncReportToServer();
 
     const target = document.getElementById('screen-result');
@@ -825,7 +826,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       const text = await callAPI(Q.buildPrompt(state.result, validity));
       state.aiReportText = text;
       $('aiBody').innerHTML = Q.renderMD(text);
-      // 报告生成后，再次同步（含 AI 报告）
       syncReportToServer();
     } catch(err){
       const msg = String(err.message || err);
@@ -838,7 +838,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim())
         + extra + '</div>'
         + Q.renderMD(Q.localReport(state.result, validity));
-      // 本地兜底报告也同步
       state.aiReportText = Q.localReport(state.result, validity);
       syncReportToServer();
     } finally {
