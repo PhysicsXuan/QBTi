@@ -1,12 +1,13 @@
 {
   "name": "qbti-local",
   "version": "1.0.0",
-  "description": "QBTI 量子人格测评 - 本地验证码服务器",
+  "description": "QBTI 量子人格测评 - Neon 数据库版",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "pg": "^8.11.3"
   }
 }
