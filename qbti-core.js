@@ -268,12 +268,11 @@ window.QBTI = (function(){
     h = h.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
     h = h.replace(/^#{1,3}\s*(.+)$/gm,'<h4>$1</h4>');
     h = h.replace(/(?:^[-•▸]\s+.+$\n?)+/gm,function(m){return '<ul>'+m.replace(/^[-•▸]\s+(.+)$/gm,'<li>$1</li>')+'</ul>';});
-    h = h.split(/\n{2,}/).map(function(p){
+    return h.split(/\n{2,}/).map(function(p){
       const t=p.trim();if(!t)return '';
       if(/^<(h4|ul|li)/.test(t))return t;
       return '<p>'+t.replace(/\n/g,'<br>')+'</p>';
     }).join('');
-    return h;
   }
 
   /* ==========================================================
@@ -497,156 +496,154 @@ window.QBTI = (function(){
   }
 
   /* ==========================================================
-     ★ 问卷有效性分析（面向家长 · 真实性 0-100）
-     ------------------------------------------------------------
-     返回 {
-       authenticity: 0-100 真实度（越高越可信）
-       level: 'high'|'medium'|'low'|'very_low'
-       levelText: 中文等级
-       flags: 技术标记数组
-       parentReasons: 家长能听懂的理由数组
-       advice: 面向家长的建议
-       avgTime, totalTime, details
-     }
+     ★ 问卷有效性分析（极严机制，防止瞎填）
      ========================================================== */
   function analyzeResponseValidity(answers, timings){
     const total = QUESTIONS.length;
     const vals = [];
+    let missingCount = 0;
+    
     for(let i = 1; i <= total; i++){
-      const v = answers[i];
-      if(v == null){
-        return {
-          score: 100,
-          authenticity: 0,
-          level: 'very_low',
-          levelText: '未完成',
-          flags: ['未完成全部题目'],
-          parentReasons: ['孩子未完成全部题目，无法评估真实性'],
-          advice: '建议让孩子在一个安静、不被打扰的时间，重新完整地完成一次测评。',
-          avgTime: null,
-          totalTime: null,
-          details: { missing: total - vals.length }
-        };
+      if(answers[i] == null) {
+        missingCount++;
+      } else {
+        vals.push(answers[i]);
       }
-      vals.push(v);
+    }
+    
+    if(missingCount > 0){
+      return {
+        authenticity: 0,
+        score: 100,
+        level: 'very_low',
+        levelText: '未完成',
+        flags: ['未完成全部题目'],
+        parentReasons: ['孩子未完成全部题目，无法评估真实性'],
+        advice: '建议让孩子重新完整地做一次。',
+        details: { missing: missingCount }
+      };
     }
 
-    let suspicious = 0;
-    const flags = [];
-
-    /* 1. 选项分布 */
     const unique = new Set(vals).size;
-    if(unique <= 2){ suspicious += 30; flags.push('几乎只使用 1–2 种选项'); }
-    else if(unique <= 3){ suspicious += 15; flags.push('选项分布过于集中'); }
-
-    /* 2. 波动 */
     const mean = vals.reduce((a,b) => a + b, 0) / vals.length;
     const variance = vals.reduce((a,v) => a + Math.pow(v - mean, 2), 0) / vals.length;
     const std = Math.sqrt(variance);
-    if(std < 0.45){ suspicious += 25; flags.push('作答几乎无波动'); }
-    else if(std < 0.7){ suspicious += 10; flags.push('作答波动偏小'); }
+    
+    const extremeCount = vals.filter(v => v === 1 || v === 5).length;
+    const extremeRatio = extremeCount / vals.length;
 
-    /* 3. 最长连续相同 */
     let maxRun = 1, run = 1;
     for(let i = 1; i < vals.length; i++){
       if(vals[i] === vals[i-1]){ run++; maxRun = Math.max(maxRun, run); }
       else run = 1;
     }
-    if(maxRun >= 12){ suspicious += 20; flags.push('存在长时间连续相同选择'); }
-    else if(maxRun >= 8){ suspicious += 10; flags.push('存在较长连续相同选择'); }
 
-    /* 4. 社会赞许 */
-    const highRatio = vals.filter(v => v >= 4).length / vals.length;
-    if(highRatio > 0.92){ suspicious += 20; flags.push('几乎全部选择同意/非常同意'); }
-    else if(highRatio > 0.82){ suspicious += 10; flags.push('同意比例偏高'); }
-    const lowRatio = vals.filter(v => v <= 2).length / vals.length;
-    if(lowRatio > 0.90){ suspicious += 20; flags.push('几乎全部选择不同意'); }
-
-    /* 5. 反向题一致性（第 19 题是反向题） */
-    const M13 = answers[13], M17 = answers[17], M19 = answers[19];
-    if(M13 != null && M17 != null && M19 != null){
-      const m13High = M13 >= 4, m17High = M17 >= 4;
-      const m19High = M19 >= 4;
-      if(m13High && m17High && m19High){
-        suspicious += 25; flags.push('意义感题目与反向题存在明显矛盾');
-      }
+    let patternCount = 0;
+    for(let i = 2; i < vals.length; i++){
+      if(vals[i] - vals[i-1] === vals[i-1] - vals[i-2]) patternCount++;
     }
 
-    /* 6. 同维度题目矛盾 */
     const pairs = [
       [1,4], [2,7], [3,8],
       [11,16], [12,18], [13,17],
       [21,24], [22,25], [23,28],
       [31,36], [32,37], [33,38]
     ];
-    let contradictions = 0;
+    let contradictionPairs = 0;
     pairs.forEach(([a,b]) => {
       if(answers[a] != null && answers[b] != null){
-        if(Math.abs(answers[a] - answers[b]) >= 3) contradictions++;
+        if(Math.abs(answers[a] - answers[b]) >= 3) contradictionPairs++;
       }
     });
-    if(contradictions >= 5){ suspicious += 20; flags.push('多组同维度题目答案差异过大'); }
-    else if(contradictions >= 3){ suspicious += 10; flags.push('部分同维度题目答案不一致'); }
 
-    /* 7. 作答时间 */
-    let avgTime = null, totalTime = null;
+    let reverseConflict = false;
+    const m13 = answers[13], m17 = answers[17], m19 = answers[19];
+    if(m13 != null && m17 != null && m19 != null){
+      if((m13 >= 4 || m17 >= 4) && m19 >= 4) reverseConflict = true;
+    }
+
+    let avgTime = 0, totalTime = 0;
     if(timings){
-      const timeVals = Object.values(timings).filter(t => typeof t === 'number' && t > 0);
-      if(timeVals.length >= total * 0.7){
-        avgTime = timeVals.reduce((a,b) => a+b, 0) / timeVals.length;
-        totalTime = timeVals.reduce((a,b) => a+b, 0);
-        if(avgTime < 1.5){ suspicious += 25; flags.push('平均作答时间过短'); }
-        else if(avgTime < 2.5){ suspicious += 12; flags.push('平均作答时间偏短'); }
-        if(totalTime < 180){ suspicious += 15; flags.push('总作答时间不足 3 分钟'); }
+      const times = Object.values(timings).filter(t => typeof t === 'number' && t > 0);
+      if(times.length >= total * 0.8){
+        totalTime = times.reduce((a,b) => a+b, 0);
+        avgTime = totalTime / times.length;
       }
     }
 
-    const suspiciousScore = Math.min(100, suspicious);
-    const authenticity = Math.max(0, 100 - suspiciousScore);
+    let penalty = 0;
+    const flags = [];
 
-    /* 分档 */
+    if(unique <= 2){ penalty += 60; flags.push('选项变化极少'); }
+    else if(unique <= 3){ penalty += 25; flags.push('选项高度集中'); }
+
+    if(std < 0.5){ penalty += 40; flags.push('作答几乎无波动'); }
+    else if(std < 0.8){ penalty += 15; flags.push('作答波动偏小'); }
+
+    if(maxRun >= 10){ penalty += 60; flags.push('超长连续相同选项'); }
+    else if(maxRun >= 7){ penalty += 30; flags.push('较长连续相同选项'); }
+
+    if(patternCount >= 8){ penalty += 50; flags.push('存在明显规律作答'); }
+    else if(patternCount >= 4){ penalty += 20; flags.push('疑似规律作答'); }
+
+    if(extremeRatio > 0.85){ penalty += 35; flags.push('极端选项占比过高'); }
+    else if(extremeRatio > 0.7){ penalty += 15; flags.push('极端选项偏多'); }
+
+    if(contradictionPairs >= 4){ penalty += 30; flags.push('多组关联题矛盾'); }
+    else if(contradictionPairs >= 2){ penalty += 15; flags.push('部分关联题矛盾'); }
+
+    if(reverseConflict){ penalty += 20; flags.push('正向题与反向题矛盾'); }
+
+    if(totalTime > 0){
+      if(avgTime < 1.5){ penalty += 40; flags.push('平均作答过快'); }
+      else if(avgTime < 2.5){ penalty += 20; flags.push('平均作答偏快'); }
+      if(totalTime < 100){ penalty += 30; flags.push('总用时不足2分钟'); }
+    }
+
+    let score = 100 - penalty;
+    if(penalty > 70) score = Math.max(0, score - 20);
+    if(score < 0) score = 0;
+
     let level, levelText;
-    if(authenticity >= 85){ level = 'high'; levelText = '高可信'; }
-    else if(authenticity >= 65){ level = 'medium'; levelText = '基本可信'; }
-    else if(authenticity >= 40){ level = 'low'; levelText = '可信度偏低'; }
+    if(score >= 85){ level = 'high'; levelText = '高可信'; }
+    else if(score >= 65){ level = 'medium'; levelText = '基本可信'; }
+    else if(score >= 40){ level = 'low'; levelText = '可信度偏低'; }
     else { level = 'very_low'; levelText = '可信度存疑'; }
 
-    /* 技术标记 → 家长能听懂的理由 */
-    const FLAG_TRANSLATIONS = {
-      '几乎只使用 1–2 种选项': '作答选项高度集中，可能未认真区分每道题',
-      '选项分布过于集中': '作答选项分布较为集中，可能未仔细阅读每道题',
-      '作答几乎无波动': '所有题目作答几乎没有变化，可能未仔细阅读题目',
+    const FLAG_MAP = {
+      '选项变化极少': '作答选项高度集中',
+      '选项高度集中': '作答选项分布较为集中',
+      '作答几乎无波动': '所有题目作答几乎没有变化',
       '作答波动偏小': '作答波动较小，可能思考不够充分',
-      '存在长时间连续相同选择': '有连续多道题选择了完全相同的选项',
-      '存在较长连续相同选择': '有较长一段题目选择了相同选项',
-      '几乎全部选择同意/非常同意': '几乎所有题目都选择"同意"，可能存在迎合倾向',
-      '同意比例偏高': '选择"同意"的比例偏高，可能倾向于迎合题目',
-      '几乎全部选择不同意': '几乎所有题目都选择"不同意"，可能存在消极作答倾向',
-      '意义感题目与反向题存在明显矛盾': '在意义感相关题目上出现前后矛盾',
-      '多组同维度题目答案差异过大': '在多组测量同一特质的题目上答案差异较大',
-      '部分同维度题目答案不一致': '部分同维度题目答案存在不一致',
-      '平均作答时间过短': '平均每题作答时间过短，可能未充分思考',
-      '平均作答时间偏短': '平均每题作答时间略短，思考可能不够充分',
-      '总作答时间不足 3 分钟': '整体作答时间偏短，可能未认真对待',
-      '未完成全部题目': '未完成全部题目'
+      '超长连续相同选项': '有连续多道题选择了完全相同的选项',
+      '较长连续相同选项': '有较长一段题目选择了相同选项',
+      '存在明显规律作答': '答题呈现明显的规律（如 12345 循环）',
+      '疑似规律作答': '疑似按规律作答',
+      '极端选项占比过高': '绝大多数题目选了"完全同意"或"完全不同意"',
+      '极端选项偏多': '极端选项偏多',
+      '多组关联题矛盾': '在多组测量同一特质的题目上答案差异较大',
+      '部分关联题矛盾': '部分关联题目答案存在不一致',
+      '正向题与反向题矛盾': '在意义感题目上出现前后矛盾',
+      '平均作答过快': '平均每题作答时间不足 1.5 秒',
+      '平均作答偏快': '平均作答时间略短',
+      '总用时不足2分钟': '总作答时间不足 2 分钟'
     };
-    const parentReasons = flags.map(f => FLAG_TRANSLATIONS[f] || f);
+    const parentReasons = flags.map(f => FLAG_MAP[f] || f);
 
-    /* 面向家长的建议 */
     let advice;
     if(level === 'high'){
       advice = '孩子的作答状态自然、真实，可以较为放心地参考本次测评结果。';
     } else if(level === 'medium'){
-      advice = '孩子的作答整体可信，但存在少量值得留意的细节。建议以开放的心态与孩子交流，避免直接质疑。';
+      advice = '整体可信，但存在少量细节。建议以开放的心态与孩子交流。';
     } else if(level === 'low'){
-      advice = '本次作答可信度偏低，可能存在敷衍或迎合的情况。建议换一个孩子情绪放松的时机重新测评，避免在测评中给孩子压力。';
+      advice = '可信度偏低，可能存在敷衍的情况。建议换一个孩子情绪放松的时机重新测评。';
     } else {
-      advice = '本次作答存在明显疑点，结果可能无法真实反映孩子的状态。建议先和孩子聊聊他/她最近的状态，而不是直接使用这份报告。';
+      advice = '存在明显敷衍或乱填迹象（如全选同一项、秒答等），本报告结果可能无法反映孩子的真实状态。建议先和孩子聊聊，而不是直接使用这份报告。';
     }
 
     return {
-      score: suspiciousScore,
-      authenticity,
+      score: 100 - score,
+      authenticity: score,
       level,
       levelText,
       flags,
@@ -654,7 +651,7 @@ window.QBTI = (function(){
       advice,
       avgTime,
       totalTime,
-      details: { std, unique, maxRun, highRatio, contradictions }
+      details: { std, unique, maxRun, extremeRatio, contradictionPairs }
     };
   }
 

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>QUANTUM · QBTI</title>
 <style>
+/* 样式代码保持不变，与上一版完全一致，此处省略以节省篇幅... */
 :root{--q-r:255;--q-g:138;--q-b:72;--q-color:rgb(var(--q-r),var(--q-g),var(--q-b));--txt:#E9EBFF;--muted:#8B90B8;}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -179,7 +180,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       <button class="quantum-link nav-go active" data-target="screen-home">主页</button>
       <button class="quantum-link nav-go" data-target="screen-intro">QBTI</button>
       <button class="quantum-link nav-go" data-target="screen-contact">联系我们</button>
-      <!-- 家长端入口已被移除 -->
     </div>
   </div>
 </nav>
@@ -314,7 +314,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         }
       });
     });
-    console.log('[Nav] 导航已绑定，共 ' + buttons.length + ' 个按钮');
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindNav);
   else bindNav();
@@ -600,9 +599,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.result = Q.computeResult(state.answers);
     state.restoredTs = null;
     state.aiReportText = null;
+    // 👈 计算真实性，但不渲染在学生端
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
-    console.log('[QBTI] 真实度：' + state.validity.authenticity + ' 分（' + state.validity.levelText + '）',
-                '| 疑点：', state.validity.flags);
+    console.log('[QBTI] 真实性已在后台静默计算，仅同步给家长端');
 
     let qs = null, ds = null;
     if(Q.analyzeQuantumState){
@@ -667,41 +666,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     if(hero) hero.appendChild(wrap);
   }
 
-  function renderValidityCard(v){
-    const old = document.getElementById('validityCard');
-    if(old) old.remove();
-    if(!v) return;
-    const colorMap = { high:'#50DC8C', medium:'#FFD98A', low:'#FF8A48', very_low:'#EB414B' };
-    const c = colorMap[v.level] || '#8B90B8';
-    const card = document.createElement('div');
-    card.id = 'validityCard';
-    card.style.cssText = [
-      'margin:24px auto 0;padding:22px 24px;border-radius:18px;',
-      'border:1px solid ' + c + '55;background:' + c + '0F;',
-      'max-width:720px;text-align:left;'
-    ].join('');
-    const reasonsHTML = (v.parentReasons && v.parentReasons.length > 0)
-      ? v.parentReasons.map(r => '▸ ' + Q.escapeHTML(r)).join('<br>')
-      : '▸ 未发现明显疑点，作答状态自然';
-    const timeLine = (v.totalTime != null && v.avgTime != null)
-      ? ('作答用时约 ' + Math.round(v.totalTime) + ' 秒 · 平均每题 ' + v.avgTime.toFixed(1) + ' 秒') : '';
-    card.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px;">'
-      + '<div style="font-size:12px;letter-spacing:.18em;color:#8B90B8;text-transform:uppercase;">Response Authenticity · 作答真实度</div>'
-      + '<div style="font-size:26px;font-weight:800;color:' + c + ';line-height:1;">'
-      + v.authenticity + '<span style="font-size:14px;opacity:.55;font-weight:600;"> / 100</span>'
-      + '</div></div>'
-      + '<div style="font-size:13px;color:' + c + ';font-weight:700;margin-bottom:8px;">'
-      + '● ' + Q.escapeHTML(v.levelText)
-      + (timeLine ? ' <span style="font-weight:400;opacity:.7;margin-left:8px;font-size:12px;">' + Q.escapeHTML(timeLine) + '</span>' : '')
-      + '</div>'
-      + '<div style="font-size:13px;color:#C9CEEE;line-height:1.75;">' + reasonsHTML + '</div>'
-      + '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.08);font-size:12.5px;color:#A8AEDA;line-height:1.7;">'
-      + '给家长的建议：' + Q.escapeHTML(v.advice)
-      + '</div>';
-    const hero = document.querySelector('.result-hero');
-    if(hero) hero.appendChild(card);
-  }
+  // ❌ 彻底删除了 renderValidityCard 函数，学生端绝对不可见。
 
   function renderResult(res, restoredTs){
     const baseCode = res.letters.join('');
@@ -750,7 +715,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       if(hero) hero.appendChild(tip);
     }
 
-    renderValidityCard(state.validity);
+    // ❌ 学生端不调用 renderValidityCard
 
     requestAnimationFrame(() => {
       document.querySelectorAll('.dsc-seg').forEach((el, i) => setTimeout(() => { el.style.width = el.dataset.w + '%'; }, 60 + i*40));
@@ -888,18 +853,12 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       return d.name + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → 主导 ' + info.lead + '（差值 ' + info.gap + '%）';
     }).join('\n');
     const vecLines = Q.SUFFIXES.map(sf => sf.letter + ' ' + sf.name + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
-    let validityLines = '';
-    if(state.validity){
-      const v = state.validity;
-      validityLines = '\n\n作答真实度：' + v.authenticity + ' / 100（' + v.levelText + '）\n评分依据：\n'
-        + (v.parentReasons.length > 0 ? v.parentReasons.map(r => '▸ ' + r).join('\n') : '▸ 未发现明显疑点')
-        + '\n给家长的建议：' + v.advice;
-    }
+    
     const txt = 'QBTI 量子人格测评结果（面向家长）\n'
       + '类型：' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）\n'
       + '发展方向：' + res.suffix.desc + '\n\n'
       + '四大维度倾向：\n' + dimLines + '\n\n'
-      + '四个发展向量占比：\n' + vecLines + validityLines;
+      + '四个发展向量占比：\n' + vecLines;
     try {
       await navigator.clipboard.writeText(txt);
       const b = $('btnCopy');
