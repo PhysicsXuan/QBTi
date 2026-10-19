@@ -2,7 +2,7 @@
    Quantum Sphere —— 量子球视觉引擎 + 触感音效 + 手机震动
    使用方式：<script src="quantum-sphere.js"></script>
    暴露全局：window.QuantumSphere = {
-     resize, isSplit, reset, sound, haptic,
+     resize, isSplit, goBack, sound, haptic,
      setQuantumState, setDimensionStates,
      getQuantumState, clearQuantumState
    }
@@ -307,6 +307,7 @@
     const ctx = canvas.getContext('2d');
     const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
+    /* ---------- 颜色系统 ---------- */
     const palette = [[255,140,80],[120,180,255],[180,130,255],[255,110,170],[100,230,200],[200,230,110],[255,210,90]];
     const QUANTUM_COLORS = { good: [80, 220, 140], danger: [235, 65, 75], superposition: [90, 140, 245] };
     const DIM_IDS = ['PO','II','LA','UR'];
@@ -411,11 +412,14 @@
     let nebulaMeteors = [];
     let nebulaCharge = { active: false, value: 0, x: 0, y: 0 };
 
+    // 👇 状态过渡变量
+    let transitionType = null; // 'nebula-to-split' | 'split-to-single'
+    let transitionProgress = 0;
+
     function safeBaseR(){
       return (isFinite(BASE_R) && BASE_R > MIN_BASE_R) ? BASE_R : MIN_BASE_R;
     }
 
-    // 👇 核心修改：完全根据屏幕长宽自适应
     function resize(){
       const rect = canvas.getBoundingClientRect();
       let cssW = rect.width, cssH = rect.height;
@@ -432,7 +436,6 @@
       BASE_CX = W / 2;
       BASE_CY = H / 2;
       
-      // 让球的半径自适应屏幕，占据屏幕短边的大约 45%
       const minDim = Math.min(W, H);
       BASE_R = minDim * 0.45; 
       
@@ -718,6 +721,7 @@
       let visOy = b.oy;
       let visAlpha = 1;
       const f = b.focusAmount;
+      
       if(hasSplit && f > 0.0005){
         visScale = b.scale * (1 + f * (FOCUS_SCALE - 1));
         visOx = b.ox * (1 - f * FOCUS_SHIFT);
@@ -728,6 +732,22 @@
         const dimFactor = 1 - (1 - f) * globalFocus * 0.72;
         visAlpha *= dimFactor;
       }
+
+      // 👇 在这里应用过渡缩放
+      if (transitionType === 'nebula-to-split') {
+        const ep = easeOutCubic(transitionProgress);
+        visScale *= ep;
+        visOx *= ep;
+        visOy *= ep;
+        visAlpha *= transitionProgress;
+      } else if (transitionType === 'split-to-single') {
+        const ep = easeOutCubic(transitionProgress);
+        visScale *= (1 - ep);
+        visOx *= (1 - ep);
+        visOy *= (1 - ep);
+        visAlpha *= (1 - transitionProgress);
+      }
+
       if(!isFinite(visScale) || visScale < 0.01) visScale = 0.01;
       if(!isFinite(visOx)) visOx = 0;
       if(!isFinite(visOy)) visOy = 0;
@@ -736,7 +756,7 @@
     }
 
     function findBall(x, y){
-      if (soloNebula) return null; 
+      if (soloNebula || transitionType) return null; 
       let best = null;
       let bestR = 0;
       for(const b of balls){
@@ -836,6 +856,7 @@
 
     canvas.addEventListener('pointerdown', e=>{
       AudioFX.unlock();
+      if (transitionType) return; 
       const p = localPos(e);
       
       if (soloNebula) {
@@ -871,6 +892,7 @@
     });
 
     canvas.addEventListener('pointermove', e=>{
+      if (transitionType) return;
       const p = localPos(e);
       const dx = p.x - pointer.x, dy = p.y - pointer.y;
       pointer.vx = dx; pointer.vy = dy;
@@ -945,6 +967,7 @@
     });
 
     canvas.addEventListener('pointerup', e=>{
+      if (transitionType) return;
       const p = localPos(e);
       const now = performance.now();
       const wasDown = pointer.down;
@@ -1181,7 +1204,6 @@
       CX = BASE_CX;
       CY = BASE_CY;
       
-      // 👇 这里的星云大小也完全基于屏幕的最大边自动适应
       const targetR = Math.max(W, H) * 1.8;
       soloR += (targetR - soloR) * 0.01;
       R = soloR * (1 + Math.sin(t * 0.5) * 0.03);
@@ -2008,6 +2030,22 @@
       aura.r += (aura.targetR - aura.r) * Math.min(1, dt*6);
       aura.strength += (aura.targetStrength - aura.strength) * Math.min(1, dt*5);
 
+      // 👇 处理过渡动画
+      if (transitionType) {
+        transitionProgress += dt * 1.8; // 大约 0.55 秒完成
+        if (transitionProgress >= 1) {
+          transitionProgress = 1;
+          if (transitionType === 'nebula-to-split') {
+            soloNebula = false;
+          } else if (transitionType === 'split-to-single') {
+            hasSplit = false;
+            balls.length = 0;
+            balls.push(makeBall({ox:0, oy:0, scale:1}));
+          }
+          transitionType = null;
+        }
+      }
+
       updateBalls(now, dt);
 
       let gf = 0;
@@ -2030,9 +2068,22 @@
 
       const BR = safeBaseR();
 
+      // 1. 绘制星云
       if (soloNebula) {
+        ctx.save();
+        if (transitionType === 'nebula-to-split') {
+          ctx.globalAlpha = 1 - transitionProgress;
+          const sc = 1 - transitionProgress;
+          ctx.translate(BASE_CX, BASE_CY);
+          ctx.scale(sc, sc);
+          ctx.translate(-BASE_CX, -BASE_CY);
+        }
         drawNebula(now, t);
-      } else {
+        ctx.restore();
+      }
+
+      // 2. 绘制 4 个小球
+      if (hasSplit) {
         const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
 
         for(let k = 0; k < drawOrder.length; k++){
@@ -2112,30 +2163,108 @@
           drawOutline();
           drawCore(now);
 
-          if(ball.focusAmount > 0.02){
+          if(ball.focusAmount > 0.02 && !transitionType){
             drawFocusRing(t, ball.focusAmount * vis.visAlpha, ball.focusPing);
           }
-          if(hasSplit && hoveredBall === ball && focusedBall !== ball && hoverT > 0.05){
+          if(hasSplit && hoveredBall === ball && focusedBall !== ball && hoverT > 0.05 && !transitionType){
             drawHoverRing(t, hoverT * vis.visAlpha);
           }
           ctx.restore();
 
-          if(hasSplit && ball.name){
+          if(hasSplit && ball.name && !transitionType){
             const labelAlpha = ball.focusAmount > 0.5 ? 1 : Math.max(0.35, vis.visAlpha);
             drawBallLabel(ball, effCx, effCy, R * breathS, labelAlpha, ball.focusAmount > 0.5, ball.focusAmount);
           }
         }
       }
 
+      // 3. 绘制 1 个大球
+      if (!hasSplit || transitionType === 'split-to-single') {
+        let targetBall = balls[0];
+        let extraAlpha = 1;
+        let extraScale = 1;
+        
+        if (transitionType === 'split-to-single') {
+          extraAlpha = transitionProgress;
+          extraScale = easeOutCubic(transitionProgress);
+        }
+        
+        // 临时改变 scale 和 ox, oy 以实现缩放动画
+        const oScale = targetBall.scale;
+        const oOx = targetBall.ox;
+        const oOy = targetBall.oy;
+        
+        targetBall.scale = oScale * extraScale;
+        targetBall.ox = oOx * extraScale;
+        targetBall.oy = oOy * extraScale;
+        
+        const vis = computeBallVisual(targetBall);
+        CX = BASE_CX + vis.visOx * BR;
+        CY = BASE_CY + vis.visOy * BR;
+        R = BR * vis.visScale;
+        
+        if (isFinite(CX) && isFinite(CY) && isFinite(R) && R > 0.5) {
+          setDrawColor(globalColor);
+          currentYaw = YAW_BASE + t*0.075 + targetBall.yawPhase + targetBall.yawOffset;
+          tiltCur = TILT_BASE + targetBall.tiltOffset + Math.sin(t*0.23 + targetBall.seed)*0.045;
+
+          const localPulse = getBallPulse(targetBall, now);
+          let ambientPulse = 0;
+          if(!hasSplit){
+            const breathRaw = (Math.sin(t * 0.40 + targetBall.breathSeed) + 1) / 2;
+            ambientPulse = Math.pow(breathRaw, 3);
+          }
+          pulse = Math.min(1, ambientPulse + localPulse * 0.92 + targetBall.focusAmount * 0.18);
+          
+          let breathY = 0, breathS = 1;
+          if(!hasSplit){
+            breathY = Math.sin(t * 0.40 + targetBall.breathSeed) * 6 * DPR;
+            breathS = 1 + Math.sin(t * 0.40 + targetBall.breathSeed) * 0.006 - localPulse*0.034;
+          }
+          
+          ctx.save();
+          ctx.globalAlpha = vis.visAlpha * extraAlpha;
+          ctx.translate(CX, CY + breathY);
+          ctx.scale(breathS, breathS);
+          ctx.translate(-CX, -CY);
+
+          drawSphereFill();
+          drawPulseRings(t);
+          drawInnerBands(t);
+          drawLatitudes();
+          drawLongitudes();
+          drawNodeNetwork(t);
+          drawCircuits(t);
+          drawParticles(now, t);
+          drawFlowParticles(now, t);
+          drawPulsePoints(t);
+          drawOrbitRings(now);
+          drawCoreOrbiters();
+          drawOutline();
+          drawCore(now);
+          ctx.restore();
+        }
+        
+        // 恢复
+        targetBall.scale = oScale;
+        targetBall.ox = oOx;
+        targetBall.oy = oOy;
+      }
+
+      // 通用特效
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      drawAura(t);
-      drawTrails(now);
+      if (!soloNebula && !transitionType) {
+        drawAura(t);
+        drawTrails(now);
+      }
       drawShocks(now);
       drawSparks(now, dt);
       ctx.restore();
 
-      drawCharge(t);
+      if (!soloNebula && !transitionType) {
+        drawCharge(t);
+      }
 
       if(flash > 0.01){
         ctx.fillStyle = 'rgba('+PR+','+PG+','+PB+','+(flash*0.32).toFixed(3)+')';
@@ -2173,19 +2302,19 @@
     window.QuantumSphere = {
       resize: resize,
       isSplit: function(){ return hasSplit; },
-      reset: function(){
-        hasSplit = false;
-        soloNebula = false;
-        explodedBall = null;
-        focusedBall = null;
-        hoveredBall = null;
-        prevHoveredBall = null;
-        balls.length = 0;
-        balls.push(makeBall({ox:0, oy:0, scale:1}));
-        const hint = document.querySelector('.quantum-hint');
-        if(hint) hint.style.display = '';
-        AudioFX.stopCharge();
-        HapticFX.vibrate(0);
+      goBack: function(){
+        if (transitionType) return; // 动画中不可打断
+        if (soloNebula) {
+          transitionType = 'nebula-to-split';
+          transitionProgress = 0;
+          AudioFX.focus();
+          HapticFX.vibrate(20);
+        } else if (hasSplit) {
+          transitionType = 'split-to-single';
+          transitionProgress = 0;
+          AudioFX.focus();
+          HapticFX.vibrate(20);
+        }
       },
       setQuantumState: function(state){
         const c = QUANTUM_COLORS[state];
