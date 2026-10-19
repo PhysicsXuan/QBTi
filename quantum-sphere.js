@@ -1,11 +1,7 @@
 /* ============================================================
    Quantum Sphere —— 量子球视觉引擎 + 触感音效 + 手机震动
    使用方式：<script src="quantum-sphere.js"></script>
-   暴露全局：window.QuantumSphere = {
-     resize, isSplit, reset, sound, haptic,
-     setQuantumState, setDimensionStates,
-     getQuantumState, clearQuantumState
-   }
+   暴露全局：window.QuantumSphere = { ... }
    ============================================================ */
 (function(){
   'use strict';
@@ -21,11 +17,7 @@
       try { navigator.vibrate(pattern); } catch(e){}
     }
     function setEnabled(v){ enabled = !!v; }
-    return {
-      vibrate,
-      setEnabled,
-      isSupported: function(){ return isSupported; }
-    };
+    return { vibrate, setEnabled, isSupported: function(){ return isSupported; } };
   })();
 
   /* ==========================================================
@@ -256,7 +248,6 @@
     };
   })();
 
-  /* ---------- 全局解锁 ---------- */
   (function bindGlobalUnlock(){
     let fired = false;
     function once(){
@@ -275,7 +266,6 @@
     document.addEventListener('click', once, true);
   })();
 
-  /* ---------- 音效开关按钮 ---------- */
   function injectSoundToggle(){
     if(document.getElementById('qSoundToggle')) return;
     const style = document.createElement('style');
@@ -298,9 +288,6 @@
     document.body.appendChild(btn);
   }
 
-  /* ==========================================================
-     主引擎
-     ========================================================== */
   function boot(){
     const canvas = document.getElementById('quantumCanvas');
     const visualEl = document.getElementById('quantumVisual');
@@ -312,14 +299,8 @@
     const ctx = canvas.getContext('2d');
     const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-    /* ---------- 颜色系统 ---------- */
     const palette = [[255,140,80],[120,180,255],[180,130,255],[255,110,170],[100,230,200],[200,230,110],[255,210,90]];
-
-    const QUANTUM_COLORS = {
-      good:          [ 80, 220, 140],
-      danger:        [235,  65,  75],
-      superposition: [ 90, 140, 245]
-    };
+    const QUANTUM_COLORS = { good: [80, 220, 140], danger: [235, 65, 75], superposition: [90, 140, 245] };
     const DIM_IDS = ['PO','II','LA','UR'];
     const STATE_STORAGE_KEY = 'qbti_quantum_state';
     const DIM_STATE_KEY = 'qbti_dimension_states';
@@ -344,7 +325,7 @@
     function applyColor(cr, cg, cb){
       CR = cr; CG = cg; CB = cb;
       PR = CR; PG = CG; PB = CB;
-      globalColor = [cr, cg, cb]; // 👈 修复：同步更新全局颜色，供星云模式使用
+      globalColor = [cr, cg, cb]; 
       document.documentElement.style.setProperty('--q-r', CR);
       document.documentElement.style.setProperty('--q-g', CG);
       document.documentElement.style.setProperty('--q-b', CB);
@@ -402,10 +383,15 @@
     let hasSplit = false;
     let flash = 0;
 
-    // 新增：纯星云状态
+    // 纯星云状态
     let soloNebula = false;
     let explodedBall = null;
     let soloR = 0;
+
+    // 星云专属数据集合
+    let nebulaDust = [];
+    let nebulaStars = [];
+    let nebulaLinks = [];
 
     function safeBaseR(){
       return (isFinite(BASE_R) && BASE_R > MIN_BASE_R) ? BASE_R : MIN_BASE_R;
@@ -727,7 +713,7 @@
     }
 
     function findBall(x, y){
-      if (soloNebula) return null; // 星云状态没有实体球
+      if (soloNebula) return null; 
       let best = null;
       let bestR = 0;
       for(const b of balls){
@@ -829,7 +815,6 @@
       AudioFX.unlock();
       const p = localPos(e);
       
-      // 星云状态下，点击直接触发涟漪
       if (soloNebula) {
         pointer.x = p.x; pointer.y = p.y;
         AudioFX.ripple();
@@ -869,10 +854,9 @@
       pointer.x = p.x; pointer.y = p.y;
 
       if (soloNebula) {
-        // 星云状态下，鼠标移动推开粒子
         aura.x = p.x; aura.y = p.y;
-        aura.targetStrength = 0.5;
-        aura.targetR = 150 * DPR;
+        aura.targetStrength = 1.2; // 星云状态下鼠标斥力更强
+        aura.targetR = 220 * DPR;
         if (pointer.down && pointer.speed > 6 * DPR) {
            for(let i=0;i<3;i++){ pushSpark(p.x, p.y, { angle: Math.atan2(-pointer.vy, -pointer.vx) + (Math.random()-0.5)*1.6, speed: 1.2 + Math.random()*2.8, size: 0.8 + Math.random()*1.5 }); }
         }
@@ -990,25 +974,24 @@
         })(cx, cy, chargeVal, activeBall);
         
         if(!hasSplit){ 
-          // 大球分裂
           hasSplit = true; 
           splitSpheres(releaseShakeAmp); 
         } else {
-          // 小球爆炸，进入星云模式
           soloNebula = true;
           explodedBall = activeBall;
           soloR = safeBaseR() * activeBall.scale; 
           
-          // 全局主色变更为这个球的颜色
           const bColor = colorForBall(activeBall, balls.indexOf(activeBall));
           applyColor(bColor[0], bColor[1], bColor[2]);
           
-          // 清空其余状态
           focusedBall = null;
           hoveredBall = null;
           prevHoveredBall = null;
           flash = 1;
           screenShake = Math.max(screenShake, 1.5);
+
+          // 🚨 在这里初始化星云数据
+          initNebula();
         }
         
         activeBall = null; return;
@@ -1082,7 +1065,178 @@
       HapticFX.vibrate(0);
     });
 
-    /* ---------- 绘制基础函数 ---------- */
+    /* ============================================================
+       星云数据初始化与渲染专属逻辑
+       ============================================================ */
+    function initNebula() {
+      nebulaDust = [];
+      nebulaStars = [];
+      nebulaLinks = [];
+
+      // 1. 内部体积星尘（在 3D 球内随机分布，不只在表面）
+      for(let i=0; i<1500; i++){
+        // 球坐标生成半径在 0-1 之间的点
+        const r = Math.cbrt(Math.random()); 
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos(Math.random() * 2 - 1);
+        
+        // 转为笛卡尔坐标
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta);
+        const z = r * Math.cos(phi);
+
+        nebulaDust.push({
+          x, y, z,
+          size: 0.5 + Math.random() * 1.8,
+          isWhite: Math.random() < 0.2,
+          twinkle: Math.random() * Math.PI * 2,
+          speed: 0.5 + Math.random() * 2.0
+        });
+      }
+
+      // 2. 远景闪星（全屏 2D 坐标，高频闪烁）
+      for(let i=0; i<200; i++){
+        nebulaStars.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          size: 0.5 + Math.random() * 1.5,
+          phase: Math.random() * Math.PI * 2,
+          speed: 0.5 + Math.random() * 2.0
+        });
+      }
+
+      // 3. 随机连线网络
+      for(let i=0; i<80; i++) {
+        const a = Math.floor(Math.random() * nebulaDust.length);
+        let minDist = 999, bestB = -1;
+        for(let j=0; j<80; j++){
+           const b = Math.floor(Math.random() * nebulaDust.length);
+           if(a===b) continue;
+           const dx = nebulaDust[a].x - nebulaDust[b].x;
+           const dy = nebulaDust[a].y - nebulaDust[b].y;
+           const dz = nebulaDust[a].z - nebulaDust[b].z;
+           const d = dx*dx + dy*dy + dz*dz;
+           if(d < minDist) { minDist = d; bestB = b; }
+        }
+        if(bestB !== -1 && minDist < 0.5) {
+           nebulaLinks.push({ a, b: bestB, phase: Math.random() * Math.PI * 2 });
+        }
+      }
+    }
+
+    function drawNebula(now, t) {
+      CX = BASE_CX;
+      CY = BASE_CY;
+      
+      // 星云整体缓慢膨胀与呼吸
+      const targetR = Math.max(W, H) * 1.8;
+      soloR += (targetR - soloR) * 0.01;
+      R = soloR * (1 + Math.sin(t * 0.5) * 0.02); // 呼吸
+
+      // 星云自转
+      currentYaw = t * 0.04;
+      tiltCur = TILT_BASE + Math.sin(t * 0.2) * 0.1;
+
+      const BR = R;
+
+      // 1. 绘制背景光晕
+      const grad = ctx.createRadialGradient(CX, CY, 0, CX, CY, R * 1.5);
+      grad.addColorStop(0, `rgba(${CR},${CG},${CB},0.12)`);
+      grad.addColorStop(0.5, `rgba(${CR},${CG},${CB},0.04)`);
+      grad.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // 2. 投影所有内部星尘并处理鼠标斥力
+      const projectedDust = nebulaDust.map(p => {
+        let px = p.x * BR, py = p.y * BR, pz = p.z * BR;
+        
+        // 3D 投影
+        const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
+        const x1 = px*cy + pz*sy, z1 = -px*sy + pz*cy;
+        const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
+        const y1 = py*ct - z1*st, z2 = py*st + z1*ct;
+        
+        const persp = CAM / (CAM - z2);
+        let finalX = CX + x1*persp;
+        let finalY = CY + y1*persp;
+
+        // 鼠标斥力
+        if(aura.strength > 0.02){
+          const dx = finalX - aura.x, dy = finalY - aura.y;
+          const dist2 = dx*dx + dy*dy;
+          const auraR2 = aura.r * aura.r;
+          if(dist2 < auraR2) {
+            const dist = Math.sqrt(dist2) || 1;
+            const force = (1 - dist/aura.r) * aura.strength * 40 * DPR;
+            finalX += (dx/dist) * force;
+            finalY += (dy/dist) * force;
+          }
+        }
+
+        return { p, x: finalX, y: finalY, z: z2 };
+      });
+
+      // 按深度排序
+      projectedDust.sort((a, b) => a.z - b.z);
+
+      // 3. 绘制连线（取最近的一些点）
+      ctx.lineWidth = 0.6 * DPR;
+      for(const link of nebulaLinks) {
+        const pA = projectedDust[link.a];
+        const pB = projectedDust[link.b];
+        if(!pA || !pB) continue;
+        const depth = (pA.z + pB.z) / 2;
+        if(depth < -R) continue;
+        
+        const alpha = Math.max(0, 0.15 + (depth / R) * 0.2);
+        ctx.strokeStyle = `rgba(${PR},${PG},${PB},${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(pA.x, pA.y);
+        ctx.lineTo(pB.x, pB.y);
+        ctx.stroke();
+      }
+
+      // 4. 绘制星尘
+      for(const item of projectedDust) {
+        const { p, x, y, z } = item;
+        const depth = (z / R + 1) / 2; // 0 (最远) -> 1 (最近)
+        const twinkle = 0.6 + 0.4 * Math.sin(now * 0.002 * p.speed + p.twinkle);
+        const alpha = Math.max(0.1, depth * twinkle);
+        
+        const size = p.size * DPR * (0.5 + depth * 1.5);
+        
+        ctx.fillStyle = p.isWhite 
+          ? `rgba(255,255,255,${alpha})` 
+          : `rgba(${PR},${PG},${PB},${alpha})`;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(0.5, size), 0, Math.PI * 2);
+        ctx.fill();
+
+        // 近处的星星加十字星芒
+        if (depth > 0.7 && p.isWhite) {
+          ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.5})`;
+          ctx.lineWidth = 0.5 * DPR;
+          ctx.beginPath();
+          ctx.moveTo(x - size*2, y); ctx.lineTo(x + size*2, y);
+          ctx.moveTo(x, y - size*2); ctx.lineTo(x, y + size*2);
+          ctx.stroke();
+        }
+      }
+
+      // 5. 绘制全屏前景闪星
+      for(const star of nebulaStars) {
+        const alpha = Math.max(0, Math.sin(now * 0.003 * star.speed + star.phase));
+        if(alpha < 0.1) continue;
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size * DPR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    /* ---------- 原有绘制函数 ---------- */
     function drawSphereFill(){
       const lx = CX - R*0.28, ly = CY - R*0.28;
       const grad = ctx.createRadialGradient(lx,ly,0,lx,ly,R*1.55);
@@ -1734,33 +1888,15 @@
       ctx.save();
       ctx.translate(shakeX, shakeY);
 
-      const BR = safeBaseR();
+      setDrawColor(globalColor);
 
       if (soloNebula) {
-        // 👈 纯星云状态绘制
-        CX = BASE_CX;
-        CY = BASE_CY;
-        // 半径平滑放大到覆盖全屏
-        soloR += (Math.max(W, H) * 1.8 - soloR) * 0.015;
-        R = soloR;
-
-        currentYaw = YAW_BASE + t * 0.05; // 慢速旋转
-        tiltCur = TILT_BASE + Math.sin(t * 0.15) * 0.08;
-
-        // 使用全局颜色（已在此之前被设为爆炸球的颜色）
-        setDrawColor(globalColor);
-
-        const globalRaw = (Math.sin(t * 0.4) + 1) / 2;
-        pulse = 0.2 + Math.pow(globalRaw, 3) * 0.2; // 星云脉动
-
-        // 只画粒子，不画任何实体线条
-        drawParticles(now, t);
-        drawFlowParticles(now, t);
-        drawPulsePoints(t);
-        
+        // 🚨 执行全屏复杂星云绘制
+        drawNebula(now, t);
       } else {
-        // 普通球体状态绘制
+        // 正常球体绘制
         const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
+        const BR = safeBaseR();
 
         for(let k = 0; k < drawOrder.length; k++){
           const ball = drawOrder[k].b;
@@ -1898,7 +2034,6 @@
     }
     start();
 
-    /* ---------- 对外接口 ---------- */
     window.QuantumSphere = {
       resize: resize,
       isSplit: function(){ return hasSplit; },
@@ -1920,7 +2055,7 @@
         const c = QUANTUM_COLORS[state];
         if(!c) return false;
         globalState = state;
-        if (!soloNebula) applyGlobalColor(c); // 星云状态下不覆盖局部爆炸颜色
+        if (!soloNebula) applyGlobalColor(c);
         try { localStorage.setItem(STATE_STORAGE_KEY, state); } catch(e){}
         return true;
       },
