@@ -1,6 +1,7 @@
 /* ============================================================
    QAuth —— QBTI 学生登录/注册/绑定家长 (含二维码生成 + 忘记密码 + 管理员)
    修复：ensureAdminUser 每次强制同步 Administrator / admin123456
+   调整：右下角登录按钮 bottom 124px → 176px，避让设置按钮
    ============================================================ */
 (function(){
   'use strict';
@@ -11,7 +12,6 @@
   const CODE_COOLDOWN = 60 * 1000;
   const API_BASE = '';
 
-  /* ★ 内置管理员账户（固定，不可通过注册/忘记密码改动） */
   const ADMIN_USERNAME = 'Administrator';
   const ADMIN_PASSWORD = 'admin123456';
   const ADMIN_EMAIL    = 'administrator@qbti.local';
@@ -74,22 +74,14 @@
     return users.find(u => u.phone === id) || null;
   }
 
-  /* ★ 核心修复：每次 init 都强制把内置管理员"同步"到 localStorage
-     - 存在同名用户：强制改 role / builtin / salt / passwordHash（密码固定 admin123456）
-     - 存在同邮箱用户：同上
-     - 都不存在：新建一条
-     这样保证 Administrator / admin123456 永远可以登录，即使之前
-     用同名注册过别的密码、或旧版本残留了不同 salt 的账户。        */
   function ensureAdminUser(){
     const users = loadUsers();
     const newSalt = genSalt();
     const newHash = hashPassword(ADMIN_PASSWORD, newSalt);
 
-    /* 1) 按 username 找 */
     let idx = users.findIndex(u =>
       u.username && String(u.username).toLowerCase() === ADMIN_USERNAME.toLowerCase()
     );
-    /* 2) 按 email 找 */
     if(idx < 0){
       idx = users.findIndex(u =>
         u.email && String(u.email).toLowerCase() === ADMIN_EMAIL.toLowerCase()
@@ -226,11 +218,12 @@
 .qauth-profile-detail-row .v{color:#fff;font-weight:600}
 .qauth-logout-btn{width:100%;padding:11px;border-radius:11px;border:1px solid rgba(235,65,75,.35);background:rgba(235,65,75,.08);color:#FF8FA0;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s;}
 .qauth-logout-btn:hover{background:rgba(235,65,75,.18);color:#FF6B7A;}
-.qauth-btn{position:fixed;right:20px;bottom:124px;z-index:150;height:42px;padding:0 16px;border-radius:21px;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted,#8B90B8);cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;font-family:inherit;transition:.25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);white-space:nowrap;}
+/* ★ bottom 从 124px → 176px，避让新增的 settings 按钮 */
+.qauth-btn{position:fixed;right:20px;bottom:176px;z-index:150;height:42px;padding:0 16px;border-radius:21px;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted,#8B90B8);cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;font-family:inherit;transition:.25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);white-space:nowrap;}
 .qauth-btn:hover{color:var(--txt,#E9EBFF);border-color:var(--q-color,rgb(255,138,72));transform:translateY(-1px);}
 .qauth-btn .qauth-btn-avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--q-color,rgb(255,138,72)),rgba(var(--q-r,255),var(--q-g,138),var(--q-b,72),.5));display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;}
 @media (max-width:600px){
-  .qauth-btn{bottom:124px;right:20px;padding:0 13px;font-size:12px;}
+  .qauth-btn{bottom:176px;right:20px;padding:0 13px;font-size:12px;}
   .qauth-modal{padding:26px 20px;border-radius:18px;}
   .qauth-title{font-size:19px;}
 }
@@ -564,7 +557,6 @@
     if(!data.password || data.password.length < 6){ setFieldError(form, 'password', '密码至少 6 位'); return; }
     if(data.password !== data.confirm){ setFieldError(form, 'confirm', '两次密码不一致'); return; }
 
-    /* 内置管理员禁止通过找回密码修改 */
     const target = findUserByEmail(data.email);
     if(target && (target.role === 'admin' || target.builtin)){
       setFieldError(form, 'email', '内置管理员密码固定，不支持修改');
@@ -703,7 +695,6 @@
       toast('请检查表单填写', 'err');
       return;
     }
-    /* ★ 保留用户名 */
     if(data.username.toLowerCase() === ADMIN_USERNAME.toLowerCase()){
       setFieldError(form, 'username', '该用户名为系统保留，不可注册');
       toast('该用户名不可用', 'err');
@@ -831,7 +822,7 @@
     const adminBadge = currentUser.role === 'admin'
       ? '<span class="qauth-admin-badge">ADMIN</span>' : '';
     const bindSection = currentUser.role === 'admin'
-      ? '<div class="qauth-bind-section" style="border-color:rgba(255,180,60,.3);background:rgba(255,180,60,.06);"><div class="qauth-bind-title"><span>🔧 管理员模式</span></div><div class="qauth-bind-empty">作为内置管理员，您可以：<br>• 使用右下角 ⚙ 按钮调试 AI 接口<br>• 使用调试面板测试 API 连通性<br>• 不参与家长绑定流程</div></div>'
+      ? '<div class="qauth-bind-section" style="border-color:rgba(255,180,60,.3);background:rgba(255,180,60,.06);"><div class="qauth-bind-title"><span>🔧 管理员模式</span></div><div class="qauth-bind-empty">作为内置管理员，您可以：<br>• 使用右下角 ⚙ 按钮调试 AI 接口<br>• 使用 🎨 按钮调整全局设置<br>• 不参与家长绑定流程</div></div>'
       : `
       <div class="qauth-bind-section" id="qauthBindSection">
         <div class="qauth-bind-title">
@@ -1043,7 +1034,7 @@
 
   function init(){
     injectStyles();
-    ensureAdminUser();               // ★ 每次 init 强制同步管理员
+    ensureAdminUser();
     const session = loadSession();
     if(session){
       const user = findUserByEmail(session.email);
@@ -1087,7 +1078,6 @@
       toast('请先登录', 'info');
       return false;
     },
-    /* 调试用：强制重置内置管理员 */
     resetAdmin: function(){
       try { localStorage.removeItem(USERS_KEY); } catch(e){}
       ensureAdminUser();

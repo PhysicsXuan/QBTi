@@ -5,23 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>QUANTUM · QBTI</title>
 <style>
-:root{--q-r:255;--q-g:138;--q-b:72;--q-color:rgb(var(--q-r),var(--q-g),var(--q-b));--txt:#E9EBFF;--muted:#8B90B8;}
+:root{
+  --q-r:255;--q-g:138;--q-b:72;
+  --q-color:rgb(var(--q-r),var(--q-g),var(--q-b));
+  --txt:#E9EBFF;
+  --muted:#8B90B8;
+  --q-brightness:1;
+  --q-fs:1;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.65;}
+body.q-bold{-webkit-text-stroke:0.35px currentColor;}
+
+/* ★ 量子球亮度 */
+#quantumCanvas{filter:brightness(var(--q-brightness,1));transition:filter .3s;}
+
 .app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
 .screen{display:none;flex:1;padding:56px 22px 80px;max-width:980px;margin:0 auto;width:100%}
 .screen.active{display:block}
-.btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.035);color:#fff;padding:13px 26px;border-radius:12px;font-size:15px;cursor:pointer;transition:.25s;font-family:inherit;}
+.btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.035);color:#fff;padding:13px 26px;border-radius:12px;font-size:calc(15px * var(--q-fs,1));cursor:pointer;transition:.25s;font-family:inherit;}
 .btn:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.7);background:rgba(var(--q-r),var(--q-g),var(--q-b),.09)}
 .btn:disabled{opacity:.32;cursor:not-allowed}
 .btn.primary{background:var(--q-color);border:none;color:#fff;font-weight:700;box-shadow:0 0 32px rgba(var(--q-r),var(--q-g),var(--q-b),.24);}
-.btn.sm{padding:9px 18px;font-size:13.5px;border-radius:10px}
+.btn.sm{padding:9px 18px;font-size:calc(13.5px * var(--q-fs,1));border-radius:10px}
 .btn.ghost{background:transparent}
 .badge{display:inline-flex;align-items:center;gap:8px;padding:7px 15px;border-radius:99px;font-size:12px;letter-spacing:.14em;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.035);color:rgba(255,255,255,.62);text-transform:uppercase;margin-bottom:26px;}
 .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--q-color);box-shadow:0 0 10px var(--q-color);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.hero h1{font-size:clamp(34px,7.2vw,58px);font-weight:800;line-height:1.16;letter-spacing:-.02em;margin-bottom:20px;color:#fff}
+.hero h1{font-size:clamp(calc(34px * var(--q-fs,1)),calc(7.2vw * var(--q-fs,1)),calc(58px * var(--q-fs,1)));font-weight:800;line-height:1.16;letter-spacing:-.02em;margin-bottom:20px;color:#fff}
 .hero h1 .grad{background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .lead{color:var(--muted);font-size:clamp(15px,2.4vw,17px);max-width:620px;margin-bottom:34px}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:56px}
@@ -46,29 +58,16 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .hc-duration{font-size:11px;color:rgba(255,255,255,.4);}
 .history-empty{font-size:13px;color:var(--muted);padding:20px 0;text-align:center;}
 
-.page-back-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255,255,255,.05);
-  border: 1px solid rgba(255,255,255,.1);
-  color: var(--muted);
-  font-size: 13.5px;
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 99px;
-  font-family: inherit;
-  transition: 0.2s;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  text-decoration: none;
+.page-back-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  color:var(--muted);font-size:calc(13.5px * var(--q-fs,1));
+  cursor:pointer;padding:8px 16px;border-radius:99px;
+  font-family:inherit;transition:.2s;backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);text-decoration:none;
 }
-.page-back-btn:hover {
-  color: #fff;
-  border-color: rgba(var(--q-r),var(--q-g),var(--q-b),.5);
-  background: rgba(var(--q-r),var(--q-g),var(--q-b),.1);
-}
-.back-btn-wrap { padding-top: 12px; margin-bottom: 20px; }
+.page-back-btn:hover{color:#fff;border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.5);background:rgba(var(--q-r),var(--q-g),var(--q-b),.1);}
+.back-btn-wrap{padding-top:12px;margin-bottom:20px;}
 
 .quiz-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}
 .progress-track{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
@@ -81,9 +80,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .group-dot.active{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.75);color:#fff;background:rgba(var(--q-r),var(--q-g),var(--q-b),.15);}
 .group-dot .gd-num{font-weight:700}
 .quiz-card{padding:38px 32px;border-radius:22px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.025);}
-.q-text{font-size:clamp(19px,3.4vw,25px);font-weight:700;line-height:1.5;color:#fff}
+.q-text{font-size:clamp(calc(19px * var(--q-fs,1)),calc(3.4vw * var(--q-fs,1)),calc(25px * var(--q-fs,1)));font-weight:700;line-height:1.5;color:#fff}
 .options{display:flex;flex-direction:column;gap:11px;margin-top:32px}
-.opt{display:flex;align-items:center;gap:14px;width:100%;padding:15px 20px;border-radius:14px;text-align:left;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.018);color:var(--txt);font-size:15px;font-family:inherit;cursor:pointer;transition:.2s;}
+.opt{display:flex;align-items:center;gap:14px;width:100%;padding:15px 20px;border-radius:14px;text-align:left;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.018);color:var(--txt);font-size:calc(15px * var(--q-fs,1));font-family:inherit;cursor:pointer;transition:.2s;}
 .opt:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.62);background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);transform:translateX(5px)}
 .opt.selected{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.62);background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);}
 .opt .dot{width:9px;height:9px;border-radius:50%;border:2px solid var(--muted);flex-shrink:0;}
@@ -96,9 +95,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .type-portrait::before{content:'';position:absolute;width:190px;height:38px;bottom:4px;border-radius:50%;background:radial-gradient(ellipse,rgba(var(--q-r),var(--q-g),var(--q-b),.30),rgba(var(--q-r),var(--q-g),var(--q-b),0) 70%);filter:blur(8px);}
 .type-portrait img{position:relative;z-index:1;width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 14px 24px rgba(0,0,0,.32));}
 .r-label{font-size:12px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-bottom:18px}
-.code{font-size:clamp(40px,9.5vw,72px);font-weight:800;letter-spacing:.06em;line-height:1.05;background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.code{font-size:clamp(calc(40px * var(--q-fs,1)),calc(9.5vw * var(--q-fs,1)),calc(72px * var(--q-fs,1)));font-weight:800;letter-spacing:.06em;line-height:1.05;background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 .code .code-suffix{color:var(--q-color);-webkit-text-fill-color:var(--q-color);}
-.type-name{margin-top:18px;font-size:clamp(20px,3.8vw,28px);font-weight:800;color:#fff;letter-spacing:.08em;text-shadow:0 0 24px rgba(var(--q-r),var(--q-g),var(--q-b),.4);}
+.type-name{margin-top:18px;font-size:clamp(calc(20px * var(--q-fs,1)),calc(3.8vw * var(--q-fs,1)),calc(28px * var(--q-fs,1)));font-weight:800;color:#fff;letter-spacing:.08em;text-shadow:0 0 24px rgba(var(--q-r),var(--q-g),var(--q-b),.4);}
 .type-name .tn-suffix{font-size:.72em;color:#9EEBFF;font-weight:700;}
 .r-tagline{color:var(--muted);font-size:14.5px;max-width:680px;margin:24px auto 0;line-height:1.75}
 .section-title{font-size:13px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin:52px 0 18px;display:flex;align-items:center;gap:12px;}
@@ -169,13 +168,19 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .test-result.show{display:block}
 .test-result.ok{background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);color:#A6F0FF}
 .test-result.err{background:rgba(255,107,157,.08);border:1px solid rgba(255,107,157,.3);color:#FFB4CB}
+
+/* ★ 右下角按钮栈：gear(20) → settings(72) → sound(124) → auth(176) */
 .gear{position:fixed;right:20px;bottom:20px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;transition:.25s;backdrop-filter:blur(8px);}
 .gear:hover{color:var(--txt);border-color:var(--q-color);transform:rotate(45deg)}
+
+.settings-btn{position:fixed;right:20px;bottom:72px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;transition:.25s;backdrop-filter:blur(8px);padding:0;font-family:inherit;}
+.settings-btn:hover{color:var(--txt);border-color:var(--q-color);transform:rotate(45deg)}
+
 .quantum-nav{position:fixed;top:0;left:0;right:0;height:72px;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.76);border-bottom:1px solid rgba(255,255,255,.07);backdrop-filter:blur(18px);}
 .quantum-nav-inner{width:min(1180px,calc(100% - 40px));display:flex;align-items:center;justify-content:space-between;}
 .quantum-brand{border:0;background:none;color:#fff;cursor:pointer;font-size:15px;font-weight:700;letter-spacing:.22em;padding:8px 0;}
 .quantum-links{display:flex;align-items:center;gap:8px}
-.quantum-link{border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;padding:10px 17px;border-radius:999px;font:inherit;font-size:13px;letter-spacing:.08em;transition:.25s;text-decoration:none;display:inline-flex;align-items:center;}
+.quantum-link{border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;padding:10px 17px;border-radius:999px;font:inherit;font-size:calc(13px * var(--q-fs,1));letter-spacing:.08em;transition:.25s;text-decoration:none;display:inline-flex;align-items:center;}
 .quantum-link:hover{color:#fff;background:rgba(255,255,255,.06)}
 .quantum-link.active{color:#fff;background:rgba(255,255,255,.09)}
 #screen-home{display:none;max-width:none !important;width:100% !important;min-height:100vh;height:100vh;padding:0 !important;margin:0 !important;position:relative;overflow:hidden;align-items:center;justify-content:center;background:#000 !important;}
@@ -189,21 +194,58 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .contact-page{min-height:calc(100vh - 72px);display:grid;place-items:center;text-align:center;}
 .contact-inner{max-width:600px}
 .contact-kicker{color:rgba(255,255,255,.42);font-size:11px;letter-spacing:.28em;text-transform:uppercase;margin-bottom:18px;}
-.contact-title{font-size:clamp(36px,7vw,72px);font-weight:700;letter-spacing:-.04em;color:#fff}
+.contact-title{font-size:clamp(calc(36px * var(--q-fs,1)),calc(7vw * var(--q-fs,1)),calc(72px * var(--q-fs,1)));font-weight:700;letter-spacing:-.04em;color:#fff}
 .contact-text{margin:20px auto 30px;color:rgba(255,255,255,.48);max-width:500px;font-size:15px;line-height:1.9;}
 .contact-mail{display:inline-flex;padding:12px 20px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:#fff;text-decoration:none;font-size:13px;}
+
+/* ★ 设置面板 */
+.settings-mask{position:fixed;inset:0;background:rgba(3,4,12,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;display:none;place-items:center;padding:20px;overflow-y:auto;}
+.settings-mask.show{display:grid;}
+.settings-modal{width:100%;max-width:480px;padding:28px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:#0B0D1C;position:relative;max-height:90vh;overflow-y:auto;animation:sSlide .28s cubic-bezier(.2,.9,.3,1.2);}
+@keyframes sSlide{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+.settings-modal h3{font-size:18px;color:#fff;margin-bottom:4px;font-weight:700;}
+.settings-sub{font-size:12.5px;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+.settings-close{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.55);font-size:16px;cursor:pointer;font-family:inherit;padding:0;display:grid;place-items:center;transition:.2s;}
+.settings-close:hover{color:#fff;border-color:rgba(255,255,255,.28);background:rgba(255,255,255,.08);}
+.settings-group{margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.06);}
+.settings-group:last-of-type{border-bottom:0;padding-bottom:0;margin-bottom:14px;}
+.settings-group-title{font-size:11px;letter-spacing:.18em;color:var(--q-color);text-transform:uppercase;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.settings-group-title::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--q-color);box-shadow:0 0 8px var(--q-color);}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 0;flex-wrap:wrap;}
+.settings-row>label{font-size:13.5px;color:#fff;font-weight:500;display:flex;align-items:baseline;gap:6px;flex:1;min-width:130px;}
+.settings-row .hint{font-size:11px;color:var(--muted);font-weight:400;}
+.settings-control{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.settings-control input[type=range]{-webkit-appearance:none;appearance:none;width:140px;height:4px;border-radius:99px;background:rgba(255,255,255,.1);outline:none;cursor:pointer;}
+.settings-control input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--q-color);cursor:pointer;box-shadow:0 0 12px rgba(var(--q-r),var(--q-g),var(--q-b),.5);}
+.settings-control input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--q-color);cursor:pointer;border:0;}
+.settings-val{font-size:12px;color:var(--muted);min-width:42px;text-align:right;font-variant-numeric:tabular-nums;}
+.settings-seg{display:flex;gap:4px;padding:3px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+.settings-seg button{padding:6px 14px;border:0;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:7px;transition:.2s;white-space:nowrap;}
+.settings-seg button.active{background:var(--q-color);color:#fff;box-shadow:0 2px 10px rgba(var(--q-r),var(--q-g),var(--q-b),.32);}
+.settings-seg button:hover:not(.active){color:#fff;}
+.settings-note{font-size:11.5px;color:var(--muted);line-height:1.7;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);margin-bottom:18px;}
+.settings-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;}
+.settings-reset{padding:10px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:transparent;color:var(--muted);font-size:13px;cursor:pointer;font-family:inherit;transition:.2s;}
+.settings-reset:hover{color:#fff;border-color:rgba(255,255,255,.28);}
+.settings-done{padding:10px 22px;border-radius:10px;border:0;background:var(--q-color);color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;}
+.settings-done:hover{filter:brightness(1.08);}
+
 @media(max-width:700px){
   .quantum-nav{height:64px}
   .quantum-nav-inner{width:calc(100% - 24px)}
   .quantum-brand{font-size:12px}
   .quantum-links{gap:0}
   .quantum-link{padding:9px 10px;font-size:11px}
+  .settings-modal{padding:24px 20px;}
+  .settings-row>label{min-width:100px;font-size:12.5px;}
+  .settings-control input[type=range]{width:110px;}
 }
 @media(max-width:600px){
   .screen{padding:36px 16px 70px}
   .quiz-card{padding:26px 20px;border-radius:18px}
   .type-name{font-size:20px}
   .code{font-size:38px}
+  .settings-seg button{padding:5px 10px;font-size:12px;}
 }
 </style>
 </head>
@@ -213,9 +255,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   <div class="quantum-nav-inner">
     <button class="quantum-brand nav-go" data-target="screen-home">QUANTUM</button>
     <div class="quantum-links">
-      <button class="quantum-link nav-go active" data-target="screen-home">主页</button>
-      <button class="quantum-link nav-go" data-target="screen-intro">QBTI</button>
-      <button class="quantum-link nav-go" data-target="screen-contact">联系我们</button>
+      <button class="quantum-link nav-go active" data-target="screen-home" data-i18n="nav.home">主页</button>
+      <button class="quantum-link nav-go" data-target="screen-intro" data-i18n="nav.qbti">QBTI</button>
+      <button class="quantum-link nav-go" data-target="screen-contact" data-i18n="nav.contact">联系我们</button>
     </div>
   </div>
 </nav>
@@ -223,43 +265,43 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 <div class="app">
   <section class="screen active" id="screen-home">
     <div class="home-stage">
-      <button class="page-back-btn" id="btnBackSphere" style="position:absolute; top: 90px; left: 22px; z-index: 20;">← 返回</button>
+      <button class="page-back-btn" id="btnBackSphere" style="position:absolute; top: 90px; left: 22px; z-index: 20;" data-i18n="back">← 返回</button>
 
       <div class="quantum-visual" id="quantumVisual">
         <canvas id="quantumCanvas"></canvas>
       </div>
-      <div class="quantum-hint" aria-hidden="true">按住量子球以开始</div>
+      <div class="quantum-hint" aria-hidden="true" data-i18n="home.hint">按住量子球以开始</div>
     </div>
   </section>
 
   <section class="screen" id="screen-intro">
     <div class="back-btn-wrap">
-      <button class="page-back-btn" id="btnBackFromIntro">← 返回主页</button>
+      <button class="page-back-btn" id="btnBackFromIntro" data-i18n="backHome">← 返回主页</button>
     </div>
 
     <div class="hero">
       <div class="badge">QBTI · Quantum Behavior Type Indicator</div>
-      <h1>你，<span class="grad">尚未坍缩</span>。</h1>
-      <p class="lead">
+      <h1 data-i18n="intro.title">你，<span class="grad">尚未坍缩</span>。</h1>
+      <p class="lead" data-i18n="intro.lead">
         在单一的评价框架里，每一次排名、每一张试卷，都是一次强观测。
         而观测，会让叠加态坍缩。<br>
         QBTI 用 40 道题、81 种人格类型、4 个发展方向，描述那些还没被观测到的你。
       </p>
       <div class="hero-actions">
-        <button class="btn primary" id="btnStart">开始观测 →</button>
+        <button class="btn primary" id="btnStart" data-i18n="intro.start">开始观测 →</button>
       </div>
       <div class="dim-preview" id="dimPreview"></div>
     </div>
 
     <div class="history-section" id="historySection" style="display:none;">
-      <div class="history-title">历史观测记录</div>
+      <div class="history-title" data-i18n="intro.history">历史观测记录</div>
       <div class="history-list" id="historyList"></div>
     </div>
   </section>
 
   <section class="screen" id="screen-quiz">
     <div class="back-btn-wrap">
-      <button class="page-back-btn" id="btnQuitQuiz">← 放弃答题</button>
+      <button class="page-back-btn" id="btnQuitQuiz" data-i18n="quiz.quit">← 放弃答题</button>
     </div>
 
     <div class="quiz-head">
@@ -272,14 +314,14 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       <div class="options" id="options"></div>
     </div>
     <div class="quiz-foot">
-      <button class="btn sm" id="btnPrev" disabled>← 上一题</button>
-      <span class="hint">键盘 1–5 可快速作答</span>
+      <button class="btn sm" id="btnPrev" disabled data-i18n="quiz.prev">← 上一题</button>
+      <span class="hint" data-i18n="quiz.hint">键盘 1–5 可快速作答</span>
     </div>
   </section>
 
   <section class="screen" id="screen-result">
     <div class="back-btn-wrap">
-      <button class="page-back-btn" id="btnBackFromResult">← 返回 QBTI 首页</button>
+      <button class="page-back-btn" id="btnBackFromResult" data-i18n="backQbti">← 返回 QBTI 首页</button>
     </div>
 
     <div class="result-hero">
@@ -289,51 +331,53 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       <div class="type-name" id="rTypeName">—</div>
       <p class="r-tagline" id="rTagline"></p>
     </div>
-    <div class="section-title">四维倾向 · 每维度内三字母合计 100%</div>
+    <div class="section-title" data-i18n="result.sec1">四维倾向 · 每维度内三字母合计 100%</div>
     <div class="dim-stacks" id="dimStacks"></div>
-    <div class="section-title">发展向量 Developmental Vector</div>
+    <div class="section-title" data-i18n="result.sec2">发展向量 Developmental Vector</div>
     <div class="vector-section">
       <div class="vector-head">
-        <div class="vector-title">你当前的学习状态更倾向于……</div>
-        <div class="vector-sub">四条发展路径的相对权重。</div>
+        <div class="vector-title" data-i18n="result.vecTitle">你当前的学习状态更倾向于……</div>
+        <div class="vector-sub" data-i18n="result.vecSub">四条发展路径的相对权重。</div>
       </div>
       <div class="vector-grid" id="vectorGrid"></div>
     </div>
-    <div class="section-title">AI 引导报告 · 面向家长</div>
+    <div class="section-title" data-i18n="result.sec3">AI 引导报告 · 面向家长</div>
     <div class="ai-panel">
       <div class="ai-head">
-        <h3>个性化波函数解读</h3>
+        <h3 data-i18n="result.aiTitle">个性化波函数解读</h3>
         <button class="btn sm" id="btnAI">生成报告</button>
       </div>
       <div class="ai-body" id="aiBody">
-        <div class="ai-empty">点击「生成报告」，AI 将基于孩子的十二维量子态与作答真实性，输出一份面向家长的引导路径。</div>
+        <div class="ai-empty" data-i18n="result.aiEmpty">点击「生成报告」，AI 将基于孩子的十二维量子态与作答真实性，输出一份面向家长的引导路径。</div>
       </div>
     </div>
     <div class="result-actions">
-      <button class="btn" id="btnRestart">重新观测</button>
+      <button class="btn" id="btnRestart" data-i18n="result.restart">重新观测</button>
       <button class="btn" id="btnCopy">复制结果</button>
     </div>
   </section>
 
   <section class="screen" id="screen-contact">
     <div class="back-btn-wrap">
-      <button class="page-back-btn" id="btnBackFromContact">← 返回主页</button>
+      <button class="page-back-btn" id="btnBackFromContact" data-i18n="backHome">← 返回主页</button>
     </div>
 
     <div class="contact-page">
       <div class="contact-inner">
         <div class="contact-kicker">CONTACT</div>
-        <h1 class="contact-title">联系我们</h1>
-        <p class="contact-text">如果你希望了解项目、提出建议，或者参与后续的量子态映射研究，可以通过邮件与我们联系。</p>
+        <h1 class="contact-title" data-i18n="contact.title">联系我们</h1>
+        <p class="contact-text" data-i18n="contact.text">如果你希望了解项目、提出建议，或者参与后续的量子态映射研究，可以通过邮件与我们联系。</p>
         <a class="contact-mail" href="mailto:contact@example.com">contact@example.com</a>
       </div>
     </div>
   </section>
 </div>
 
-<!-- ★ 右下角 API 调试按钮：默认隐藏，仅管理员登录后显示 -->
+<!-- 右下角按钮栈 -->
 <button class="gear" id="btnGear" title="API 设置" style="display:none;">⚙</button>
+<button class="settings-btn" id="btnSettings" title="设置">🎨</button>
 
+<!-- API 设置面板（管理员） -->
 <div class="modal-mask" id="modalMask">
   <div class="modal">
     <h3>API 设置</h3>
@@ -346,6 +390,82 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     <div class="modal-actions">
       <button class="btn sm ghost" id="btnCancelCfg">取消</button>
       <button class="btn sm primary" id="btnSaveCfg">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ★ 设置面板（所有人） -->
+<div class="settings-mask" id="settingsMask">
+  <div class="settings-modal">
+    <button class="settings-close" id="settingsClose" aria-label="关闭">×</button>
+    <h3 data-i18n="settings.title">设置</h3>
+    <p class="settings-sub" data-i18n="settings.sub">调整界面与量子球效果，设置会保存在本地。</p>
+
+    <div class="settings-group">
+      <div class="settings-group-title" data-i18n="settings.sectionSphere">量子球</div>
+
+      <div class="settings-row">
+        <label for="setBrightness" data-i18n="settings.brightness">亮度</label>
+        <div class="settings-control">
+          <input type="range" min="50" max="150" step="5" id="setBrightness" />
+          <span class="settings-val" id="setBrightnessVal">100%</span>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label data-i18n="settings.effectsMode">特效模式</label>
+        <div class="settings-seg" id="setEffectsMode">
+          <button type="button" data-val="simple" data-i18n="settings.effectsMode.simple">简洁</button>
+          <button type="button" data-val="normal" data-i18n="settings.effectsMode.normal">常规</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label>
+          <span data-i18n="settings.interactive">交互特效</span>
+          <span class="hint" data-i18n="settings.interactive.hint">（星云 / 点击爆炸）</span>
+        </label>
+        <div class="settings-seg" id="setInteractive">
+          <button type="button" data-val="on" data-i18n="settings.interactive.on">开</button>
+          <button type="button" data-val="off" data-i18n="settings.interactive.off">关</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title" data-i18n="settings.sectionDisplay">显示</div>
+
+      <div class="settings-row">
+        <label data-i18n="settings.language">语言</label>
+        <div class="settings-seg" id="setLang">
+          <button type="button" data-val="zh" data-i18n="settings.lang.zh">中文</button>
+          <button type="button" data-val="en" data-i18n="settings.lang.en">English</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label data-i18n="settings.fontSize">字体大小</label>
+        <div class="settings-seg" id="setFontSize">
+          <button type="button" data-val="sm" data-i18n="settings.fontSize.sm">小</button>
+          <button type="button" data-val="md" data-i18n="settings.fontSize.md">中</button>
+          <button type="button" data-val="lg" data-i18n="settings.fontSize.lg">大</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label data-i18n="settings.fontWeight">字体粗细</label>
+        <div class="settings-seg" id="setFontWeight">
+          <button type="button" data-val="normal" data-i18n="settings.fontWeight.normal">常规</button>
+          <button type="button" data-val="bold" data-i18n="settings.fontWeight.bold">粗体</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-note" data-i18n="settings.langNote">※ 语言切换目前仅影响界面文字，测评题目与报告内容仍为中文。</div>
+
+    <div class="settings-actions">
+      <button class="settings-reset" id="setReset" data-i18n="settings.reset">恢复默认</button>
+      <button class="settings-done" id="setDone" data-i18n="settings.done">完成</button>
     </div>
   </div>
 </div>
@@ -385,6 +505,301 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 <script src="qbti-auth.js"></script>
 
 <script>
+/* ============================================================
+   ★ 设置模块（i18n + 亮度 + 特效 + 字号 / 粗细）
+   ============================================================ */
+(function(){
+  'use strict';
+  const SETTINGS_KEY = 'qbti_settings_v1';
+  const DEFAULT_SETTINGS = {
+    brightness: 100,
+    effectsMode: 'normal',
+    interactive: true,
+    lang: 'zh',
+    fontSize: 'md',
+    fontWeight: 'normal'
+  };
+
+  const I18N = {
+    zh: {
+      'nav.home': '主页',
+      'nav.qbti': 'QBTI',
+      'nav.contact': '联系我们',
+      'back': '← 返回',
+      'backHome': '← 返回主页',
+      'backQbti': '← 返回 QBTI 首页',
+      'home.hint': '按住量子球以开始',
+      'intro.title': '你，<span class="grad">尚未坍缩</span>。',
+      'intro.lead': '在单一的评价框架里，每一次排名、每一张试卷，都是一次强观测。而观测，会让叠加态坍缩。<br>QBTI 用 40 道题、81 种人格类型、4 个发展方向，描述那些还没被观测到的你。',
+      'intro.start': '开始观测 →',
+      'intro.history': '历史观测记录',
+      'quiz.quit': '← 放弃答题',
+      'quiz.prev': '← 上一题',
+      'quiz.hint': '键盘 1–5 可快速作答',
+      'result.sec1': '四维倾向 · 每维度内三字母合计 100%',
+      'result.sec2': '发展向量 Developmental Vector',
+      'result.vecTitle': '你当前的学习状态更倾向于……',
+      'result.vecSub': '四条发展路径的相对权重。',
+      'result.sec3': 'AI 引导报告 · 面向家长',
+      'result.aiTitle': '个性化波函数解读',
+      'result.aiEmpty': '点击「生成报告」，AI 将基于孩子的十二维量子态与作答真实性，输出一份面向家长的引导路径。',
+      'result.restart': '重新观测',
+      'contact.title': '联系我们',
+      'contact.text': '如果你希望了解项目、提出建议，或者参与后续的量子态映射研究，可以通过邮件与我们联系。',
+      'settings.title': '设置',
+      'settings.sub': '调整界面与量子球效果，设置会保存在本地。',
+      'settings.sectionSphere': '量子球',
+      'settings.sectionDisplay': '显示',
+      'settings.brightness': '亮度',
+      'settings.effectsMode': '特效模式',
+      'settings.effectsMode.simple': '简洁',
+      'settings.effectsMode.normal': '常规',
+      'settings.interactive': '交互特效',
+      'settings.interactive.hint': '（星云 / 点击爆炸）',
+      'settings.interactive.on': '开',
+      'settings.interactive.off': '关',
+      'settings.language': '语言',
+      'settings.lang.zh': '中文',
+      'settings.lang.en': 'English',
+      'settings.fontSize': '字体大小',
+      'settings.fontSize.sm': '小',
+      'settings.fontSize.md': '中',
+      'settings.fontSize.lg': '大',
+      'settings.fontWeight': '字体粗细',
+      'settings.fontWeight.normal': '常规',
+      'settings.fontWeight.bold': '粗体',
+      'settings.langNote': '※ 语言切换目前仅影响界面文字，测评题目与报告内容仍为中文。',
+      'settings.reset': '恢复默认',
+      'settings.done': '完成'
+    },
+    en: {
+      'nav.home': 'Home',
+      'nav.qbti': 'QBTI',
+      'nav.contact': 'Contact',
+      'back': '← Back',
+      'backHome': '← Home',
+      'backQbti': '← Back to QBTI',
+      'home.hint': 'Press and hold the quantum sphere to start',
+      'intro.title': 'You, <span class="grad">not yet collapsed</span>.',
+      'intro.lead': 'In a single evaluation framework, every ranking and every exam paper is a strong measurement. And measurement collapses superposition.<br>QBTI uses 40 questions, 81 personality types, and 4 development directions to describe the parts of you that have not been observed yet.',
+      'intro.start': 'Begin observation →',
+      'intro.history': 'Observation history',
+      'quiz.quit': '← Quit',
+      'quiz.prev': '← Previous',
+      'quiz.hint': 'Press 1–5 to answer quickly',
+      'result.sec1': 'Four Dimensions · Each dimension sums to 100%',
+      'result.sec2': 'Developmental Vector',
+      'result.vecTitle': 'Your current learning state leans toward…',
+      'result.vecSub': 'Relative weights of the four development paths.',
+      'result.sec3': 'AI Guidance Report · For Parents',
+      'result.aiTitle': 'Personalized Wavefunction Reading',
+      'result.aiEmpty': 'Click "Generate" — AI will interpret the child\'s 12-dimensional quantum state and response authenticity for parents.',
+      'result.restart': 'Re-observe',
+      'contact.title': 'Contact',
+      'contact.text': 'If you would like to learn about the project, offer suggestions, or participate in future quantum-state mapping research, please reach out via email.',
+      'settings.title': 'Settings',
+      'settings.sub': 'Adjust interface and quantum sphere. Settings are saved locally.',
+      'settings.sectionSphere': 'Quantum Sphere',
+      'settings.sectionDisplay': 'Display',
+      'settings.brightness': 'Brightness',
+      'settings.effectsMode': 'Effects Mode',
+      'settings.effectsMode.simple': 'Simple',
+      'settings.effectsMode.normal': 'Normal',
+      'settings.interactive': 'Interactive Effects',
+      'settings.interactive.hint': '(nebula / click burst)',
+      'settings.interactive.on': 'On',
+      'settings.interactive.off': 'Off',
+      'settings.language': 'Language',
+      'settings.lang.zh': '中文',
+      'settings.lang.en': 'English',
+      'settings.fontSize': 'Font Size',
+      'settings.fontSize.sm': 'S',
+      'settings.fontSize.md': 'M',
+      'settings.fontSize.lg': 'L',
+      'settings.fontWeight': 'Font Weight',
+      'settings.fontWeight.normal': 'Normal',
+      'settings.fontWeight.bold': 'Bold',
+      'settings.langNote': 'Note: Language only affects UI text. Questions and reports remain in Chinese.',
+      'settings.reset': 'Reset',
+      'settings.done': 'Done'
+    }
+  };
+
+  function loadSettings(){
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if(!raw) return Object.assign({}, DEFAULT_SETTINGS);
+      const s = JSON.parse(raw) || {};
+      return Object.assign({}, DEFAULT_SETTINGS, s);
+    } catch(e){ return Object.assign({}, DEFAULT_SETTINGS); }
+  }
+  function saveSettings(s){
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch(e){}
+  }
+
+  function applyLang(lang){
+    const dict = I18N[lang] || I18N.zh;
+    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      if(dict[key] == null) return;
+      if(dict[key].indexOf('<') >= 0){
+        el.innerHTML = dict[key];
+      } else {
+        el.textContent = dict[key];
+      }
+    });
+  }
+
+  function applyFontSize(size){
+    const map = { sm: 0.92, md: 1, lg: 1.14 };
+    document.documentElement.style.setProperty('--q-fs', map[size] || 1);
+    if(window.QuantumSphere && window.QuantumSphere.resize){
+      setTimeout(() => window.QuantumSphere.resize(), 60);
+    }
+  }
+
+  function applyFontWeight(weight){
+    document.body.classList.toggle('q-bold', weight === 'bold');
+  }
+
+  function applyBrightness(v){
+    const b = Math.max(50, Math.min(150, Number(v) || 100)) / 100;
+    document.documentElement.style.setProperty('--q-brightness', b);
+  }
+
+  function applySpherePrefs(s){
+    if(!window.QuantumSphere) return;
+    if(window.QuantumSphere.setEffectsMode){
+      window.QuantumSphere.setEffectsMode(s.effectsMode || 'normal');
+    }
+    if(window.QuantumSphere.setInteractiveEnabled){
+      window.QuantumSphere.setInteractiveEnabled(s.interactive !== false);
+    }
+  }
+
+  function applyAll(s){
+    applyBrightness(s.brightness);
+    applyFontSize(s.fontSize);
+    applyFontWeight(s.fontWeight);
+    applyLang(s.lang);
+    applySpherePrefs(s);
+  }
+
+  /* ============ 面板 UI ============ */
+  const $ = id => document.getElementById(id);
+  const mask = $('settingsMask');
+  const setBrightness = $('setBrightness');
+  const setBrightnessVal = $('setBrightnessVal');
+  const groups = {
+    effectsMode: $('setEffectsMode'),
+    interactive: $('setInteractive'),
+    lang: $('setLang'),
+    fontSize: $('setFontSize'),
+    fontWeight: $('setFontWeight')
+  };
+
+  let cur = loadSettings();
+
+  function syncUI(){
+    setBrightness.value = cur.brightness;
+    setBrightnessVal.textContent = cur.brightness + '%';
+    Object.keys(groups).forEach(k => {
+      if(!groups[k]) return;
+      let val = cur[k];
+      if(k === 'interactive') val = cur.interactive ? 'on' : 'off';
+      groups[k].querySelectorAll('button').forEach(b => {
+        b.classList.toggle('active', b.dataset.val === String(val));
+      });
+    });
+  }
+
+  function bindGroup(name, onChange){
+    const el = groups[name];
+    if(!el) return;
+    el.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        onChange(btn.dataset.val);
+      });
+    });
+  }
+
+  bindGroup('effectsMode', v => {
+    cur.effectsMode = (v === 'simple') ? 'simple' : 'normal';
+    saveSettings(cur); applySpherePrefs(cur); syncUI();
+  });
+  bindGroup('interactive', v => {
+    cur.interactive = (v === 'on');
+    saveSettings(cur); applySpherePrefs(cur); syncUI();
+  });
+  bindGroup('lang', v => {
+    cur.lang = (v === 'en') ? 'en' : 'zh';
+    saveSettings(cur); applyLang(cur.lang); syncUI();
+  });
+  bindGroup('fontSize', v => {
+    if(['sm','md','lg'].indexOf(v) < 0) return;
+    cur.fontSize = v;
+    saveSettings(cur); applyFontSize(cur.fontSize); syncUI();
+  });
+  bindGroup('fontWeight', v => {
+    cur.fontWeight = (v === 'bold') ? 'bold' : 'normal';
+    saveSettings(cur); applyFontWeight(cur.fontWeight); syncUI();
+  });
+
+  setBrightness.addEventListener('input', () => {
+    const v = Number(setBrightness.value);
+    cur.brightness = v;
+    setBrightnessVal.textContent = v + '%';
+    applyBrightness(v);
+  });
+  setBrightness.addEventListener('change', () => {
+    saveSettings(cur);
+  });
+
+  $('setReset').addEventListener('click', () => {
+    if(!confirm(cur.lang === 'en' ? 'Reset all settings to default?' : '确定恢复所有设置为默认值吗？')) return;
+    cur = Object.assign({}, DEFAULT_SETTINGS);
+    saveSettings(cur);
+    applyAll(cur);
+    syncUI();
+  });
+
+  function openMask(){ mask.classList.add('show'); syncUI(); }
+  function closeMask(){ mask.classList.remove('show'); }
+
+  $('btnSettings').addEventListener('click', openMask);
+  $('settingsClose').addEventListener('click', closeMask);
+  $('setDone').addEventListener('click', closeMask);
+  mask.addEventListener('click', e => { if(e.target === mask) closeMask(); });
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && mask.classList.contains('show')) closeMask();
+  });
+
+  /* ============ 初始化 ============ */
+  function init(){
+    applyAll(cur);
+    // 等 QuantumSphere 就绪后补应用一次
+    let tries = 0;
+    const wait = setInterval(() => {
+      tries++;
+      if(window.QuantumSphere || tries > 30){
+        clearInterval(wait);
+        applySpherePrefs(cur);
+      }
+    }, 100);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+  window.QBTISettings = {
+    get: () => Object.assign({}, cur),
+    reset: () => { cur = Object.assign({}, DEFAULT_SETTINGS); saveSettings(cur); applyAll(cur); syncUI(); },
+    open: openMask
+  };
+})();
+</script>
+
+<script>
 (function(){
   'use strict';
   const Q = window.QBTI;
@@ -412,12 +827,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     model: 'deepseek-chat'
   };
 
-  /* ★ 管理员权限判断：统一入口 */
   function isAdmin(){
     return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin());
   }
 
-  /* ★ 刷新右下角齿轮的可见性 */
   function refreshAdminUI(info){
     const gear = $('btnGear');
     if(!gear) return;
@@ -426,7 +839,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       : isAdmin();
     gear.style.display = admin ? '' : 'none';
     if(!admin){
-      // 非管理员：强制收起 API 弹窗
       const mask = $('modalMask');
       if(mask) mask.classList.remove('show');
     }
@@ -970,7 +1382,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     } catch(e){ alert('复制失败'); }
   });
 
-  /* ★ 点击齿轮：二次校验管理员权限 */
   $('btnGear').addEventListener('click', () => {
     if(!isAdmin()){
       const mask = $('modalMask');
@@ -1028,7 +1439,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   });
 
-  /* ★ 登录状态变化：刷新管理员 UI */
   if(window.QAuth && window.QAuth.onChange){
     window.QAuth.onChange(function(info){
       console.log('[QBTI] 登录状态变化:', info);
@@ -1050,7 +1460,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 
   renderQuestion();
   updateRestoreBanner();
-  refreshAdminUI(); // ★ 首次加载同步一次
+  refreshAdminUI();
   console.log('[QBTI] 初始化完成');
 })();
 </script>

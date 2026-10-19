@@ -1,5 +1,6 @@
 /* ============================================================
    Quantum Sphere —— 量子球视觉引擎 + 触感音效 + 手机震动
+   新增：effectsMode (simple/normal) 与 interactiveEnabled 开关
    ============================================================ */
 (function(){
   'use strict';
@@ -267,7 +268,8 @@
   function injectSoundToggle(){
     if(document.getElementById('qSoundToggle')) return;
     const style = document.createElement('style');
-    style.textContent = '.q-sound-toggle{position:fixed;right:20px;bottom:72px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;transition:.25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:0;font-family:inherit;}.q-sound-toggle:hover{color:var(--txt);border-color:var(--q-color);}.q-sound-toggle.muted{opacity:.5;}';
+    /* ★ 位置下移到 124px，避让新增的 settings 按钮（72px） */
+    style.textContent = '.q-sound-toggle{position:fixed;right:20px;bottom:124px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;transition:.25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:0;font-family:inherit;}.q-sound-toggle:hover{color:var(--txt);border-color:var(--q-color);}.q-sound-toggle.muted{opacity:.5;}';
     document.head.appendChild(style);
     const btn = document.createElement('button');
     btn.id = 'qSoundToggle';
@@ -302,6 +304,22 @@
     const DIM_IDS = ['PO','II','LA','UR'];
     const STATE_STORAGE_KEY = 'qbti_quantum_state';
     const DIM_STATE_KEY = 'qbti_dimension_states';
+    const SETTINGS_KEY = 'qbti_settings_v1';
+
+    /* ★ 新设置状态 */
+    let effectsMode = 'normal';        // 'simple' | 'normal'
+    let interactiveEnabled = true;     // 控制星云 / 点击爆炸
+
+    function loadPrefsFromStorage(){
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if(!raw) return;
+        const s = JSON.parse(raw) || {};
+        if(s.effectsMode === 'simple' || s.effectsMode === 'normal') effectsMode = s.effectsMode;
+        if(typeof s.interactive === 'boolean') interactiveEnabled = s.interactive;
+      } catch(e){}
+    }
+    loadPrefsFromStorage();
 
     let globalState = 'default';
     let dimensionStates = null;
@@ -334,7 +352,7 @@
     function applyColor(cr, cg, cb){
       CR = cr; CG = cg; CB = cb;
       PR = CR; PG = CG; PB = CB;
-      globalColor = [cr, cg, cb]; 
+      globalColor = [cr, cg, cb];
       document.documentElement.style.setProperty('--q-r', CR);
       document.documentElement.style.setProperty('--q-g', CG);
       document.documentElement.style.setProperty('--q-b', CB);
@@ -400,7 +418,7 @@
     let nebulaLinks = [];
     let nebulaCharge = { active: false, value: 0, x: 0, y: 0 };
 
-    let transitionType = null; 
+    let transitionType = null;
     let transitionProgress = 0;
 
     function safeBaseR(){
@@ -417,17 +435,17 @@
       const w = Math.max(20, Math.floor(cssW * DPR));
       const h = Math.max(20, Math.floor(cssH * DPR));
       if(w === W && h === H) return;
-      
+
       W = canvas.width = w;
       H = canvas.height = h;
       BASE_CX = W / 2;
       BASE_CY = H / 2;
-      
+
       const minDim = Math.min(W, H);
-      BASE_R = minDim * 0.45; 
-      
+      BASE_R = minDim * 0.45;
+
       if(!isFinite(BASE_R) || BASE_R < MIN_BASE_R) BASE_R = MIN_BASE_R;
-      
+
       if(aura.targetR === 0){
         aura.r = BASE_R * 0.4;
         aura.targetR = BASE_R * 0.4;
@@ -708,7 +726,7 @@
       let visOy = b.oy;
       let visAlpha = 1;
       const f = b.focusAmount;
-      
+
       if(hasSplit && f > 0.0005){
         visScale = b.scale * (1 + f * (FOCUS_SCALE - 1));
         visOx = b.ox * (1 - f * FOCUS_SHIFT);
@@ -742,7 +760,7 @@
     }
 
     function findBall(x, y){
-      if (soloNebula || transitionType) return null; 
+      if (soloNebula || transitionType) return null;
       let best = null;
       let bestR = 0;
       for(const b of balls){
@@ -842,9 +860,9 @@
 
     canvas.addEventListener('pointerdown', e=>{
       AudioFX.unlock();
-      if (transitionType) return; 
+      if (transitionType) return;
       const p = localPos(e);
-      
+
       if (soloNebula) {
         pointer.x = p.x; pointer.y = p.y;
         pointer.down = true;
@@ -887,7 +905,7 @@
 
       if (soloNebula) {
         aura.x = p.x; aura.y = p.y;
-        aura.targetStrength = pointer.down ? 2.5 : 1.2; 
+        aura.targetStrength = pointer.down ? 2.5 : 1.2;
         aura.targetR = (pointer.down ? 350 : 220) * DPR;
         if (nebulaCharge.active) {
           nebulaCharge.x = p.x;
@@ -958,7 +976,7 @@
       const now = performance.now();
       const wasDown = pointer.down;
       pointer.down = false;
-      
+
       if (soloNebula) {
         if (nebulaCharge.active) {
           const cx = nebulaCharge.x, cy = nebulaCharge.y;
@@ -967,10 +985,10 @@
           AudioFX.stopCharge();
           AudioFX.superRelease();
           HapticFX.vibrate([50, 30, 100]);
-          
+
           pushRing(cx, cy, { duration: 2.5, maxR: Math.max(W, H) * 1.2, width: 4.0, alpha: 0.9, glow: 1.5, ease: 2.5 });
           pushRing(cx, cy, { delay: 0.15, duration: 2.0, maxR: Math.max(W, H) * 0.9, width: 2.0, alpha: 0.6, color:'base', ease: 2.5 });
-          
+
           for(let p of nebulaDust) {
             const dx = p.px - cx, dy = p.py - cy;
             const dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -987,7 +1005,7 @@
       aura.targetStrength = pointer.inside ? 1.0 : 0;
       try { canvas.releasePointerCapture(e.pointerId); } catch(err){}
       if(!wasDown) return;
-      
+
       AudioFX.stopCharge();
       if(!activeBall){
         charge.active = false; charge.value = 0;
@@ -1013,7 +1031,7 @@
         const releaseShakeAmp = chargeVal * chargeVal * 26 * DPR;
         AudioFX.superRelease();
         HapticFX.vibrate([100, 50, 200]);
-        
+
         (function fireSuper(x, y, power, sourceBall){
           const BR = safeBaseR();
           const k = 0.62 + power*0.38;
@@ -1031,18 +1049,20 @@
           if(!hasSplit) screenShake = Math.max(screenShake, 0.85);
           for(let i=0;i<64;i++){ pushSpark(x, y, { speed: 2.4 + Math.random()*6.5, duration: 1.2 + Math.random()*1.2, size: 1.2 + Math.random()*2.4 }); }
         })(cx, cy, chargeVal, activeBall);
-        
-        if(!hasSplit){ 
-          hasSplit = true; 
-          splitSpheres(releaseShakeAmp); 
-        } else {
+
+        if(!hasSplit){
+          /* ★ 首次分裂：核心功能，始终允许（不受 interactiveEnabled 影响） */
+          hasSplit = true;
+          splitSpheres(releaseShakeAmp);
+        } else if(interactiveEnabled){
+          /* ★ 星云：仅在交互特效开启时触发 */
           soloNebula = true;
           explodedBall = activeBall;
-          soloR = safeBaseR() * activeBall.scale; 
-          
+          soloR = safeBaseR() * activeBall.scale;
+
           const bColor = colorForBall(activeBall, balls.indexOf(activeBall));
           applyColor(bColor[0], bColor[1], bColor[2]);
-          
+
           focusedBall = null;
           hoveredBall = null;
           prevHoveredBall = null;
@@ -1051,7 +1071,8 @@
 
           initNebula();
         }
-        
+        /* ★ 若 hasSplit && !interactiveEnabled：不做任何额外操作，保持 4 球状态 */
+
         activeBall = null; return;
       }
 
@@ -1077,7 +1098,8 @@
         activeBall = null; return;
       }
 
-      if(now - pointer.lastTap < 340 && pointer.taps >= 1){
+      /* ★ 双击爆炸（burst）：仅在交互特效开启时触发 */
+      if(now - pointer.lastTap < 340 && pointer.taps >= 1 && interactiveEnabled){
         pointer.taps = 0;
         AudioFX.burst();
         HapticFX.vibrate([30, 20, 30]);
@@ -1127,30 +1149,29 @@
     function initNebula() {
       nebulaDust = [];
       nebulaLinks = [];
-      
-      const numDust = 1200; 
+
+      const numDust = 1200;
 
       for(let i = 0; i < numDust; i++){
-        const r = Math.cbrt(Math.random()); 
+        const r = Math.cbrt(Math.random());
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(Math.random() * 2 - 1);
-        
+
         const nx = r * Math.sin(phi) * Math.cos(theta);
         const ny = r * Math.sin(phi) * Math.sin(theta);
         const nz = r * Math.cos(phi);
 
         let s = 0;
         const type = Math.random();
-        if(type < 0.05) { s = 3.0 + Math.random() * 4.0; } 
-        else if(type < 0.3) { s = 1.5 + Math.random() * 1.5; } 
-        else { s = 0.5 + Math.random() * 1.0; } 
+        if(type < 0.05) { s = 3.0 + Math.random() * 4.0; }
+        else if(type < 0.3) { s = 1.5 + Math.random() * 1.5; }
+        else { s = 0.5 + Math.random() * 1.0; }
 
         nebulaDust.push({
           nx, ny, nz,
           px: 0, py: 0, vx: 0, vy: 0,
           size: s * DPR,
           isLarge: type < 0.05,
-          // 👇 移除了 isWhite 属性
           twinkle: Math.random() * Math.PI * 2,
           strobe: 0.5 + Math.random() * 4.0,
           baseAlpha: 0.4 + Math.random() * 0.6,
@@ -1161,14 +1182,14 @@
         });
       }
 
-      const samplePoints = nebulaDust.filter(p => !p.isLarge).slice(0, 300); 
+      const samplePoints = nebulaDust.filter(p => !p.isLarge).slice(0, 300);
       for(let i = 0; i < samplePoints.length; i++) {
         for(let j = i + 1; j < samplePoints.length; j++) {
           const a = samplePoints[i], b = samplePoints[j];
           const d2 = (a.nx-b.nx)**2 + (a.ny-b.ny)**2 + (a.nz-b.nz)**2;
           if (d2 < 0.12) {
-            nebulaLinks.push({ 
-              a, b, 
+            nebulaLinks.push({
+              a, b,
               pulsePhase: Math.random() * Math.PI * 2,
               pulseSpeed: 1.5 + Math.random() * 2.0
             });
@@ -1180,11 +1201,11 @@
     function drawNebula(now, t) {
       CX = BASE_CX;
       CY = BASE_CY;
-      
+
       const targetR = Math.max(W, H) * 1.8;
       soloR += (targetR - soloR) * 0.01;
       R = soloR * (1 + Math.sin(t * 0.5) * 0.03);
-      
+
       let gravityCenterX = -9999, gravityCenterY = -9999, gravityStrength = 0;
       if (nebulaCharge.active) {
         nebulaCharge.value = Math.min(1, nebulaCharge.value + 0.02);
@@ -1211,7 +1232,7 @@
         const x1 = p.nx*cy + p.nz*sy, z1 = -p.nx*sy + p.nz*cy;
         const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
         const y1 = p.ny*ct - z1*st, z2 = p.ny*st + z1*ct;
-        
+
         const persp = CAM / (CAM - z2);
         let finalX = CX + x1*R*persp + p.px + waveX;
         let finalY = CY + y1*R*persp + p.py + waveY;
@@ -1244,13 +1265,12 @@
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // 🚨 优化连线：加粗，同色脉冲流动
       ctx.lineCap = 'round';
       for(let link of nebulaLinks) {
         const a = link.a, b = link.b;
         const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
         const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
-        
+
         function getProj(p) {
           const x1 = p.nx*cy + p.nz*sy, z1 = -p.nx*sy + p.nz*cy;
           const y1 = p.ny*ct - z1*st, z2 = p.ny*st + z1*ct;
@@ -1258,13 +1278,12 @@
           return { x: CX + x1*R*persp + p.px, y: CY + y1*R*persp + p.py, z: z2 };
         }
         const pa = getProj(a), pb = getProj(b);
-        
+
         if (pa.z < -0.5 || pb.z < -0.5) continue;
-        
+
         const depth = (pa.z + pb.z) / 2;
-        const normalizedDepth = Math.max(0, (depth + 1) / 2); 
-        
-        // 基础线
+        const normalizedDepth = Math.max(0, (depth + 1) / 2);
+
         const baseAlpha = 0.05 + normalizedDepth * 0.15;
         ctx.strokeStyle = `rgba(${PR},${PG},${PB},${baseAlpha})`;
         ctx.lineWidth = (1.0 + normalizedDepth * 2.0) * DPR;
@@ -1273,17 +1292,15 @@
         ctx.lineTo(pb.x, pb.y);
         ctx.stroke();
 
-        // 脉冲流动（全部使用主题色，不使用白色）
         const pulseVal = Math.sin(t * link.pulseSpeed + link.pulsePhase);
         if (pulseVal > 0.6) {
-           const progress = (pulseVal - 0.6) / 0.4; // 0~1
+           const progress = (pulseVal - 0.6) / 0.4;
            const px = pa.x + (pb.x - pa.x) * progress;
            const py = pa.y + (pb.y - pa.y) * progress;
-           
+
            ctx.strokeStyle = `rgba(${PR},${PG},${PB},${0.6 + normalizedDepth * 0.4})`;
            ctx.lineWidth = (2.0 + normalizedDepth * 2.5) * DPR;
            ctx.beginPath();
-           // 缩短拖尾，只保留一段
            const tail = Math.max(0, progress - 0.1);
            const tx = pa.x + (pb.x - pa.x) * tail;
            const ty = pa.y + (pb.y - pa.y) * tail;
@@ -1293,21 +1310,20 @@
         }
       }
 
-      // 🚨 优化粒子：全部使用主题色，无白色
       for(let item of projected) {
         const { p, x, y, z, scale } = item;
-        const normalizedDepth = (z + 1) / 2; 
-        
+        const normalizedDepth = (z + 1) / 2;
+
         const twinkle = 0.8 + 0.2 * Math.sin(now * 0.001 * p.strobe + p.twinkle);
         let alpha = p.baseAlpha * Math.max(0.2, normalizedDepth * twinkle);
-        
+
         const finalSize = p.size * scale * (0.5 + normalizedDepth * 1.5);
-        const colorStr = `${PR},${PG},${PB}`; // 强制使用主题色
-        
+        const colorStr = `${PR},${PG},${PB}`;
+
         if (p.isLarge) {
           ctx.globalAlpha = alpha * 0.7;
           ctx.drawImage(
-            glowSprite, 
+            glowSprite,
             x - finalSize * 1.5, y - finalSize * 1.5, finalSize * 3, finalSize * 3
           );
           ctx.fillStyle = `rgba(${colorStr},${alpha})`;
@@ -1319,7 +1335,7 @@
           ctx.beginPath();
           ctx.arc(x, y, Math.max(1.0, finalSize), 0, Math.PI * 2);
           ctx.fill();
-          
+
           if (normalizedDepth > 0.6) {
             ctx.fillStyle = `rgba(${colorStr},${alpha * 0.2})`;
             ctx.beginPath();
@@ -1332,9 +1348,9 @@
       if (gravityStrength > 0) {
         const pulse = 0.5 + 0.5 * Math.sin(now * 0.02);
         const coreR = 30 + 80 * nebulaCharge.value * pulse;
-        
+
         const cg = ctx.createRadialGradient(gravityCenterX, gravityCenterY, 0, gravityCenterX, gravityCenterY, coreR * 3);
-        cg.addColorStop(0, `rgba(${PR},${PG},${PB},1)`); // 使用主色
+        cg.addColorStop(0, `rgba(${PR},${PG},${PB},1)`);
         cg.addColorStop(0.2, `rgba(${PR},${PG},${PB},0.8)`);
         cg.addColorStop(0.6, `rgba(${CR},${CG},${CB},0.3)`);
         cg.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
@@ -1342,16 +1358,16 @@
         ctx.beginPath();
         ctx.arc(gravityCenterX, gravityCenterY, coreR * 3, 0, Math.PI * 2);
         ctx.fill();
-        
-        ctx.globalCompositeOperation = 'source-over'; 
+
+        ctx.globalCompositeOperation = 'source-over';
         ctx.fillStyle = '#000';
         ctx.beginPath();
         ctx.arc(gravityCenterX, gravityCenterY, coreR * nebulaCharge.value * 0.4, 0, Math.PI * 2);
         ctx.fill();
-        ctx.globalCompositeOperation = 'lighter'; 
+        ctx.globalCompositeOperation = 'lighter';
       }
 
-      ctx.restore(); 
+      ctx.restore();
     }
 
     function drawSphereFill(){
@@ -1617,6 +1633,8 @@
     }
 
     function drawNodeNetwork(t){
+      /* ★ simple 模式跳过 */
+      if(effectsMode === 'simple') return;
       for(const link of nodeLinks){
         const a = nodes[link.a], b = nodes[link.b];
         const pa = project(Math.cos(a.phi)*Math.cos(a.theta), Math.sin(a.phi), Math.cos(a.phi)*Math.sin(a.theta));
@@ -1638,6 +1656,8 @@
     }
 
     function drawCircuits(t){
+      /* ★ simple 模式跳过 */
+      if(effectsMode === 'simple') return;
       for(const c of circuits){
         const proj = c.pts.map(p=>project(p.x,p.y,p.z));
         for(let i=0;i<proj.length-1;i++){
@@ -1676,7 +1696,11 @@
       const auraOn = aura.strength > 0.02;
       const ar = aura.r * 1.25;
       const ar2 = ar*ar;
-      const list = particles.map(p=>{
+      /* ★ simple 模式跳过一部分粒子 */
+      const list = [];
+      for(let pi = 0; pi < particles.length; pi++){
+        if(effectsMode === 'simple' && (pi % 2 === 1)) continue;
+        const p = particles[pi];
         const cp = Math.cos(p.phi);
         const x = cp*Math.cos(p.theta), y = Math.sin(p.phi), z = cp*Math.sin(p.theta);
         const pr = project(x,y,z);
@@ -1691,8 +1715,8 @@
             pr.y += dy/d*push;
           }
         }
-        return {p, pr};
-      });
+        list.push({p, pr});
+      }
       list.sort((a,b)=>a.pr.z - b.pr.z);
       for(const item of list){
         const p = item.p, pr = item.pr;
@@ -1721,6 +1745,8 @@
     }
 
     function drawFlowParticles(now, t){
+      /* ★ simple 模式跳过 */
+      if(effectsMode === 'simple') return;
       for(const fp of flowParticles){
         fp.phi += fp.speed*fp.dir*0.008;
         if(fp.phi > Math.PI/2) fp.phi = -Math.PI/2;
@@ -1778,7 +1804,9 @@
     }
 
     function drawOrbitRings(now){
-      for(const ring of rings){
+      /* ★ simple 模式：只画 3 条 ring，跳过小球 */
+      const ringList = (effectsMode === 'simple') ? rings.slice(0, 3) : rings;
+      for(const ring of ringList){
         const N = 140;
         const cosT = Math.cos(ring.tilt), sinT = Math.sin(ring.tilt);
         const rr = ring.radius;
@@ -1804,6 +1832,7 @@
           drawSegments(proj, true);
         }
       }
+      if(effectsMode === 'simple') return;
       for(const ball of ringBalls){
         const ring = rings[ball.ring];
         ball.angle += ball.speed*0.006;
@@ -1831,7 +1860,10 @@
     }
 
     function drawCoreOrbiters(){
-      for(const o of coreOrbiters){
+      /* ★ simple 模式减半 */
+      const n = (effectsMode === 'simple') ? Math.floor(coreOrbiters.length / 2) : coreOrbiters.length;
+      for(let i = 0; i < n; i++){
+        const o = coreOrbiters[i];
         o.angle += o.speed*0.011*o.dir;
         const r = o.orbitR*R;
         const cosA = Math.cos(o.angle), sinA = Math.sin(o.angle);
@@ -1986,7 +2018,7 @@
       aura.strength += (aura.targetStrength - aura.strength) * Math.min(1, dt*5);
 
       if (transitionType) {
-        transitionProgress += dt * 1.8; 
+        transitionProgress += dt * 1.8;
         if (transitionProgress >= 1) {
           transitionProgress = 1;
           if (transitionType === 'nebula-to-split') {
@@ -2136,25 +2168,25 @@
         let targetBall = balls[0];
         let extraAlpha = 1;
         let extraScale = 1;
-        
+
         if (transitionType === 'split-to-single') {
           extraAlpha = transitionProgress;
           extraScale = easeOutCubic(transitionProgress);
         }
-        
+
         const oScale = targetBall.scale;
         const oOx = targetBall.ox;
         const oOy = targetBall.oy;
-        
+
         targetBall.scale = oScale * extraScale;
         targetBall.ox = oOx * extraScale;
         targetBall.oy = oOy * extraScale;
-        
+
         const vis = computeBallVisual(targetBall);
         CX = BASE_CX + vis.visOx * BR;
         CY = BASE_CY + vis.visOy * BR;
         R = BR * vis.visScale;
-        
+
         if (isFinite(CX) && isFinite(CY) && isFinite(R) && R > 0.5) {
           setDrawColor(globalColor);
           currentYaw = YAW_BASE + t*0.075 + targetBall.yawPhase + targetBall.yawOffset;
@@ -2167,13 +2199,13 @@
             ambientPulse = Math.pow(breathRaw, 3);
           }
           pulse = Math.min(1, ambientPulse + localPulse * 0.92 + targetBall.focusAmount * 0.18);
-          
+
           let breathY = 0, breathS = 1;
           if(!hasSplit){
             breathY = Math.sin(t * 0.40 + targetBall.breathSeed) * 6 * DPR;
             breathS = 1 + Math.sin(t * 0.40 + targetBall.breathSeed) * 0.006 - localPulse*0.034;
           }
-          
+
           ctx.save();
           ctx.globalAlpha = vis.visAlpha * extraAlpha;
           ctx.translate(CX, CY + breathY);
@@ -2196,7 +2228,7 @@
           drawCore(now);
           ctx.restore();
         }
-        
+
         targetBall.scale = oScale;
         targetBall.ox = oOx;
         targetBall.oy = oOy;
@@ -2253,7 +2285,7 @@
       resize: resize,
       isSplit: function(){ return hasSplit; },
       goBack: function(){
-        if (transitionType) return; 
+        if (transitionType) return;
         if (soloNebula) {
           transitionType = 'nebula-to-split';
           transitionProgress = 0;
@@ -2270,7 +2302,7 @@
         const c = QUANTUM_COLORS[state];
         if(!c) return false;
         globalState = state;
-        if (!soloNebula) applyGlobalColor(c); 
+        if (!soloNebula) applyGlobalColor(c);
         try { localStorage.setItem(STATE_STORAGE_KEY, state); } catch(e){}
         return true;
       },
@@ -2297,6 +2329,15 @@
         dimensionStates = null;
         fallbackColor = palette[Math.floor(Math.random() * palette.length)];
         if (!soloNebula) applyGlobalColor(fallbackColor);
+      },
+      /* ★ 设置 API */
+      setEffectsMode: function(mode){
+        effectsMode = (mode === 'simple') ? 'simple' : 'normal';
+        return effectsMode;
+      },
+      setInteractiveEnabled: function(v){
+        interactiveEnabled = !!v;
+        return interactiveEnabled;
       },
       sound: {
         isEnabled: function(){ return AudioFX.isEnabled(); },
