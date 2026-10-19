@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>QUANTUM · QBTI</title>
 <style>
-/* 样式代码保持不变，与上一版完全一致，此处省略以节省篇幅... */
 :root{--q-r:255;--q-g:138;--q-b:72;--q-color:rgb(var(--q-r),var(--q-g),var(--q-b));--txt:#E9EBFF;--muted:#8B90B8;}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -33,6 +32,23 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .pv-en{font-size:11.5px;color:var(--muted);margin-bottom:12px}
 .pv-tags{display:flex;flex-wrap:wrap;gap:6px}
 .pv-tag{font-size:11px;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,.06);color:#B7BCE0}
+
+/* ===== 新增：历史记录样式 ===== */
+.history-section{margin-top:40px;border-top:1px solid rgba(255,255,255,.08);padding-top:34px;}
+.history-title{font-size:13px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:12px;}
+.history-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),transparent)}
+.history-list{display:flex;flex-direction:column;gap:10px;}
+.history-card{padding:14px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.history-card:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.5);background:rgba(var(--q-r),var(--q-g),var(--q-b),.06);transform:translateX(4px);}
+.hc-left{display:flex;align-items:center;gap:14px;}
+.hc-code{font-size:16px;font-weight:800;color:#fff;letter-spacing:.04em;}
+.hc-name{font-size:14px;color:var(--muted);font-weight:500;}
+.hc-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.hc-time{font-size:12px;color:var(--muted);}
+.hc-duration{font-size:11px;color:rgba(255,255,255,.4);}
+.history-empty{font-size:13px;color:var(--muted);padding:20px 0;text-align:center;}
+/* ============================ */
+
 .quiz-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}
 .progress-track{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
 .progress-fill{height:100%;width:0;border-radius:99px;background:var(--q-color);transition:width .45s}
@@ -208,6 +224,14 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       </div>
       <div class="dim-preview" id="dimPreview"></div>
     </div>
+    
+    <!-- 👇 新增：历史记录区块 -->
+    <div class="history-section" id="historySection" style="display:none;">
+      <div class="history-title">历史观测记录</div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+    <!-- ======================= -->
+
   </section>
 
   <section class="screen" id="screen-quiz">
@@ -449,6 +473,17 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     return history[history.length - 1];
   }
 
+  function getAllResultsFromUser(){
+    if(!window.QAuth || !window.QAuth.isLoggedIn()) return [];
+    const u = window.QAuth.getCurrentUser();
+    if(!u || !u.email) return [];
+    const key = RESULT_KEY_PREFIX + u.email;
+    try {
+      const history = JSON.parse(localStorage.getItem(key) || '[]');
+      return Array.isArray(history) ? history : [];
+    } catch(e){ return []; }
+  }
+
   function applyQuantumStateToSphere(qs, ds){
     if(!window.QuantumSphere) return;
     if(qs && window.QuantumSphere.setQuantumState) window.QuantumSphere.setQuantumState(qs.type);
@@ -480,45 +515,70 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     return true;
   }
 
-  function updateRestoreBanner(){
-    const existing = document.getElementById('restoreBanner');
-    if(existing) existing.remove();
-    if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
-    const latest = getLatestResultFromUser();
-    if(!latest) return;
-    const hero = document.querySelector('#screen-intro .hero');
-    if(!hero) return;
+  /* 👇 新增：渲染历史记录列表 */
+  function renderHistory(){
+    const section = $('historySection');
+    const listEl = $('historyList');
+    if(!section || !listEl) return;
 
-    const u = window.QAuth.getCurrentUser();
-    const typeName = Q.TYPE_NAMES[latest.code] || '';
-    const banner = document.createElement('div');
-    banner.id = 'restoreBanner';
-    banner.style.cssText = [
-      'margin:0 0 26px;padding:16px 20px;border-radius:14px;',
-      'border:1px solid rgba(var(--q-r),var(--q-g),var(--q-b),.35);',
-      'background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);',
-      'display:flex;align-items:center;gap:14px;flex-wrap:wrap;'
-    ].join('');
-    banner.innerHTML =
-      '<div style="flex:1;min-width:200px;">'
-      + '<div style="font-size:11px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">'
-      + '欢迎回来，' + Q.escapeHTML(u.username) + '</div>'
-      + '<div style="font-size:14.5px;color:#fff;font-weight:700;">'
-      + '上次测评：' + latest.code + '-' + latest.suffix
-      + (typeName ? ' · ' + typeName : '') + '</div>'
-      + '<div style="font-size:12px;color:var(--muted);margin-top:3px;">'
-      + formatTime(latest.ts) + '</div>'
-      + '</div>'
-      + '<button id="btnViewHistory" class="btn sm primary" type="button">查看上次结果</button>';
+    const history = getAllResultsFromUser();
+    if(history.length === 0){
+      section.style.display = 'none';
+      return;
+    }
 
-    hero.insertBefore(banner, hero.firstChild);
-    document.getElementById('btnViewHistory').addEventListener('click', () => {
-      restoreFromHistory(latest);
-      const target = document.getElementById('screen-result');
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      if(target) target.classList.add('active');
-      window.scrollTo({top: 0, behavior: 'smooth'});
+    section.style.display = 'block';
+    
+    // 反转列表，最新的在最上面
+    const sorted = history.slice().reverse();
+
+    listEl.innerHTML = sorted.map(entry => {
+      const code = entry.code + '-' + entry.suffix;
+      const typeName = Q.TYPE_NAMES[entry.code] || '未知类型';
+      
+      // 计算耗时
+      let durationStr = '时长未知';
+      if(entry.timings && Object.keys(entry.timings).length > 0){
+        const totalSec = Object.values(entry.timings).reduce((a,b) => a + b, 0);
+        const m = Math.floor(totalSec / 60);
+        const s = Math.round(totalSec % 60);
+        durationStr = `耗时 ${m > 0 ? m + '分' : ''}${s}秒`;
+      }
+
+      // 获取类型名
+      const nameObj = Q.TYPE_NAMES[entry.code] || '';
+      
+      return `<div class="history-card" data-ts="${entry.ts}">
+        <div class="hc-left">
+          <div class="hc-code">${code}</div>
+          <div class="hc-name">${nameObj}</div>
+        </div>
+        <div class="hc-right">
+          <div class="hc-time">${formatTime(entry.ts)}</div>
+          <div class="hc-duration">${durationStr}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // 绑定点击事件
+    listEl.querySelectorAll('.history-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const ts = Number(card.dataset.ts);
+        const entry = history.find(h => h.ts === ts);
+        if(entry){
+          restoreFromHistory(entry);
+          const target = document.getElementById('screen-result');
+          document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+          if(target) target.classList.add('active');
+          window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+      });
     });
+  }
+
+  function updateRestoreBanner(){
+    // 既然有了历史记录列表，之前的横幅就可以去掉了，这里直接调用 renderHistory 更新
+    renderHistory();
   }
 
   $('qTotal').textContent = Q.QUESTIONS.length;
@@ -599,9 +659,8 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.result = Q.computeResult(state.answers);
     state.restoredTs = null;
     state.aiReportText = null;
-    // 👈 计算真实性，但不渲染在学生端
+    // 计算真实性，但不渲染在学生端
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
-    console.log('[QBTI] 真实性已在后台静默计算，仅同步给家长端');
 
     let qs = null, ds = null;
     if(Q.analyzeQuantumState){
@@ -666,8 +725,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     if(hero) hero.appendChild(wrap);
   }
 
-  // ❌ 彻底删除了 renderValidityCard 函数，学生端绝对不可见。
-
   function renderResult(res, restoredTs){
     const baseCode = res.letters.join('');
     const typeName = Q.TYPE_NAMES[baseCode] || '未知类型';
@@ -710,12 +767,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       const tip = document.createElement('div');
       tip.id = 'restoredTip';
       tip.style.cssText = 'margin:18px auto 0;padding:10px 18px;border-radius:99px;font-size:12.5px;display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted);';
-      tip.innerHTML = '⏱ 上次测评时间：' + formatTime(restoredTs) + ' · 点击下方「重新观测」可重新测试';
+      tip.innerHTML = '⏱ 本次记录时间：' + formatTime(restoredTs);
       const hero = document.querySelector('.result-hero');
       if(hero) hero.appendChild(tip);
     }
-
-    // ❌ 学生端不调用 renderValidityCard
 
     requestAnimationFrame(() => {
       document.querySelectorAll('.dsc-seg').forEach((el, i) => setTimeout(() => { el.style.width = el.dataset.w + '%'; }, 60 + i*40));
@@ -929,8 +984,8 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         state.validity = null;
         state.aiReportText = null;
         state.restoredTs = null;
-        const banner = document.getElementById('restoreBanner');
-        if(banner) banner.remove();
+        const section = document.getElementById('historySection');
+        if(section) section.style.display = 'none';
       }
     });
   }
