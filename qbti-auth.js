@@ -1,5 +1,5 @@
 /* ============================================================
-   QAuth —— QBTI 学生登录/注册/绑定家长 (含二维码生成)
+   QAuth —— QBTI 学生登录/注册/绑定家长 (含二维码生成 + 忘记密码)
    ============================================================ */
 (function(){
   'use strict';
@@ -89,17 +89,6 @@
   const RE_PHONE = /^1[3-9]\d{9}$/;
   const RE_USERNAME = /^[a-zA-Z0-9_\u4e00-\u9fa5]{2,20}$/;
 
-  function validateRegister(data){
-    const errs = {};
-    if(!RE_EMAIL.test(data.email)) errs.email = '邮箱格式不正确';
-    if(!RE_PHONE.test(data.phone)) errs.phone = '请输入 11 位中国大陆手机号';
-    if(!data.code || data.code.length !== 6) errs.code = '请输入 6 位验证码';
-    if(!RE_USERNAME.test(data.username)) errs.username = '用户名 2-20 位（字母/数字/下划线/中文）';
-    if(!data.password || data.password.length < 6) errs.password = '密码至少 6 位';
-    if(data.password !== data.confirm) errs.confirm = '两次密码不一致';
-    return errs;
-  }
-
   function toast(msg, type){
     type = type || 'info';
     const el = document.createElement('div');
@@ -180,8 +169,6 @@
 .qauth-toast-ok{border-color:rgba(80,220,140,.5);background:rgba(80,220,140,.14);color:#9EEBB8;}
 .qauth-toast-err{border-color:rgba(235,65,75,.5);background:rgba(235,65,75,.14);color:#FFB4BE;}
 .qauth-toast-info{border-color:rgba(var(--q-r,255),var(--q-g,138),var(--q-b,72),.5);background:rgba(var(--q-r,255),var(--q-g,138),var(--q-b,72),.14);color:var(--q-color,rgb(255,138,72));}
-
-/* 绑定家长区域 */
 .qauth-bind-section{margin-top:20px;padding:18px;border-radius:14px;border:1px solid rgba(var(--q-r,255),var(--q-g,138),var(--q-b,72),.25);background:rgba(var(--q-r,255),var(--q-g,138),var(--q-b,72),.05);}
 .qauth-bind-title{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:700;color:#fff;margin-bottom:12px;}
 .qauth-bind-count{font-size:11.5px;color:var(--muted,#8B90B8);font-weight:500;}
@@ -199,8 +186,6 @@
 .qauth-bind-gen-btn:disabled{opacity:.45;cursor:not-allowed;border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:rgba(255,255,255,.4);}
 .qauth-bind-refresh-btn{padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:var(--muted,#8B90B8);font-size:13px;cursor:pointer;font-family:inherit;transition:.2s;}
 .qauth-bind-refresh-btn:hover{color:#fff;background:rgba(255,255,255,.06);}
-
-/* 邀请码弹窗 */
 .qauth-invite-mask{position:fixed;inset:0;z-index:350;background:rgba(3,4,12,.88);backdrop-filter:blur(8px);display:grid;place-items:center;padding:20px;}
 .qauth-invite-card{width:100%;max-width:400px;padding:30px 26px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:#0B0D1C;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.6);}
 .qauth-invite-kicker{font-size:11px;letter-spacing:.22em;color:var(--muted,#8B90B8);text-transform:uppercase;margin-bottom:14px;}
@@ -246,7 +231,7 @@
             </div>
             <button type="submit" class="qauth-submit">登录</button>
           </form>
-          <div class="qauth-switch">还没有账户？<a data-switch="register">立即注册</a></div>
+          <div class="qauth-switch"><a data-switch="forgot">忘记密码？</a> · 还没有账户？<a data-switch="register">立即注册</a></div>
         </div>
 
         <div class="qauth-view" data-view="register" style="display:none;">
@@ -293,6 +278,38 @@
             <button type="submit" class="qauth-submit">创建账户</button>
           </form>
           <div class="qauth-switch">已有账户？<a data-switch="login">去登录</a></div>
+        </div>
+
+        <div class="qauth-view" data-view="forgot" style="display:none;">
+          <h2 class="qauth-title">重置密码</h2>
+          <p class="qauth-subtitle">通过注册邮箱验证身份</p>
+          <form class="qauth-form" data-form="forgot" autocomplete="on">
+            <div class="qauth-field" data-name="email">
+              <label>注册邮箱</label>
+              <input name="email" type="email" placeholder="your@email.com" />
+              <div class="qauth-err"></div>
+            </div>
+            <div class="qauth-field" data-name="code">
+              <label>验证码</label>
+              <div class="qauth-code-row">
+                <input name="code" type="text" placeholder="6 位验证码" inputmode="numeric" maxlength="6" />
+                <button type="button" class="qauth-send-code" data-action="send-forgot-code">发送验证码</button>
+              </div>
+              <div class="qauth-err"></div>
+            </div>
+            <div class="qauth-field" data-name="password">
+              <label>新密码</label>
+              <input name="password" type="password" placeholder="至少 6 位" />
+              <div class="qauth-err"></div>
+            </div>
+            <div class="qauth-field" data-name="confirm">
+              <label>确认新密码</label>
+              <input name="confirm" type="password" placeholder="再次输入新密码" />
+              <div class="qauth-err"></div>
+            </div>
+            <button type="submit" class="qauth-submit">重置密码</button>
+          </form>
+          <div class="qauth-switch"><a data-switch="login">返回登录</a></div>
         </div>
 
         <div class="qauth-view" data-view="profile" style="display:none;">
@@ -351,6 +368,8 @@
     if(codeTimer){ clearInterval(codeTimer); codeTimer = null; }
     const btn = document.querySelector('[data-action="send-code"]');
     if(btn){ btn.disabled = false; btn.textContent = '发送验证码'; }
+    const btn2 = document.querySelector('[data-action="send-forgot-code"]');
+    if(btn2){ btn2.disabled = false; btn2.textContent = '发送验证码'; }
   }
 
   function setFieldError(form, fieldName, msg){
@@ -390,12 +409,128 @@
     modal.querySelectorAll('[data-switch]').forEach(a => {
       a.addEventListener('click', () => showView(a.dataset.switch));
     });
+    
     const sendBtn = modal.querySelector('[data-action="send-code"]');
     if(sendBtn) sendBtn.addEventListener('click', handleSendCode);
+    
+    const sendForgotBtn = modal.querySelector('[data-action="send-forgot-code"]');
+    if(sendForgotBtn) sendForgotBtn.addEventListener('click', handleSendForgotCode);
+
     modal.querySelector('[data-form="login"]').addEventListener('submit', handleLoginSubmit);
     modal.querySelector('[data-form="register"]').addEventListener('submit', handleRegisterSubmit);
+    modal.querySelector('[data-form="forgot"]').addEventListener('submit', handleForgotSubmit);
+    
     const logoutBtn = modal.querySelector('[data-action="logout"]');
     if(logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+  }
+
+  async function handleSendForgotCode(){
+    const form = document.querySelector('#qauthModal [data-form="forgot"]');
+    const data = getFormData(form);
+    const btn = document.querySelector('#qauthModal [data-action="send-forgot-code"]');
+    clearFormErrors(form);
+
+    if(!RE_EMAIL.test(data.email)){ setFieldError(form, 'email', '请先填写正确的邮箱'); return; }
+    if(!findUserByEmail(data.email)){ setFieldError(form, 'email', '该邮箱尚未注册'); return; }
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = '发送中…';
+
+    try {
+      const res = await fetch(API_BASE + '/api/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email })
+      });
+      const result = await res.json();
+      if(!res.ok || !result.success){
+        setFieldError(form, 'code', result.error || '发送失败');
+        toast(result.error || '发送失败', 'err');
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+      toast(result.message || '验证码已发送', 'ok');
+    } catch(err){
+      setFieldError(form, 'code', '无法连接服务器');
+      toast('无法连接服务器', 'err');
+      btn.disabled = false;
+      btn.textContent = originalText;
+      return;
+    }
+
+    let remaining = Math.floor(CODE_COOLDOWN / 1000);
+    btn.textContent = remaining + 's';
+    if(codeTimer) clearInterval(codeTimer);
+    codeTimer = setInterval(() => {
+      remaining--;
+      if(remaining <= 0){
+        clearInterval(codeTimer);
+        codeTimer = null;
+        btn.disabled = false;
+        btn.textContent = '发送验证码';
+      } else {
+        btn.textContent = remaining + 's';
+      }
+    }, 1000);
+  }
+
+  async function handleForgotSubmit(e){
+    e.preventDefault();
+    const form = e.target;
+    const data = getFormData(form);
+    const submitBtn = form.querySelector('.qauth-submit');
+    clearFormErrors(form);
+
+    if(!RE_EMAIL.test(data.email)){ setFieldError(form, 'email', '邮箱格式不正确'); return; }
+    if(!data.code || data.code.length !== 6){ setFieldError(form, 'code', '请输入 6 位验证码'); return; }
+    if(!data.password || data.password.length < 6){ setFieldError(form, 'password', '密码至少 6 位'); return; }
+    if(data.password !== data.confirm){ setFieldError(form, 'confirm', '两次密码不一致'); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = '验证中…';
+
+    try {
+      // 调用现有的 verify-code 验证验证码
+      const res = await fetch(API_BASE + '/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, code: data.code })
+      });
+      const result = await res.json();
+      if(!res.ok || !result.success){
+        setFieldError(form, 'code', result.error || '验证码不正确');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '重置密码';
+        return;
+      }
+    } catch(err){
+      setFieldError(form, 'code', '无法连接服务器');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '重置密码';
+      return;
+    }
+
+    submitBtn.textContent = '重置中…';
+    setTimeout(() => {
+      // 验证通过，在前端 localStorage 直接修改密码
+      const users = loadUsers();
+      const idx = users.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
+      if(idx > -1){
+        const salt = genSalt();
+        users[idx].salt = salt;
+        users[idx].passwordHash = hashPassword(data.password, salt);
+        saveUsers(users);
+        
+        toast('密码重置成功，请使用新密码登录', 'ok');
+        showView('login');
+      } else {
+        toast('找不到该用户数据', 'err');
+      }
+      submitBtn.disabled = false;
+      submitBtn.textContent = '重置密码';
+    }, 320);
   }
 
   async function handleSendCode(){
@@ -414,7 +549,6 @@
     sendBtn.textContent = '发送中…';
 
     try {
-      // 检查该邮箱是否已被家长端注册
       const checkRes = await fetch(API_BASE + '/api/check-email?email=' + encodeURIComponent(data.email) + '&role=student');
       const checkData = await checkRes.json();
       if (!checkData.available) {
@@ -441,7 +575,7 @@
       toast(result.message || '验证码已发送', 'ok');
     } catch(err){
       setFieldError(form, 'code', '无法连接服务器');
-      toast('无法连接服务器，请确认已启动 server.js', 'err');
+      toast('无法连接服务器', 'err');
       sendBtn.disabled = false;
       sendBtn.textContent = originalText;
       return;
@@ -470,7 +604,13 @@
     const submitBtn = form.querySelector('.qauth-submit');
     clearFormErrors(form);
 
-    const errs = validateRegister(data);
+    const errs = {};
+    if(!RE_EMAIL.test(data.email)) errs.email = '邮箱格式不正确';
+    if(!RE_PHONE.test(data.phone)) errs.phone = '请输入 11 位中国大陆手机号';
+    if(!data.code || data.code.length !== 6) errs.code = '请输入 6 位验证码';
+    if(!RE_USERNAME.test(data.username)) errs.username = '用户名 2-20 位（字母/数字/下划线/中文）';
+    if(!data.password || data.password.length < 6) errs.password = '密码至少 6 位';
+    if(data.password !== data.confirm) errs.confirm = '两次密码不一致';
     if(Object.keys(errs).length > 0){
       Object.keys(errs).forEach(k => setFieldError(form, k, errs[k]));
       toast('请检查表单填写', 'err');
@@ -522,7 +662,6 @@
       users.push(user);
       saveUsers(users);
       
-      // 同步学生邮箱到服务端用于排他性校验
       fetch(API_BASE + '/api/student/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -712,7 +851,8 @@
     const old = document.getElementById('qauthInviteMask');
     if(old) old.remove();
 
-    const shareUrl = window.location.origin + '/parent?code=' + code;
+    const PARENT_APP_URL = 'https://你的家长端域名.onrender.com'; 
+    const shareUrl = PARENT_APP_URL + '?code=' + code;
 
     const mask = document.createElement('div');
     mask.id = 'qauthInviteMask';
