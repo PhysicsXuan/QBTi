@@ -179,7 +179,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       <button class="quantum-link nav-go active" data-target="screen-home">主页</button>
       <button class="quantum-link nav-go" data-target="screen-intro">QBTI</button>
       <button class="quantum-link nav-go" data-target="screen-contact">联系我们</button>
-      <a class="quantum-link" href="/parent">家长端 →</a>
+      <!-- 家长端入口已被移除 -->
     </div>
   </div>
 </nav>
@@ -375,7 +375,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     ).join('');
   })();
 
-  /* ---------- 报告同步到后端 ---------- */
   async function syncReportToServer(){
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
     const u = window.QAuth.getCurrentUser();
@@ -414,7 +413,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   }
 
-  /* ---------- 历史记录 ---------- */
   function saveResultToUser(result, qs, ds, answers){
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
     const u = window.QAuth.getCurrentUser();
@@ -524,7 +522,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     });
   }
 
-  /* ---------- 测验 ---------- */
   $('qTotal').textContent = Q.QUESTIONS.length;
 
   function renderGroupStrip(){
@@ -765,7 +762,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     $('btnAI').textContent = '生成报告';
   }
 
-  /* ---------- AI ---------- */
   function getCfg(){
     const cfg = Object.assign({}, DEFAULT_CFG);
     try {
@@ -845,7 +841,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   });
 
-  /* ---------- 按钮 ---------- */
   $('btnStart').addEventListener('click', () => {
     state.idx = 0;
     state.answers = {};
@@ -864,7 +859,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   });
 
   $('btnRestart').addEventListener('click', () => {
-    // 🚨 二次询问弹窗
     if(!confirm('若重做问卷，量子球将会被新问卷覆盖，但您仍可访问历史问卷记录。\n\n确定要重新开始吗？')) return;
     
     state.idx = 0;
@@ -914,7 +908,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     } catch(e){ alert('复制失败'); }
   });
 
-  /* ---------- API 设置 ---------- */
   $('btnGear').addEventListener('click', () => {
     const cfg = getCfg();
     $('inpUrl').value = cfg.url;
@@ -965,7 +958,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   });
 
-  /* ---------- 登录状态 ---------- */
   if(window.QAuth && window.QAuth.onChange){
     window.QAuth.onChange(function(info){
       console.log('[QBTI] 登录状态变化:', info);
