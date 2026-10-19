@@ -20,16 +20,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
 .screen{display:none;flex:1;padding:56px 22px 80px;max-width:980px;margin:0 auto;width:100%}
 .screen.active{display:block}
-.btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.035);color:#fff;padding:13px 26px;border-radius:12px;font-size:calc(15px * var(--q-fs,1));cursor:pointer;transition:.25s;font-family:inherit;}
+.btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.035);color:#fff;padding:13px 26px;border-radius:12px;font-size:15px;cursor:pointer;transition:.25s;font-family:inherit;}
 .btn:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.7);background:rgba(var(--q-r),var(--q-g),var(--q-b),.09)}
 .btn:disabled{opacity:.32;cursor:not-allowed}
 .btn.primary{background:var(--q-color);border:none;color:#fff;font-weight:700;box-shadow:0 0 32px rgba(var(--q-r),var(--q-g),var(--q-b),.24);}
-.btn.sm{padding:9px 18px;font-size:calc(13.5px * var(--q-fs,1));border-radius:10px}
+.btn.sm{padding:9px 18px;font-size:13.5px;border-radius:10px}
 .btn.ghost{background:transparent}
 .badge{display:inline-flex;align-items:center;gap:8px;padding:7px 15px;border-radius:99px;font-size:12px;letter-spacing:.14em;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.035);color:rgba(255,255,255,.62);text-transform:uppercase;margin-bottom:26px;}
 .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--q-color);box-shadow:0 0 10px var(--q-color);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-.hero h1{font-size:clamp(calc(34px * var(--q-fs,1)),calc(7.2vw * var(--q-fs,1)),calc(58px * var(--q-fs,1)));font-weight:800;line-height:1.16;letter-spacing:-.02em;margin-bottom:20px;color:#fff}
+.hero h1{font-size:clamp(34px,7.2vw,58px);font-weight:800;line-height:1.16;letter-spacing:-.02em;margin-bottom:20px;color:#fff}
 .hero h1 .grad{background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .lead{color:var(--muted);font-size:clamp(15px,2.4vw,17px);max-width:620px;margin-bottom:34px}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:56px}
@@ -53,7 +53,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .hc-time{font-size:12px;color:var(--muted);}
 .hc-duration{font-size:11px;color:rgba(255,255,255,.4);}
 
-.page-back-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted);font-size:calc(13.5px * var(--q-fs,1));cursor:pointer;padding:8px 16px;border-radius:99px;font-family:inherit;transition:.2s;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);text-decoration:none;}
+.page-back-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted);font-size:13.5px;cursor:pointer;padding:8px 16px;border-radius:99px;font-family:inherit;transition:.2s;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);text-decoration:none;}
 .page-back-btn:hover{color:#fff;border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.5);background:rgba(var(--q-r),var(--q-g),var(--q-b),.1);}
 .back-btn-wrap{padding-top:12px;margin-bottom:20px;}
 
@@ -68,9 +68,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .group-dot.active{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.75);color:#fff;background:rgba(var(--q-r),var(--q-g),var(--q-b),.15);}
 .group-dot .gd-num{font-weight:700}
 .quiz-card{padding:38px 32px;border-radius:22px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.025);}
-.q-text{font-size:clamp(calc(19px * var(--q-fs,1)),calc(3.4vw * var(--q-fs,1)),calc(25px * var(--q-fs,1)));font-weight:700;line-height:1.5;color:#fff}
+.q-text{font-size:clamp(19px,3.4vw,25px);font-weight:700;line-height:1.5;color:#fff}
 .options{display:flex;flex-direction:column;gap:11px;margin-top:32px}
-.opt{display:flex;align-items:center;gap:14px;width:100%;padding:15px 20px;border-radius:14px;text-align:left;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.018);color:var(--txt);font-size:calc(15px * var(--q-fs,1));font-family:inherit;cursor:pointer;transition:.2s;}
+.opt{display:flex;align-items:center;gap:14px;width:100%;padding:15px 20px;border-radius:14px;text-align:left;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.018);color:var(--txt);font-size:15px;font-family:inherit;cursor:pointer;transition:.2s;}
 .opt:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.62);background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);transform:translateX(5px)}
 .opt.selected{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.62);background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);}
 .opt .dot{width:9px;height:9px;border-radius:50%;border:2px solid var(--muted);flex-shrink:0;}
@@ -83,9 +83,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .type-portrait::before{content:'';position:absolute;width:190px;height:38px;bottom:4px;border-radius:50%;background:radial-gradient(ellipse,rgba(var(--q-r),var(--q-g),var(--q-b),.30),rgba(var(--q-r),var(--q-g),var(--q-b),0) 70%);filter:blur(8px);}
 .type-portrait img{position:relative;z-index:1;width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 14px 24px rgba(0,0,0,.32));}
 .r-label{font-size:12px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-bottom:18px}
-.code{font-size:clamp(calc(40px * var(--q-fs,1)),calc(9.5vw * var(--q-fs,1)),calc(72px * var(--q-fs,1)));font-weight:800;letter-spacing:.06em;line-height:1.05;background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.code{font-size:clamp(40px,9.5vw,72px);font-weight:800;letter-spacing:.06em;line-height:1.05;background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 .code .code-suffix{color:var(--q-color);-webkit-text-fill-color:var(--q-color);}
-.type-name{margin-top:18px;font-size:clamp(calc(20px * var(--q-fs,1)),calc(3.8vw * var(--q-fs,1)),calc(28px * var(--q-fs,1)));font-weight:800;color:#fff;letter-spacing:.08em;text-shadow:0 0 24px rgba(var(--q-r),var(--q-g),var(--q-b),.4);}
+.type-name{margin-top:18px;font-size:clamp(20px,3.8vw,28px);font-weight:800;color:#fff;letter-spacing:.08em;text-shadow:0 0 24px rgba(var(--q-r),var(--q-g),var(--q-b),.4);}
 .type-name .tn-suffix{font-size:.72em;color:#9EEBFF;font-weight:700;}
 .r-tagline{color:var(--muted);font-size:14.5px;max-width:680px;margin:24px auto 0;line-height:1.75}
 .section-title{font-size:13px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin:52px 0 18px;display:flex;align-items:center;gap:12px;}
@@ -166,7 +166,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .quantum-nav-inner{width:min(1180px,calc(100% - 40px));display:flex;align-items:center;justify-content:space-between;}
 .quantum-brand{border:0;background:none;color:#fff;cursor:pointer;font-size:15px;font-weight:700;letter-spacing:.22em;padding:8px 0;}
 .quantum-links{display:flex;align-items:center;gap:8px}
-.quantum-link{border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;padding:10px 17px;border-radius:999px;font:inherit;font-size:calc(13px * var(--q-fs,1));letter-spacing:.08em;transition:.25s;text-decoration:none;display:inline-flex;align-items:center;}
+.quantum-link{border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;padding:10px 17px;border-radius:999px;font:inherit;font-size:13px;letter-spacing:.08em;transition:.25s;text-decoration:none;display:inline-flex;align-items:center;}
 .quantum-link:hover{color:#fff;background:rgba(255,255,255,.06)}
 .quantum-link.active{color:#fff;background:rgba(255,255,255,.09)}
 #screen-home{display:none;max-width:none !important;width:100% !important;min-height:100vh;height:100vh;padding:0 !important;margin:0 !important;position:relative;overflow:hidden;align-items:center;justify-content:center;background:#000 !important;}
@@ -180,14 +180,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .contact-page{min-height:calc(100vh - 72px);display:grid;place-items:center;text-align:center;}
 .contact-inner{max-width:600px}
 .contact-kicker{color:rgba(255,255,255,.42);font-size:11px;letter-spacing:.28em;text-transform:uppercase;margin-bottom:18px;}
-.contact-title{font-size:clamp(calc(36px * var(--q-fs,1)),calc(7vw * var(--q-fs,1)),calc(72px * var(--q-fs,1)));font-weight:700;letter-spacing:-.04em;color:#fff}
+.contact-title{font-size:clamp(36px,7vw,72px);font-weight:700;letter-spacing:-.04em;color:#fff}
 .contact-text{margin:20px auto 30px;color:rgba(255,255,255,.48);max-width:500px;font-size:15px;line-height:1.9;}
 .contact-mail{display:inline-flex;padding:12px 20px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:#fff;text-decoration:none;font-size:13px;}
 
 /* 设置面板 */
 .settings-mask{position:fixed;inset:0;background:rgba(3,4,12,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;display:none;place-items:center;padding:20px;overflow-y:auto;}
 .settings-mask.show{display:grid;}
-.settings-modal{width:100%;max-width:480px;padding:28px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:#0B0D1C;position:relative;max-height:90vh;overflow-y:auto;animation:sSlide .28s cubic-bezier(.2,.9,.3,1.2);}
+.settings-modal{width:100%;max-width:500px;padding:28px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:#0B0D1C;position:relative;max-height:90vh;overflow-y:auto;animation:sSlide .28s cubic-bezier(.2,.9,.3,1.2);}
 @keyframes sSlide{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .settings-modal h3{font-size:18px;color:#fff;margin-bottom:4px;font-weight:700;}
 .settings-sub{font-size:12.5px;color:var(--muted);margin-bottom:20px;line-height:1.6;}
@@ -201,10 +201,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .settings-row>label{font-size:13.5px;color:#fff;font-weight:500;display:flex;align-items:baseline;gap:6px;flex:1;min-width:130px;}
 .settings-row .hint{font-size:11px;color:var(--muted);font-weight:400;}
 .settings-control{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.settings-control input[type=range]{-webkit-appearance:none;appearance:none;width:140px;height:4px;border-radius:99px;background:rgba(255,255,255,.1);outline:none;cursor:pointer;}
+.settings-control input[type=range]{-webkit-appearance:none;appearance:none;width:160px;height:4px;border-radius:99px;background:rgba(255,255,255,.1);outline:none;cursor:pointer;}
 .settings-control input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--q-color);cursor:pointer;box-shadow:0 0 12px rgba(var(--q-r),var(--q-g),var(--q-b),.5);}
 .settings-control input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--q-color);cursor:pointer;border:0;}
-.settings-val{font-size:12px;color:var(--muted);min-width:42px;text-align:right;font-variant-numeric:tabular-nums;}
+.settings-val{font-size:12px;color:var(--muted);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;}
+
+/* ★ 语言下拉 */
+.settings-select{appearance:none;-webkit-appearance:none;background-color:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:13px;padding:8px 32px 8px 14px;border-radius:10px;font-family:inherit;cursor:pointer;outline:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M2 2l4 4 4-4' stroke='%238B90B8' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 10px center;background-size:12px 8px;min-width:160px;}
+.settings-select:focus{border-color:var(--q-color);}
+.settings-select option{background:#0B0D1C;color:#fff;}
+
 .settings-seg{display:flex;gap:4px;padding:3px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
 .settings-seg button{padding:6px 14px;border:0;background:transparent;color:var(--muted);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:7px;transition:.2s;white-space:nowrap;}
 .settings-seg button.active{background:var(--q-color);color:#fff;box-shadow:0 2px 10px rgba(var(--q-r),var(--q-g),var(--q-b),.32);}
@@ -225,6 +231,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   .settings-modal{padding:24px 20px;}
   .settings-row>label{min-width:100px;font-size:12.5px;}
   .settings-control input[type=range]{width:110px;}
+  .settings-select{min-width:130px;font-size:12px;}
 }
 @media(max-width:600px){
   .screen{padding:36px 16px 70px}
@@ -399,15 +406,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <div class="settings-group">
       <div class="settings-group-title" data-i18n="settings.sectionDisplay">显示</div>
       <div class="settings-row">
-        <label data-i18n="settings.language">语言</label>
-        <div class="settings-seg" id="setLang"></div>
+        <label for="setLang" data-i18n="settings.language">语言</label>
+        <select class="settings-select" id="setLang"></select>
       </div>
       <div class="settings-row">
-        <label data-i18n="settings.fontSize">字体大小</label>
-        <div class="settings-seg" id="setFontSize">
-          <button type="button" data-val="sm" data-i18n="settings.fontSize.sm">小</button>
-          <button type="button" data-val="md" data-i18n="settings.fontSize.md">中</button>
-          <button type="button" data-val="lg" data-i18n="settings.fontSize.lg">大</button>
+        <label for="setFontSize" data-i18n="settings.fontSize">字体大小</label>
+        <div class="settings-control">
+          <input type="range" min="80" max="150" step="1" id="setFontSize" />
+          <span class="settings-val" id="setFontSizeVal">100%</span>
         </div>
       </div>
       <div class="settings-row">
@@ -419,7 +425,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       </div>
     </div>
 
-    <div class="settings-note" data-i18n="settings.langNote">※ 语言切换会同步问卷题目与界面文字。日/韩语下问卷题目暂用英文显示。</div>
+    <div class="settings-note" id="setLangNote" data-i18n="settings.langNote">※ 语言切换会同步问卷题目与界面文字。</div>
 
     <div class="settings-actions">
       <button class="settings-reset" id="setReset" data-i18n="settings.reset">恢复默认</button>
@@ -472,46 +478,26 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   if(!Q){ console.error('[QBTI] qbti-core.js 未加载'); return; }
 
   const state = {
-    idx: 0,
-    answers: {},
-    timings: {},
-    questionShownAt: {},
-    validity: null,
-    locked: false,
-    result: null,
-    quantumState: null,
-    dimStates: null,
-    aiReportText: null,
-    restoredTs: null
+    idx: 0, answers: {}, timings: {}, questionShownAt: {},
+    validity: null, locked: false, result: null,
+    quantumState: null, dimStates: null, aiReportText: null, restoredTs: null
   };
   const CFG_KEY = 'qbti_config_v2';
   const RESULT_KEY_PREFIX = 'qbti_results_';
-  const DEFAULT_CFG = {
-    url: 'https://api.deepseek.com/chat/completions',
-    key: '',
-    model: 'deepseek-chat'
-  };
+  const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat' };
 
-  function isAdmin(){
-    return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin());
-  }
+  function isAdmin(){ return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin()); }
   function refreshAdminUI(info){
     const gear = $('btnGear');
     if(!gear) return;
-    const admin = info && info.isLoggedIn
-      ? (info.user && info.user.role === 'admin')
-      : isAdmin();
+    const admin = info && info.isLoggedIn ? (info.user && info.user.role === 'admin') : isAdmin();
     gear.style.display = admin ? '' : 'none';
-    if(!admin){
-      const mask = $('modalMask');
-      if(mask) mask.classList.remove('show');
-    }
+    if(!admin){ const mask = $('modalMask'); if(mask) mask.classList.remove('show'); }
   }
   function formatTime(ts){
     const d = new Date(ts);
     const pad = n => n < 10 ? '0'+n : ''+n;
-    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
-      ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
   function goToScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -532,16 +518,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('btnBackFromContact').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromResult').addEventListener('click', () => goToScreen('screen-intro'));
   $('btnQuitQuiz').addEventListener('click', () => {
-    const msg = window.QBTI_I18N && window.QBTI_I18N.current !== 'zh'
-      ? 'Quit the quiz and return? Progress will not be saved.'
-      : '确定要放弃本次答题并返回吗？当前答题进度将不会保存。';
+    const I18N = window.QBTI_I18N;
+    const msg = (I18N && I18N.current !== 'zh-CN') ? 'Quit the quiz and return? Progress will not be saved.' : '确定要放弃本次答题并返回吗？当前答题进度将不会保存。';
     if(confirm(msg)) goToScreen('screen-intro');
   });
   $('btnBackSphere').addEventListener('click', () => {
     if(window.QuantumSphere && window.QuantumSphere.goBack) window.QuantumSphere.goBack();
   });
 
-  /* ★ 维度预览（i18n） */
   function renderDimPreview(){
     const el = $('dimPreview');
     if(!el) return;
@@ -553,8 +537,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         + '<div class="pv-name">' + dimName + '</div>'
         + '<div class="pv-en">' + d.en + '</div>'
         + '<div class="pv-tags">' + d.letters.map(l => {
-          const s = Q.SUBDIMS.find(x => x.id === l);
-          const subName = I18N ? I18N.sub(l) : s.name;
+          const subName = I18N ? I18N.sub(l) : (Q.SUBDIMS.find(x=>x.id===l)||{}).name;
           return '<span class="pv-tag" style="background:' + Q.DIM_COLORS[d.id][l] + '22;color:' + Q.DIM_COLORS[d.id][l] + '">' + l + ' · ' + subName + '</span>';
         }).join('') + '</div></div>';
     }).join('');
@@ -583,8 +566,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     };
     try {
       const res = await fetch('/api/report/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentEmail: u.email, studentUsername: u.username, payload })
       });
       if(res.ok) console.log('[QBTI] 报告已同步到服务器');
@@ -597,40 +579,23 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(!u || !u.email) return;
     const key = RESULT_KEY_PREFIX + u.email;
     let history = [];
-    try {
-      history = JSON.parse(localStorage.getItem(key) || '[]');
-      if(!Array.isArray(history)) history = [];
-    } catch(e){ history = []; }
-    history.push({
-      ts: Date.now(),
-      answers: Object.assign({}, answers),
-      timings: state.timings ? Object.assign({}, state.timings) : {},
-      code: result.letters.join(''),
-      suffix: result.suffix.letter,
-      quantumState: qs ? qs.type : null,
-      dimStates: ds
-    });
+    try { history = JSON.parse(localStorage.getItem(key) || '[]'); if(!Array.isArray(history)) history = []; } catch(e){ history = []; }
+    history.push({ ts: Date.now(), answers: Object.assign({}, answers), timings: state.timings ? Object.assign({}, state.timings) : {}, code: result.letters.join(''), suffix: result.suffix.letter, quantumState: qs ? qs.type : null, dimStates: ds });
     if(history.length > 10) history = history.slice(-10);
     try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
   }
-
   function getAllResultsFromUser(){
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return [];
     const u = window.QAuth.getCurrentUser();
     if(!u || !u.email) return [];
     const key = RESULT_KEY_PREFIX + u.email;
-    try {
-      const history = JSON.parse(localStorage.getItem(key) || '[]');
-      return Array.isArray(history) ? history : [];
-    } catch(e){ return []; }
+    try { const h = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(h) ? h : []; } catch(e){ return []; }
   }
-
   function applyQuantumStateToSphere(qs, ds){
     if(!window.QuantumSphere) return;
     if(qs && window.QuantumSphere.setQuantumState) window.QuantumSphere.setQuantumState(qs.type);
     if(ds && window.QuantumSphere.setDimensionStates) window.QuantumSphere.setDimensionStates(ds);
   }
-
   function restoreFromHistory(entry){
     if(!entry || !entry.answers) return false;
     state.answers = Object.assign({}, entry.answers);
@@ -640,10 +605,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     state.restoredTs = entry.ts || null;
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
     let qs = null, ds = null;
-    if(Q.analyzeQuantumState){
-      qs = Q.analyzeQuantumState(state.result);
-      state.quantumState = qs;
-    }
+    if(Q.analyzeQuantumState){ qs = Q.analyzeQuantumState(state.result); state.quantumState = qs; }
     if(Q.analyzeDimensionStates){
       const raw = Q.analyzeDimensionStates(state.result);
       ds = { PO: raw.PO.type, II: raw.II.type, LA: raw.LA.type, UR: raw.UR.type };
@@ -654,10 +616,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     renderQuantumStateBadge(qs, ds);
     return true;
   }
-
   function renderHistory(){
-    const section = $('historySection');
-    const listEl = $('historyList');
+    const section = $('historySection'), listEl = $('historyList');
     if(!section || !listEl) return;
     const history = getAllResultsFromUser();
     if(history.length === 0){ section.style.display = 'none'; return; }
@@ -668,20 +628,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       let durationStr = '—';
       if(entry.timings && Object.keys(entry.timings).length > 0){
         const totalSec = Object.values(entry.timings).reduce((a,b) => a + b, 0);
-        const m = Math.floor(totalSec / 60);
-        const s = Math.round(totalSec % 60);
+        const m = Math.floor(totalSec / 60), s = Math.round(totalSec % 60);
         durationStr = `${m > 0 ? m + 'm ' : ''}${s}s`;
       }
       const nameObj = Q.TYPE_NAMES[entry.code] || '';
       return `<div class="history-card" data-ts="${entry.ts}">
-        <div class="hc-left">
-          <div class="hc-code">${code}</div>
-          <div class="hc-name">${nameObj}</div>
-        </div>
-        <div class="hc-right">
-          <div class="hc-time">${formatTime(entry.ts)}</div>
-          <div class="hc-duration">${durationStr}</div>
-        </div>
+        <div class="hc-left"><div class="hc-code">${code}</div><div class="hc-name">${nameObj}</div></div>
+        <div class="hc-right"><div class="hc-time">${formatTime(entry.ts)}</div><div class="hc-duration">${durationStr}</div></div>
       </div>`;
     }).join('');
     listEl.querySelectorAll('.history-card').forEach(card => {
@@ -692,7 +645,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       });
     });
   }
-
   function updateRestoreBanner(){ renderHistory(); }
   $('qTotal').textContent = Q.QUESTIONS.length;
 
@@ -770,19 +722,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(e.key === 'Backspace' && state.idx > 0){ e.preventDefault(); state.idx--; renderQuestion(); }
   });
 
-  const STABILITY_LABEL_ZH = {
-    clear: { text:'明确', cls:'clear' },
-    moderate: { text:'中等', cls:'moderate' },
-    weak: { text:'尚未坍缩', cls:'weak' }
-  };
-  const STABILITY_LABEL_EN = {
-    clear: { text:'Clear', cls:'clear' },
-    moderate: { text:'Moderate', cls:'moderate' },
-    weak: { text:'Uncollapsed', cls:'weak' }
-  };
+  const STAB_ZH = { clear:{text:'明确',cls:'clear'}, moderate:{text:'中等',cls:'moderate'}, weak:{text:'尚未坍缩',cls:'weak'} };
+  const STAB_EN = { clear:{text:'Clear',cls:'clear'}, moderate:{text:'Moderate',cls:'moderate'}, weak:{text:'Uncollapsed',cls:'weak'} };
   function stabLabel(stab){
     const I18N = window.QBTI_I18N;
-    return (I18N && I18N.current !== 'zh') ? (STABILITY_LABEL_EN[stab] || STABILITY_LABEL_EN.weak) : STABILITY_LABEL_ZH[stab];
+    return (I18N && I18N.current !== 'zh-CN' && I18N.current !== 'zh-TW') ? (STAB_EN[stab] || STAB_EN.weak) : STAB_ZH[stab];
   }
 
   function finish(){
@@ -791,10 +735,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     state.aiReportText = null;
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
     let qs = null, ds = null;
-    if(Q.analyzeQuantumState){
-      qs = Q.analyzeQuantumState(state.result);
-      state.quantumState = qs;
-    }
+    if(Q.analyzeQuantumState){ qs = Q.analyzeQuantumState(state.result); state.quantumState = qs; }
     if(Q.analyzeDimensionStates){
       const raw = Q.analyzeDimensionStates(state.result);
       ds = { PO: raw.PO.type, II: raw.II.type, LA: raw.LA.type, UR: raw.UR.type };
@@ -855,8 +796,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const portrait = $('rTypeImage');
     if(portrait){ portrait.src = Q.makeTypeImage(baseCode); portrait.alt = baseCode + ' · ' + typeName; }
     $('rCode').innerHTML = baseCode + '<span class="code-suffix">-' + res.suffix.letter + '</span>';
-    const showChineseName = (I18N && I18N.current === 'zh');
-    $('rTypeName').innerHTML = (showChineseName && typeName ? typeName + ' · ' : '') + suffixName;
+    const isZh = I18N && (I18N.current === 'zh-CN' || I18N.current === 'zh-TW');
+    $('rTypeName').innerHTML = (isZh && typeName ? typeName + ' · ' : '') + suffixName;
     const sufStab = stabLabel(res.suffixStability);
     $('rTagline').innerHTML = suffixDesc + '<br><span style="opacity:.75;font-size:13px">' + res.suffixGap + '% · ' + sufStab.text + '</span>';
 
@@ -905,10 +846,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       document.querySelectorAll('.vc-fill').forEach((el, i) => setTimeout(() => { el.style.width = el.dataset.w + '%'; }, 320 + i*80));
     });
 
-    const i18nEmpty = (I18N ? I18N.t('result.aiEmpty') : '点击「生成报告」…');
+    const i18nEmpty = I18N ? I18N.t('result.aiEmpty') : '点击「生成报告」…';
     $('aiBody').innerHTML = '<div class="ai-empty">' + i18nEmpty + '</div>';
     $('btnAI').disabled = false;
-    $('btnAI').textContent = (I18N && I18N.current === 'en') ? 'Generate' : (I18N && I18N.current === 'ja') ? '生成' : (I18N && I18N.current === 'ko') ? '생성' : '生成报告';
+    $('btnAI').textContent = (I18N && I18N.current === 'en') ? 'Generate' : (I18N && I18N.current === 'ja') ? '生成' : (I18N && I18N.current === 'ko') ? '생성' : (I18N && I18N.current === 'fr') ? 'Générer' : (I18N && I18N.current === 'es') ? 'Generar' : (I18N && I18N.current === 'pt') ? 'Gerar' : (I18N && I18N.current === 'zh-TW') ? '生成報告' : '生成报告';
   }
 
   function getCfg(){
@@ -932,24 +873,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     let res;
     try {
       res = await fetch(cfg.url, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','Authorization':'Bearer ' + cfg.key},
+        method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer ' + cfg.key},
         body: JSON.stringify({
           model: cfg.model,
           messages: [
-            {role: 'system', content: '你是一位擅长用隐喻理解青少年学习状态的教育引导顾问，语气温暖、具体、不评判。你的报告面向家长，帮助家长理解孩子，而不是评判孩子。'},
+            {role: 'system', content: '你是一位擅长用隐喻理解青少年学习状态的教育引导顾问，语气温暖、具体、不评判。'},
             {role: 'user', content: prompt}
           ],
-          temperature: 0.85,
-          max_tokens: 2400,
-          stream: false
+          temperature: 0.85, max_tokens: 2400, stream: false
         })
       });
     } catch(e){ throw new Error('CORS_OR_NETWORK'); }
-    if(!res.ok){
-      const t = await res.text().catch(() => '');
-      throw new Error('API ' + res.status + ' · ' + t.slice(0,180));
-    }
+    if(!res.ok){ const t = await res.text().catch(() => ''); throw new Error('API ' + res.status + ' · ' + t.slice(0,180)); }
     const data = await res.json();
     const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if(!content) throw new Error('API 返回内容为空');
@@ -972,12 +907,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(err){
       const msg = String(err.message || err);
       let extra = '';
-      if(msg.indexOf('CORS_OR_NETWORK') >= 0){
-        extra = '<br><span style="color:#FFD98A">⚠ CORS/网络受限，下方已切本地报告。</span>';
-      }
-      $('aiBody').innerHTML =
-        '<div class="ai-empty" style="color:#FF9BB5">' + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim()) + extra + '</div>'
-        + Q.renderMD(Q.localReport(state.result, validity));
+      if(msg.indexOf('CORS_OR_NETWORK') >= 0) extra = '<br><span style="color:#FFD98A">⚠ CORS/网络受限，下方已切本地报告。</span>';
+      $('aiBody').innerHTML = '<div class="ai-empty" style="color:#FF9BB5">' + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim()) + extra + '</div>' + Q.renderMD(Q.localReport(state.result, validity));
       state.aiReportText = Q.localReport(state.result, validity);
       syncReportToServer();
     } finally {
@@ -987,30 +918,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   });
 
   $('btnStart').addEventListener('click', () => {
-    state.idx = 0;
-    state.answers = {};
-    state.timings = {};
-    state.questionShownAt = {};
-    state.validity = null;
-    state.result = null;
-    state.aiReportText = null;
-    state.restoredTs = null;
-    state.locked = false;
+    state.idx = 0; state.answers = {}; state.timings = {}; state.questionShownAt = {};
+    state.validity = null; state.result = null; state.aiReportText = null; state.restoredTs = null; state.locked = false;
     renderQuestion();
     goToScreen('screen-quiz');
   });
 
   $('btnRestart').addEventListener('click', () => {
-    if(!confirm('重新开始？量子球会被新结果覆盖，历史记录仍保留。')) return;
-    state.idx = 0;
-    state.answers = {};
-    state.timings = {};
-    state.questionShownAt = {};
-    state.validity = null;
-    state.result = null;
-    state.aiReportText = null;
-    state.restoredTs = null;
-    state.locked = false;
+    const I18N = window.QBTI_I18N;
+    const msg = (I18N && I18N.current !== 'zh-CN') ? 'Restart? The quantum sphere will be overwritten, history preserved.' : '重新开始？量子球会被新结果覆盖，历史记录仍保留。';
+    if(!confirm(msg)) return;
+    state.idx = 0; state.answers = {}; state.timings = {}; state.questionShownAt = {};
+    state.validity = null; state.result = null; state.aiReportText = null; state.restoredTs = null; state.locked = false;
     updateRestoreBanner();
     goToScreen('screen-intro');
   });
@@ -1039,7 +958,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(e){ alert('Copy failed'); }
   });
 
-  /* ★ 齿轮（仅管理员） */
   $('btnGear').addEventListener('click', () => {
     if(!isAdmin()){ const mask = $('modalMask'); if(mask) mask.classList.remove('show'); return; }
     const cfg = getCfg();
@@ -1053,11 +971,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('modalMask').addEventListener('click', e => { if(e.target === $('modalMask')) $('modalMask').classList.remove('show'); });
   $('btnSaveCfg').addEventListener('click', () => {
     if(!isAdmin()){ $('modalMask').classList.remove('show'); return; }
-    saveCfg({
-      url: $('inpUrl').value.trim() || DEFAULT_CFG.url,
-      key: $('inpKey').value.trim(),
-      model: $('inpModel').value.trim() || DEFAULT_CFG.model
-    });
+    saveCfg({ url: $('inpUrl').value.trim() || DEFAULT_CFG.url, key: $('inpKey').value.trim(), model: $('inpModel').value.trim() || DEFAULT_CFG.model });
     $('modalMask').classList.remove('show');
     const b = $('btnSaveCfg');
     b.textContent = '✓';
@@ -1073,35 +987,23 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const key = $('inpKey').value.trim() || DEFAULT_CFG.key;
     const model = $('inpModel').value.trim() || DEFAULT_CFG.model;
     try {
-      const r = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
-        body: JSON.stringify({model, messages:[{role:'user',content:'ping'}], max_tokens:5, stream:false})
-      });
+      const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key}, body: JSON.stringify({model, messages:[{role:'user',content:'ping'}], max_tokens:5, stream:false}) });
       if(!r.ok){ const t = await r.text().catch(() => ''); throw new Error('HTTP ' + r.status + ' · ' + t.slice(0,120)); }
       tr.className = 'test-result show ok';
       tr.textContent = '✓ OK';
     } catch(err){
       const m = String(err.message || err);
-      if(/Failed to fetch|NetworkError|Load failed/i.test(m)){
-        tr.className = 'test-result show err';
-        tr.innerHTML = '✕ CORS/网络受限';
-      } else {
-        tr.className = 'test-result show err';
-        tr.textContent = '✕ ' + m;
-      }
+      if(/Failed to fetch|NetworkError|Load failed/i.test(m)){ tr.className = 'test-result show err'; tr.innerHTML = '✕ CORS/网络受限'; }
+      else { tr.className = 'test-result show err'; tr.textContent = '✕ ' + m; }
     }
   });
 
-  /* ★ 设置变化监听：语言 → 重新渲染当前 UI */
+  /* 设置变化监听：语言 → 重新渲染动态内容 */
   if(window.QBTISettings && window.QBTISettings.onChange){
     window.QBTISettings.onChange(function(info){
       if(info.key === 'lang'){
-        /* 语言包已经应用，动态内容需要重新渲染 */
         renderDimPreview();
-        if($('screen-quiz').classList.contains('active')){
-          renderQuestion();
-        }
+        if($('screen-quiz').classList.contains('active')) renderQuestion();
         if($('screen-result').classList.contains('active') && state.result){
           renderResult(state.result, state.restoredTs);
           renderQuantumStateBadge(state.quantumState, state.dimStates ? state.dimStates.types : null);
@@ -1113,15 +1015,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   if(window.QAuth && window.QAuth.onChange){
     window.QAuth.onChange(function(info){
       refreshAdminUI(info);
-      if(info.isLoggedIn){
-        updateRestoreBanner();
-      } else {
-        state.result = null;
-        state.quantumState = null;
-        state.dimStates = null;
-        state.validity = null;
-        state.aiReportText = null;
-        state.restoredTs = null;
+      if(info.isLoggedIn){ updateRestoreBanner(); }
+      else {
+        state.result = null; state.quantumState = null; state.dimStates = null;
+        state.validity = null; state.aiReportText = null; state.restoredTs = null;
         const section = document.getElementById('historySection');
         if(section) section.style.display = 'none';
       }
