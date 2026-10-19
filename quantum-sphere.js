@@ -297,7 +297,6 @@
     const ctx = canvas.getContext('2d');
     const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-    /* ---------- 颜色系统 ---------- */
     const palette = [[255,140,80],[120,180,255],[180,130,255],[255,110,170],[100,230,200],[200,230,110],[255,210,90]];
     const QUANTUM_COLORS = { good: [80, 220, 140], danger: [235, 65, 75], superposition: [90, 140, 245] };
     const DIM_IDS = ['PO','II','LA','UR'];
@@ -1147,7 +1146,7 @@
         const type = Math.random();
         if(type < 0.05) { s = 3.0 + Math.random() * 4.0; } 
         else if(type < 0.3) { s = 1.2 + Math.random() * 1.5; } 
-        else { s = 0.2 + Math.random() * 0.8; } 
+        else { s = 0.4 + Math.random() * 0.8; } // 微尘稍微加大一点
 
         nebulaDust.push({
           nx, ny, nz,
@@ -1157,7 +1156,7 @@
           isWhite: Math.random() < 0.25,
           twinkle: Math.random() * Math.PI * 2,
           strobe: 0.5 + Math.random() * 4.0,
-          baseAlpha: 0.3 + Math.random() * 0.7,
+          baseAlpha: 0.4 + Math.random() * 0.6, // 提升基础透明度
           waveAmp: Math.random() * 15 * DPR,
           waveSpeed: 0.5 + Math.random() * 2.0,
           wavePhaseX: Math.random() * Math.PI * 2,
@@ -1176,12 +1175,13 @@
         });
       }
 
+      // 连线：增加密度 (从 0.08 提升到 0.15)
       const samplePoints = nebulaDust.filter(p => !p.isLarge).slice(0, 400); 
       for(let i = 0; i < samplePoints.length; i++) {
         for(let j = i + 1; j < samplePoints.length; j++) {
           const a = samplePoints[i], b = samplePoints[j];
           const d2 = (a.nx-b.nx)**2 + (a.ny-b.ny)**2 + (a.nz-b.nz)**2;
-          if (d2 < 0.08) {
+          if (d2 < 0.15) {
             nebulaLinks.push({ a, b, phase: Math.random()*Math.PI*2 });
           }
         }
@@ -1208,12 +1208,7 @@
       currentYaw = t * 0.05;
       tiltCur = TILT_BASE + Math.sin(t * 0.2) * 0.15;
 
-      const bgGrad = ctx.createRadialGradient(CX, CY, 0, CX, CY, R * 1.5);
-      bgGrad.addColorStop(0, `rgba(${CR},${CG},${CB},${0.25 + (gravityStrength>0?0.2:0)})`);
-      bgGrad.addColorStop(0.5, `rgba(${CR},${CG},${CB},0.08)`);
-      bgGrad.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, W, H);
+      // 🚨 背景纯黑：彻底删除了背景渐变的绘制
 
       const projected = [];
       for(let p of nebulaDust) {
@@ -1262,7 +1257,8 @@
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      ctx.lineWidth = 0.8 * DPR;
+      // 🚨 优化：显著增强连线
+      ctx.lineCap = 'round';
       for(let link of nebulaLinks) {
         const a = link.a, b = link.b;
         const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
@@ -1279,11 +1275,21 @@
         if (pa.z < -0.5 || pb.z < -0.5) continue;
         
         const depth = (pa.z + pb.z) / 2;
-        const flash = Math.pow(Math.sin(t*5 + link.phase), 8); 
-        const alpha = Math.max(0, (depth / CAM) * 0.4) * (0.2 + 0.8*flash);
+        const normalizedDepth = Math.max(0, (depth + 1) / 2); // 0 ~ 1
+        const flash = Math.pow(Math.sin(t*5 + link.phase), 4); // 频闪
+        const alpha = (0.1 + normalizedDepth * 0.5) * (0.3 + 0.7 * flash);
         
-        if (alpha > 0.05) {
-          ctx.strokeStyle = `rgba(${CR},${CG},${CB},${alpha})`;
+        if (alpha > 0.02) {
+          // 发光粗线
+          ctx.strokeStyle = `rgba(${PR},${PG},${PB},${alpha * 0.3})`;
+          ctx.lineWidth = (1.5 + normalizedDepth * 1.5) * DPR;
+          ctx.beginPath();
+          ctx.moveTo(pa.x, pa.y);
+          ctx.lineTo(pb.x, pb.y);
+          ctx.stroke();
+          // 核心细线
+          ctx.strokeStyle = `rgba(${PR},${PG},${PB},${alpha})`;
+          ctx.lineWidth = (0.5 + normalizedDepth * 1.0) * DPR;
           ctx.beginPath();
           ctx.moveTo(pa.x, pa.y);
           ctx.lineTo(pb.x, pb.y);
@@ -1291,19 +1297,20 @@
         }
       }
 
+      // 🚨 优化：增强粒子
       for(let item of projected) {
         const { p, x, y, z, scale } = item;
-        const depth = (z / R + 1) / 2; 
+        const normalizedDepth = (z + 1) / 2; 
         
         const strobe = Math.pow(Math.sin(now * 0.003 * p.strobe + p.twinkle), 4);
-        let alpha = p.baseAlpha * Math.max(0.1, depth * (0.5 + 0.5 * strobe));
+        let alpha = p.baseAlpha * Math.max(0.15, normalizedDepth * (0.5 + 0.5 * strobe));
         
-        if (depth > 0.8 && !p.isLarge) alpha = Math.min(1, alpha + 0.3);
+        if (normalizedDepth > 0.8 && !p.isLarge) alpha = Math.min(1, alpha + 0.4);
 
-        const finalSize = p.size * scale * (0.5 + depth * 1.5);
+        const finalSize = p.size * scale * (0.6 + normalizedDepth * 1.5);
+        const colorStr = p.isWhite ? '255,255,255' : `${PR},${PG},${PB}`;
         
         if (p.isLarge) {
-          const colorStr = p.isWhite ? '255,255,255' : `${PR},${PG},${PB}`;
           ctx.globalAlpha = alpha * 0.8;
           ctx.drawImage(
             glowSprite, 
@@ -1314,16 +1321,21 @@
           ctx.arc(x, y, finalSize * 0.3, 0, Math.PI * 2);
           ctx.fill();
         } else {
-          ctx.fillStyle = p.isWhite 
-            ? `rgba(255,255,255,${alpha})` 
-            : `rgba(${PR},${PG},${PB},${alpha})`;
+          ctx.fillStyle = `rgba(${colorStr},${alpha})`;
           ctx.beginPath();
           ctx.arc(x, y, Math.max(0.5, finalSize), 0, Math.PI * 2);
           ctx.fill();
+          
+          // 给近处的微尘增加发光光晕
+          if (normalizedDepth > 0.5) {
+            ctx.fillStyle = `rgba(${colorStr},${alpha * 0.25})`;
+            ctx.beginPath();
+            ctx.arc(x, y, finalSize * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       }
 
-      ctx.lineCap = 'round';
       for(let m of nebulaMeteors) {
         m.life -= 0.01;
         if (m.life <= 0) {
@@ -2055,10 +2067,8 @@
 
       const BR = safeBaseR();
 
-      // 👇 修复颜色被覆盖的 BUG：画星云前强制同步当前全局主题色
       setDrawColor(globalColor);
 
-      // 1. 绘制星云
       if (soloNebula) {
         ctx.save();
         if (transitionType === 'nebula-to-split') {
@@ -2072,7 +2082,6 @@
         ctx.restore();
       }
 
-      // 2. 绘制 4 个小球（通过 !soloNebula 互斥掉星云状态）
       if (hasSplit && !soloNebula && transitionType !== 'split-to-single') {
         const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
 
@@ -2168,7 +2177,6 @@
         }
       }
 
-      // 3. 绘制 1 个大球
       if (!hasSplit || transitionType === 'split-to-single') {
         let targetBall = balls[0];
         let extraAlpha = 1;
@@ -2239,7 +2247,6 @@
         targetBall.oy = oOy;
       }
 
-      // 通用特效
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       if (!soloNebula && !transitionType) {
