@@ -1,11 +1,7 @@
 /* ============================================================
    Quantum Sphere —— 量子球视觉引擎 + 触感音效 + 手机震动
    使用方式：<script src="quantum-sphere.js"></script>
-   暴露全局：window.QuantumSphere = {
-     resize, isSplit, reset, sound, haptic,
-     setQuantumState, setDimensionStates,
-     getQuantumState, clearQuantumState
-   }
+   暴露全局：window.QuantumSphere = { ... }
    ============================================================ */
 (function(){
   'use strict';
@@ -21,11 +17,7 @@
       try { navigator.vibrate(pattern); } catch(e){}
     }
     function setEnabled(v){ enabled = !!v; }
-    return {
-      vibrate,
-      setEnabled,
-      isSupported: function(){ return isSupported; }
-    };
+    return { vibrate, setEnabled, isSupported: function(){ return isSupported; } };
   })();
 
   /* ==========================================================
@@ -256,7 +248,6 @@
     };
   })();
 
-  /* ---------- 全局解锁 ---------- */
   (function bindGlobalUnlock(){
     let fired = false;
     function once(){
@@ -275,7 +266,6 @@
     document.addEventListener('click', once, true);
   })();
 
-  /* ---------- 音效开关按钮 ---------- */
   function injectSoundToggle(){
     if(document.getElementById('qSoundToggle')) return;
     const style = document.createElement('style');
@@ -298,9 +288,6 @@
     document.body.appendChild(btn);
   }
 
-  /* ==========================================================
-     主引擎
-     ========================================================== */
   function boot(){
     const canvas = document.getElementById('quantumCanvas');
     const visualEl = document.getElementById('quantumVisual');
@@ -326,6 +313,18 @@
 
     let CR = fallbackColor[0], CG = fallbackColor[1], CB = fallbackColor[2];
     let PR = CR, PG = CG, PB = CB;
+
+    // 👇 预渲染高光光斑贴图
+    const glowSprite = document.createElement('canvas');
+    glowSprite.width = glowSprite.height = 64;
+    const gCtx = glowSprite.getContext('2d');
+    const gGrad = gCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gGrad.addColorStop(0, 'rgba(255,255,255,1)');
+    gGrad.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+    gGrad.addColorStop(0.5, 'rgba(255,255,255,0.1)');
+    gGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    gCtx.fillStyle = gGrad;
+    gCtx.fillRect(0, 0, 64, 64);
 
     function applyGlobalColor(c){
       globalColor = c.slice();
@@ -397,12 +396,10 @@
     let hasSplit = false;
     let flash = 0;
 
-    // 纯星云状态
     let soloNebula = false;
     let explodedBall = null;
     let soloR = 0;
 
-    // 星云专属数据集合
     let nebulaDust = [];
     let nebulaLinks = [];
     let nebulaMeteors = [];
@@ -830,7 +827,6 @@
       AudioFX.unlock();
       const p = localPos(e);
       
-      // 星云状态下的按住交互
       if (soloNebula) {
         pointer.x = p.x; pointer.y = p.y;
         pointer.down = true;
@@ -945,7 +941,6 @@
       
       if (soloNebula) {
         if (nebulaCharge.active) {
-          // 松开星云蓄力：爆发
           const cx = nebulaCharge.x, cy = nebulaCharge.y;
           const cv = nebulaCharge.value;
           nebulaCharge.active = false;
@@ -956,7 +951,6 @@
           pushRing(cx, cy, { duration: 2.5, maxR: Math.max(W, H) * 1.2, width: 4.0, alpha: 0.9, glow: 1.5, ease: 2.5 });
           pushRing(cx, cy, { delay: 0.15, duration: 2.0, maxR: Math.max(W, H) * 0.9, width: 2.0, alpha: 0.6, color:'base', ease: 2.5 });
           
-          // 让粒子炸开
           for(let p of nebulaDust) {
             const dx = p.px - cx, dy = p.py - cy;
             const dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -1035,7 +1029,6 @@
           flash = 1;
           screenShake = Math.max(screenShake, 1.5);
 
-          // 初始化复杂星云
           initNebula();
         }
         
@@ -1119,10 +1112,9 @@
       nebulaLinks = [];
       nebulaMeteors = [];
 
-      const numDust = 2000;
-      const numMeteors = 30;
+      const numDust = 2500; // 加大粒子数量
+      const numMeteors = 40;
 
-      // 1. 体积星尘：在 3D 空间分布
       for(let i = 0; i < numDust; i++){
         const r = Math.cbrt(Math.random()); 
         const theta = Math.random() * Math.PI * 2;
@@ -1132,37 +1124,49 @@
         const ny = r * Math.sin(phi) * Math.sin(theta);
         const nz = r * Math.cos(phi);
 
+        // 打破尺寸统一，引入极大光斑和极小灰尘
+        let s = 0;
+        const type = Math.random();
+        if(type < 0.05) { s = 3.0 + Math.random() * 4.0; } // 5% 巨大光斑
+        else if(type < 0.3) { s = 1.2 + Math.random() * 1.5; } // 25% 普通粒子
+        else { s = 0.2 + Math.random() * 0.8; } // 70% 微尘
+
         nebulaDust.push({
           nx, ny, nz,
-          px: 0, py: 0, // 屏幕坐标缓存
-          vx: 0, vy: 0, // 物理速度
-          size: 0.5 + Math.random() * 2.5,
-          isWhite: Math.random() < 0.2,
+          px: 0, py: 0, vx: 0, vy: 0,
+          size: s * DPR,
+          isLarge: type < 0.05,
+          isWhite: Math.random() < 0.25,
           twinkle: Math.random() * Math.PI * 2,
-          strobe: 0.5 + Math.random() * 3.0,
-          baseAlpha: 0.3 + Math.random() * 0.7
+          strobe: 0.5 + Math.random() * 4.0,
+          baseAlpha: 0.3 + Math.random() * 0.7,
+          // 量子波动参数
+          waveAmp: Math.random() * 15 * DPR,
+          waveSpeed: 0.5 + Math.random() * 2.0,
+          wavePhaseX: Math.random() * Math.PI * 2,
+          wavePhaseY: Math.random() * Math.PI * 2
         });
       }
 
-      // 2. 流星拖尾
+      // 流星
       for(let i = 0; i < numMeteors; i++){
         nebulaMeteors.push({
           nx: (Math.random()-0.5)*2, ny: (Math.random()-0.5)*2, nz: (Math.random()-0.5)*2,
-          speed: 0.01 + Math.random()*0.03,
+          speed: 0.02 + Math.random()*0.05,
           angle: Math.random() * Math.PI * 2,
           life: Math.random(),
-          maxLife: 0.3 + Math.random()*0.5,
-          len: 20 + Math.random()*40
+          maxLife: 0.4 + Math.random()*0.6,
+          len: 30 + Math.random()*60
         });
       }
 
-      // 3. 电磁网连线：寻找距离较近的点
-      const samplePoints = nebulaDust.slice(0, 300); // 抽样计算连线
+      // 连网
+      const samplePoints = nebulaDust.filter(p => !p.isLarge).slice(0, 400); 
       for(let i = 0; i < samplePoints.length; i++) {
         for(let j = i + 1; j < samplePoints.length; j++) {
           const a = samplePoints[i], b = samplePoints[j];
           const d2 = (a.nx-b.nx)**2 + (a.ny-b.ny)**2 + (a.nz-b.nz)**2;
-          if (d2 < 0.05) {
+          if (d2 < 0.08) {
             nebulaLinks.push({ a, b, phase: Math.random()*Math.PI*2 });
           }
         }
@@ -1173,62 +1177,58 @@
       CX = BASE_CX;
       CY = BASE_CY;
       
-      // 星云整体膨胀与呼吸
       const targetR = Math.max(W, H) * 1.8;
       soloR += (targetR - soloR) * 0.01;
       R = soloR * (1 + Math.sin(t * 0.5) * 0.03);
       
-      // 引力奇点蓄力
       let gravityCenterX = -9999, gravityCenterY = -9999, gravityStrength = 0;
       if (nebulaCharge.active) {
         nebulaCharge.value = Math.min(1, nebulaCharge.value + 0.02);
         gravityCenterX = nebulaCharge.x;
         gravityCenterY = nebulaCharge.y;
         gravityStrength = nebulaCharge.value * 300 * DPR;
-        
-        // 播放蓄力音效调制
         AudioFX.updateCharge(nebulaCharge.value);
       }
 
-      // 星云自转
       currentYaw = t * 0.05;
       tiltCur = TILT_BASE + Math.sin(t * 0.2) * 0.15;
 
-      // 1. 绘制背景光晕
-      const bgGrad = ctx.createRadialGradient(CX, CY, 0, CX, CY, R * 1.2);
-      bgGrad.addColorStop(0, `rgba(${CR},${CG},${CB},${0.1 + (gravityStrength>0?0.1:0)})`);
-      bgGrad.addColorStop(0.5, `rgba(${CR},${CG},${CB},0.03)`);
+      // 背景高对比光晕
+      const bgGrad = ctx.createRadialGradient(CX, CY, 0, CX, CY, R * 1.5);
+      bgGrad.addColorStop(0, `rgba(${CR},${CG},${CB},${0.25 + (gravityStrength>0?0.2:0)})`);
+      bgGrad.addColorStop(0.5, `rgba(${CR},${CG},${CB},0.08)`);
       bgGrad.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // 2. 投影所有星尘并应用物理效果
       const projected = [];
       for(let p of nebulaDust) {
-        // 物理位移衰减
-        p.vx *= 0.95;
-        p.vy *= 0.95;
+        p.vx *= 0.94;
+        p.vy *= 0.94;
         p.px += p.vx;
         p.py += p.vy;
 
-        // 旋转计算
+        // 量子波动位移
+        const waveX = Math.sin(t * p.waveSpeed + p.wavePhaseX) * p.waveAmp;
+        const waveY = Math.cos(t * p.waveSpeed + p.wavePhaseY) * p.waveAmp;
+
         const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
         const x1 = p.nx*cy + p.nz*sy, z1 = -p.nx*sy + p.nz*cy;
         const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
         const y1 = p.ny*ct - z1*st, z2 = p.ny*st + z1*ct;
         
         const persp = CAM / (CAM - z2);
-        let finalX = CX + x1*R*persp + p.px;
-        let finalY = CY + y1*R*persp + p.py;
+        let finalX = CX + x1*R*persp + p.px + waveX;
+        let finalY = CY + y1*R*persp + p.py + waveY;
 
-        // 鼠标斥力 / 引力奇点
         if (gravityStrength > 0) {
           const dx = gravityCenterX - finalX, dy = gravityCenterY - finalY;
           const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-          if (dist < 500 * DPR) {
-            const force = (1 - dist / (500 * DPR)) * gravityStrength * 0.5;
-            p.vx += (dx/dist) * force;
-            p.vy += (dy/dist) * force;
+          if (dist < 600 * DPR) {
+            const force = (1 - dist / (600 * DPR)) * gravityStrength * 0.8;
+            // 引力 + 切向力(涡流)
+            p.vx += (dx/dist) * force + (dy/dist) * force * 0.5;
+            p.vy += (dy/dist) * force - (dx/dist) * force * 0.5;
           }
         } else if (aura.strength > 0.02) {
           const dx = finalX - aura.x, dy = finalY - aura.y;
@@ -1236,7 +1236,7 @@
           const auraR2 = aura.r * aura.r;
           if(dist2 < auraR2) {
             const dist = Math.sqrt(dist2) || 1;
-            const force = (1 - dist/aura.r) * aura.strength * 3;
+            const force = (1 - dist/aura.r) * aura.strength * 5;
             p.vx += (dx/dist) * force;
             p.vy += (dy/dist) * force;
           }
@@ -1245,14 +1245,15 @@
         projected.push({ p, x: finalX, y: finalY, z: z2, scale: persp });
       }
 
-      // 按深度排序
       projected.sort((a, b) => a.z - b.z);
 
-      // 3. 绘制电磁网连线
-      ctx.lineWidth = 0.6 * DPR;
+      // 👇 开启滤色叠加模式，让颜色更加明亮、混沌
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      // 绘制电磁网（加入波动闪烁）
+      ctx.lineWidth = 0.8 * DPR;
       for(let link of nebulaLinks) {
-        // 由于连线是抽样的原始点，需要找到投影后的坐标
-        // 为了性能，这里直接计算连线的投影
         const a = link.a, b = link.b;
         const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
         const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
@@ -1268,43 +1269,58 @@
         if (pa.z < -0.5 || pb.z < -0.5) continue;
         
         const depth = (pa.z + pb.z) / 2;
-        const alpha = Math.max(0, (depth / CAM) * 0.3) * (0.5 + 0.5*Math.sin(t*3 + link.phase));
-        ctx.strokeStyle = `rgba(${PR},${PG},${PB},${alpha})`;
-        ctx.beginPath();
-        ctx.moveTo(pa.x, pa.y);
-        ctx.lineTo(pb.x, pb.y);
-        ctx.stroke();
-      }
-
-      // 4. 绘制星尘（带脉冲频闪）
-      for(let item of projected) {
-        const { p, x, y, z, scale } = item;
-        const depth = (z / R + 1) / 2; 
-        // 频闪计算
-        const twinkle = 0.5 + 0.5 * Math.sin(now * 0.003 * p.strobe + p.twinkle);
-        const alpha = p.baseAlpha * Math.max(0.1, depth * twinkle);
-        const finalSize = p.size * scale * (0.5 + depth * 1.5);
+        // 剧烈的呼吸闪烁
+        const flash = Math.pow(Math.sin(t*5 + link.phase), 8); 
+        const alpha = Math.max(0, (depth / CAM) * 0.4) * (0.2 + 0.8*flash);
         
-        ctx.fillStyle = p.isWhite 
-          ? `rgba(255,255,255,${alpha})` 
-          : `rgba(${PR},${PG},${PB},${alpha})`;
-        
-        ctx.beginPath();
-        ctx.arc(x, y, Math.max(0.5, finalSize), 0, Math.PI * 2);
-        ctx.fill();
-
-        // 高光十字星芒（仅限近处且白色）
-        if (depth > 0.6 && p.isWhite) {
-          ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.6})`;
-          ctx.lineWidth = 0.5 * DPR;
+        if (alpha > 0.05) {
+          ctx.strokeStyle = `rgba(${CR},${CG},${CB},${alpha})`;
           ctx.beginPath();
-          ctx.moveTo(x - finalSize*2.5, y); ctx.lineTo(x + finalSize*2.5, y);
-          ctx.moveTo(x, y - finalSize*2.5); ctx.lineTo(x, y + finalSize*2.5);
+          ctx.moveTo(pa.x, pa.y);
+          ctx.lineTo(pb.x, pb.y);
           ctx.stroke();
         }
       }
 
-      // 5. 绘制流星拖尾
+      // 绘制星尘
+      for(let item of projected) {
+        const { p, x, y, z, scale } = item;
+        const depth = (z / R + 1) / 2; 
+        
+        // 频闪：基于 sin 波 + 随机白噪
+        const strobe = Math.pow(Math.sin(now * 0.003 * p.strobe + p.twinkle), 4);
+        let alpha = p.baseAlpha * Math.max(0.1, depth * (0.5 + 0.5 * strobe));
+        
+        // 近处微尘提亮
+        if (depth > 0.8 && !p.isLarge) alpha = Math.min(1, alpha + 0.3);
+
+        const finalSize = p.size * scale * (0.5 + depth * 1.5);
+        
+        if (p.isLarge) {
+          // 绘制大光斑（使用预渲染贴图，极度明亮）
+          const colorStr = p.isWhite ? '255,255,255' : `${PR},${PG},${PB}`;
+          ctx.globalAlpha = alpha * 0.8;
+          ctx.drawImage(
+            glowSprite, 
+            x - finalSize, y - finalSize, finalSize*2, finalSize*2
+          );
+          // 增加核心高光
+          ctx.fillStyle = `rgba(${colorStr},${alpha})`;
+          ctx.beginPath();
+          ctx.arc(x, y, finalSize * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // 普通粒子/微尘
+          ctx.fillStyle = p.isWhite 
+            ? `rgba(255,255,255,${alpha})` 
+            : `rgba(${PR},${PG},${PB},${alpha})`;
+          ctx.beginPath();
+          ctx.arc(x, y, Math.max(0.5, finalSize), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 绘制流星拖尾
       ctx.lineCap = 'round';
       for(let m of nebulaMeteors) {
         m.life -= 0.01;
@@ -1314,12 +1330,10 @@
           m.ny = (Math.random()-0.5)*2;
           m.nz = (Math.random()-0.5)*2;
         }
-        // 流星移动轨迹
         const move = m.speed * (m.life / m.maxLife);
         m.nx += Math.cos(m.angle) * move;
         m.ny += Math.sin(m.angle) * move;
         
-        // 投影流星
         const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
         const x1 = m.nx*cy + m.nz*sy, z1 = -m.nx*sy + m.nz*cy;
         const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
@@ -1328,17 +1342,17 @@
         const px = CX + x1*R*persp;
         const py = CY + y1*R*persp;
 
-        // 画拖尾
         if (z2 > -0.2) {
           const tailX = px - Math.cos(m.angle) * m.len;
           const tailY = py - Math.sin(m.angle) * m.len;
           const grad = ctx.createLinearGradient(px, py, tailX, tailY);
-          const alpha = Math.min(1, m.life * 2);
+          const alpha = Math.min(1, m.life * 3);
           grad.addColorStop(0, `rgba(255,255,255,${alpha})`);
+          grad.addColorStop(0.3, `rgba(${PR},${PG},${PB},${alpha * 0.8})`);
           grad.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
           
           ctx.strokeStyle = grad;
-          ctx.lineWidth = 1.5 * DPR;
+          ctx.lineWidth = 2.5 * DPR;
           ctx.beginPath();
           ctx.moveTo(px, py);
           ctx.lineTo(tailX, tailY);
@@ -1346,25 +1360,32 @@
         }
       }
 
-      // 6. 引力奇点核心
+      // 引力奇点
       if (gravityStrength > 0) {
-        const pulse = 0.5 + 0.5 * Math.sin(now * 0.01);
-        const coreR = 20 + 40 * nebulaCharge.value * pulse;
+        const pulse = 0.5 + 0.5 * Math.sin(now * 0.02);
+        const coreR = 30 + 80 * nebulaCharge.value * pulse;
+        
+        // 外发光
         const cg = ctx.createRadialGradient(gravityCenterX, gravityCenterY, 0, gravityCenterX, gravityCenterY, coreR * 3);
-        cg.addColorStop(0, `rgba(255,255,255,0.9)`);
-        cg.addColorStop(0.3, `rgba(${PR},${PG},${PB},0.6)`);
+        cg.addColorStop(0, `rgba(255,255,255,1)`);
+        cg.addColorStop(0.2, `rgba(${PR},${PG},${PB},0.9)`);
+        cg.addColorStop(0.6, `rgba(${CR},${CG},${CB},0.4)`);
         cg.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
         ctx.fillStyle = cg;
         ctx.beginPath();
         ctx.arc(gravityCenterX, gravityCenterY, coreR * 3, 0, Math.PI * 2);
         ctx.fill();
         
-        // 黑色奇点
+        // 黑洞核心
+        ctx.globalCompositeOperation = 'source-over'; // 切换回正常模式画黑洞
         ctx.fillStyle = '#000';
         ctx.beginPath();
-        ctx.arc(gravityCenterX, gravityCenterY, coreR * nebulaCharge.value * 0.5, 0, Math.PI * 2);
+        ctx.arc(gravityCenterX, gravityCenterY, coreR * nebulaCharge.value * 0.4, 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; // 切回滤色模式
       }
+
+      ctx.restore(); // 恢复 globalCompositeOperation
     }
 
     /* ---------- 原有绘制函数 ---------- */
@@ -2022,10 +2043,8 @@
       const BR = safeBaseR();
 
       if (soloNebula) {
-        // 🚨 执行全屏复杂星云绘制
         drawNebula(now, t);
       } else {
-        // 正常球体绘制
         const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
 
         for(let k = 0; k < drawOrder.length; k++){
@@ -2120,7 +2139,6 @@
         }
       }
 
-      // 通用特效：光晕、拖尾、冲击波、火花等
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       drawAura(t);
@@ -2164,7 +2182,6 @@
     }
     start();
 
-    /* ---------- 对外接口 ---------- */
     window.QuantumSphere = {
       resize: resize,
       isSplit: function(){ return hasSplit; },
