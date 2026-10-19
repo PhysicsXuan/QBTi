@@ -1,11 +1,5 @@
 /* ============================================================
    Quantum Sphere —— 量子球视觉引擎 + 触感音效 + 手机震动
-   使用方式：<script src="quantum-sphere.js"></script>
-   暴露全局：window.QuantumSphere = {
-     resize, isSplit, goBack, sound, haptic,
-     setQuantumState, setDimensionStates,
-     getQuantumState, clearQuantumState
-   }
    ============================================================ */
 (function(){
   'use strict';
@@ -21,11 +15,7 @@
       try { navigator.vibrate(pattern); } catch(e){}
     }
     function setEnabled(v){ enabled = !!v; }
-    return {
-      vibrate,
-      setEnabled,
-      isSupported: function(){ return isSupported; }
-    };
+    return { vibrate, setEnabled, isSupported: function(){ return isSupported; } };
   })();
 
   /* ==========================================================
@@ -412,8 +402,7 @@
     let nebulaMeteors = [];
     let nebulaCharge = { active: false, value: 0, x: 0, y: 0 };
 
-    // 👇 状态过渡变量
-    let transitionType = null; // 'nebula-to-split' | 'split-to-single'
+    let transitionType = null; 
     let transitionProgress = 0;
 
     function safeBaseR(){
@@ -733,7 +722,6 @@
         visAlpha *= dimFactor;
       }
 
-      // 👇 在这里应用过渡缩放
       if (transitionType === 'nebula-to-split') {
         const ep = easeOutCubic(transitionProgress);
         visScale *= ep;
@@ -2030,9 +2018,8 @@
       aura.r += (aura.targetR - aura.r) * Math.min(1, dt*6);
       aura.strength += (aura.targetStrength - aura.strength) * Math.min(1, dt*5);
 
-      // 👇 处理过渡动画
       if (transitionType) {
-        transitionProgress += dt * 1.8; // 大约 0.55 秒完成
+        transitionProgress += dt * 1.8; 
         if (transitionProgress >= 1) {
           transitionProgress = 1;
           if (transitionType === 'nebula-to-split') {
@@ -2068,6 +2055,9 @@
 
       const BR = safeBaseR();
 
+      // 👇 修复颜色被覆盖的 BUG：画星云前强制同步当前全局主题色
+      setDrawColor(globalColor);
+
       // 1. 绘制星云
       if (soloNebula) {
         ctx.save();
@@ -2082,8 +2072,8 @@
         ctx.restore();
       }
 
-      // 2. 绘制 4 个小球
-      if (hasSplit) {
+      // 2. 绘制 4 个小球（通过 !soloNebula 互斥掉星云状态）
+      if (hasSplit && !soloNebula && transitionType !== 'split-to-single') {
         const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
 
         for(let k = 0; k < drawOrder.length; k++){
@@ -2189,7 +2179,6 @@
           extraScale = easeOutCubic(transitionProgress);
         }
         
-        // 临时改变 scale 和 ox, oy 以实现缩放动画
         const oScale = targetBall.scale;
         const oOx = targetBall.ox;
         const oOy = targetBall.oy;
@@ -2245,7 +2234,6 @@
           ctx.restore();
         }
         
-        // 恢复
         targetBall.scale = oScale;
         targetBall.ox = oOx;
         targetBall.oy = oOy;
@@ -2303,7 +2291,7 @@
       resize: resize,
       isSplit: function(){ return hasSplit; },
       goBack: function(){
-        if (transitionType) return; // 动画中不可打断
+        if (transitionType) return; 
         if (soloNebula) {
           transitionType = 'nebula-to-split';
           transitionProgress = 0;
