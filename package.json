@@ -1,7 +1,7 @@
 {
-  "name": "qbti-local",
+  "name": "qbti-student",
   "version": "1.0.0",
-  "description": "QBTI 量子人格测评 - Neon 数据库版",
+  "description": "QBTI 学生端",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
