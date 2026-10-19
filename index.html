@@ -46,7 +46,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .hc-duration{font-size:11px;color:rgba(255,255,255,.4);}
 .history-empty{font-size:13px;color:var(--muted);padding:20px 0;text-align:center;}
 
-/* 👇 全局通用返回按钮样式 */
 .page-back-btn {
   display: inline-flex;
   align-items: center;
@@ -182,10 +181,14 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 #screen-home{display:none;max-width:none !important;width:100% !important;min-height:100vh;height:100vh;padding:0 !important;margin:0 !important;position:relative;overflow:hidden;align-items:center;justify-content:center;background:#000 !important;}
 #screen-home.active{display:flex !important;}
 .home-stage{position:relative;width:100%;height:100%;min-height:620px;display:grid;place-items:center;isolation:isolate;overflow:hidden;}
-.quantum-visual{width:min(92vw,82vh,880px);height:min(92vw,82vh,880px);position:relative;display:block;overflow:visible;}
-.quantum-hint{position:absolute;z-index:3;left:50%;top:calc(50% + min(33.12vw,29.52vh,316.8px) + 18px);transform:translateX(-50%);width:max-content;max-width:90vw;text-align:center;color:#ffffff;font-size:clamp(12px,1.55vw,15px);font-weight:400;letter-spacing:.18em;white-space:nowrap;pointer-events:none;animation:quantumHintBreath 15.708s ease-in-out infinite;text-shadow:0 0 16px rgba(255,255,255,.10);}
+
+/* 👇 核心修改：量子球容器占满全屏，不再强制正方形 */
+.quantum-visual{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible;}
+
+/* 👇 核心修改：提示文字放在屏幕底部，不被拉伸的屏幕拉偏 */
+.quantum-hint{position:absolute;z-index:3;left:50%;bottom:8vh;transform:translateX(-50%);width:max-content;max-width:90vw;text-align:center;color:#ffffff;font-size:clamp(12px,1.55vw,15px);font-weight:400;letter-spacing:.18em;white-space:nowrap;pointer-events:none;animation:quantumHintBreath 15.708s ease-in-out infinite;text-shadow:0 0 16px rgba(255,255,255,.10);}
 @keyframes quantumHintBreath{0%{opacity:.10}25%{opacity:.95}50%{opacity:.10}75%{opacity:0}100%{opacity:.10}}
-@media(max-height:560px){.quantum-hint{top:auto;bottom:5vh}}
+
 #quantumCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none;-webkit-tap-highlight-color:transparent;}
 .screen:not(#screen-home){padding:112px 22px 90px !important;max-width:1040px !important;min-height:100vh;background:#000;}
 .contact-page{min-height:calc(100vh - 72px);display:grid;place-items:center;text-align:center;}
@@ -225,9 +228,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 <div class="app">
   <section class="screen active" id="screen-home">
     <div class="home-stage">
-      <!-- 👇 新增：量子球/星云 重置返回键 -->
       <button class="page-back-btn" id="btnResetSphere" style="position:absolute; top: 90px; left: 22px; z-index: 20;">↺ 重置量子球</button>
       
+      <!-- 现在这里会填满屏幕 -->
       <div class="quantum-visual" id="quantumVisual">
         <canvas id="quantumCanvas"></canvas>
       </div>
@@ -421,7 +424,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
-  // 通用界面切换
   function goToScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(id);
@@ -437,7 +439,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   }
 
-  // 绑定各界面返回键
   $('btnBackFromIntro').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromContact').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromResult').addEventListener('click', () => goToScreen('screen-intro'));
