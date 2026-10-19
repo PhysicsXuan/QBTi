@@ -1,11 +1,10 @@
 /* ============================================================
    QBTI Settings —— 独立设置模块
    - 语言：<select> 下拉（8 种语言）
-   - 字体大小：<input type="range"> 80-150，无级调节
+   - 字体大小：<input type="range"> 80-150，只缩放文字，不动布局
    - 字体粗细：按钮切换
    - 亮度：range 50-150
    - 特效模式：简洁 / 常规
-   - 通过 body zoom + --q-fs 双通道保证变化肉眼可见
    ============================================================ */
 (function(){
   'use strict';
@@ -15,7 +14,7 @@
     brightness: 100,
     effectsMode: 'normal',
     lang: 'zh-CN',
-    fontSize: 100,      /* 百分比 80-150 */
+    fontSize: 100,
     fontWeight: 'normal'
   };
 
@@ -29,12 +28,10 @@
       if(!raw) return Object.assign({}, DEFAULT_SETTINGS);
       const s = JSON.parse(raw) || {};
       const merged = Object.assign({}, DEFAULT_SETTINGS, s);
-      // 兼容旧字段
       if(typeof merged.fontSize === 'string'){
         merged.fontSize = { sm: 88, md: 100, lg: 118 }[merged.fontSize] || 100;
       }
       if(merged.fontSize == null || isNaN(merged.fontSize)) merged.fontSize = 100;
-      // 兼容旧 lang
       if(merged.lang === 'zh') merged.lang = 'zh-CN';
       delete merged.interactive;
       return merged;
@@ -53,17 +50,15 @@
     document.documentElement.style.setProperty('--q-brightness', b);
   }
 
-  /* ★ 字体大小：body zoom + --q-fs 变量，确保全局可见变化 */
+  /* ★ 字体大小：只通过 --q-fs 影响所有 font-size:calc(... * var(--q-fs))
+     —— 不再使用 body zoom，布局不缩放，只让文字变大变小 */
   function applyFontScale(v){
     const pct = Math.max(80, Math.min(150, Number(v) || 100));
     const z = pct / 100;
     document.documentElement.style.setProperty('--q-fs', z);
-    /* 双通道：① CSS 变量给 calc 用 ② body zoom 直接放大一切 */
-    document.body.style.zoom = z;
-    /* 等浏览器完成布局后重算 canvas 尺寸 */
+    /* 布局尺寸不变，canvas 无需 resize；保留兜底以防万一 */
     if(window.QuantumSphere && window.QuantumSphere.resize){
-      setTimeout(() => window.QuantumSphere.resize(), 50);
-      setTimeout(() => window.QuantumSphere.resize(), 250);
+      setTimeout(() => window.QuantumSphere.resize(), 60);
     }
   }
 
@@ -108,7 +103,6 @@
       fontWeight: $('setFontWeight')
     };
 
-    /* 填充语言下拉 */
     function buildLangSelect(){
       if(!setLang || !window.QBTI_I18N) return;
       const I18N = window.QBTI_I18N;
@@ -131,7 +125,6 @@
           b.classList.toggle('active', b.dataset.val === String(cur[k]));
         });
       });
-      /* 语言部分提示 */
       const noteEl = $('setLangNote');
       if(noteEl && window.QBTI_I18N){
         const I18N = window.QBTI_I18N;
@@ -141,7 +134,6 @@
       }
     }
 
-    /* 亮度 */
     if(setBrightness){
       setBrightness.addEventListener('input', () => {
         const v = Number(setBrightness.value);
@@ -152,7 +144,6 @@
       setBrightness.addEventListener('change', () => { saveSettings(cur); emit('brightness'); });
     }
 
-    /* ★ 字体大小滑块 */
     if(setFontSize){
       setFontSize.addEventListener('input', () => {
         const v = Number(setFontSize.value);
@@ -163,7 +154,6 @@
       setFontSize.addEventListener('change', () => { saveSettings(cur); emit('fontSize'); });
     }
 
-    /* ★ 语言下拉 */
     if(setLang){
       setLang.addEventListener('change', () => {
         cur.lang = setLang.value;
@@ -174,7 +164,6 @@
       });
     }
 
-    /* 特效模式 / 字体粗细 */
     function bindGroup(name, onChange){
       const el = groups[name];
       if(!el) return;
@@ -191,7 +180,6 @@
       saveSettings(cur); applyFontWeight(cur.fontWeight); syncUI(); emit('fontWeight');
     });
 
-    /* 恢复默认 */
     const resetBtn = $('setReset');
     if(resetBtn){
       resetBtn.addEventListener('click', () => {
@@ -229,7 +217,6 @@
 
   /* ============ 初始化 ============ */
   function init(){
-    /* 首屏应用 */
     applyBrightness(cur.brightness);
     applyFontScale(cur.fontSize);
     applyFontWeight(cur.fontWeight);
@@ -241,7 +228,6 @@
       }
       if($('settingsMask')) initPanel();
 
-      /* 等 QuantumSphere 就绪 */
       let tries = 0;
       const wait = setInterval(() => {
         tries++;
