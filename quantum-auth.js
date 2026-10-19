@@ -492,7 +492,6 @@
     submitBtn.textContent = '验证中…';
 
     try {
-      // 调用现有的 verify-code 验证验证码
       const res = await fetch(API_BASE + '/api/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -514,7 +513,6 @@
 
     submitBtn.textContent = '重置中…';
     setTimeout(() => {
-      // 验证通过，在前端 localStorage 直接修改密码
       const users = loadUsers();
       const idx = users.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
       if(idx > -1){
@@ -716,6 +714,9 @@
   }
 
   function handleLogout(){
+    // 🚨 二次询问弹窗
+    if(!confirm('确定要退出登录吗？')) return;
+
     clearSession();
     currentUser = null;
     toast('已退出登录', 'info');

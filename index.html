@@ -395,7 +395,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       dimStates: state.dimStates ? state.dimStates.types : null,
       validity: state.validity || null,
       aiReport: state.aiReportText || null,
-      fullResult: state.result // 👈 关键：包含完整计算结果
+      fullResult: state.result
     };
 
     try {
@@ -622,7 +622,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     renderResult(state.result, null);
     renderQuantumStateBadge(qs, ds);
 
-    // 自动同步到服务器
     syncReportToServer();
 
     const target = document.getElementById('screen-result');
@@ -865,6 +864,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   });
 
   $('btnRestart').addEventListener('click', () => {
+    // 🚨 二次询问弹窗
+    if(!confirm('若重做问卷，量子球将会被新问卷覆盖，但您仍可访问历史问卷记录。\n\n确定要重新开始吗？')) return;
+    
     state.idx = 0;
     state.answers = {};
     state.timings = {};
