@@ -32,8 +32,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .pv-en{font-size:11.5px;color:var(--muted);margin-bottom:12px}
 .pv-tags{display:flex;flex-wrap:wrap;gap:6px}
 .pv-tag{font-size:11px;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,.06);color:#B7BCE0}
-
-/* ===== 新增：历史记录样式 ===== */
 .history-section{margin-top:40px;border-top:1px solid rgba(255,255,255,.08);padding-top:34px;}
 .history-title{font-size:13px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:12px;}
 .history-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.08),transparent)}
@@ -47,7 +45,31 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 .hc-time{font-size:12px;color:var(--muted);}
 .hc-duration{font-size:11px;color:rgba(255,255,255,.4);}
 .history-empty{font-size:13px;color:var(--muted);padding:20px 0;text-align:center;}
-/* ============================ */
+
+/* 👇 全局通用返回按钮样式 */
+.page-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  color: var(--muted);
+  font-size: 13.5px;
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-family: inherit;
+  transition: 0.2s;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-decoration: none;
+}
+.page-back-btn:hover {
+  color: #fff;
+  border-color: rgba(var(--q-r),var(--q-g),var(--q-b),.5);
+  background: rgba(var(--q-r),var(--q-g),var(--q-b),.1);
+}
+.back-btn-wrap { padding-top: 12px; margin-bottom: 20px; }
 
 .quiz-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}
 .progress-track{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
@@ -203,6 +225,9 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 <div class="app">
   <section class="screen active" id="screen-home">
     <div class="home-stage">
+      <!-- 👇 新增：量子球/星云 重置返回键 -->
+      <button class="page-back-btn" id="btnResetSphere" style="position:absolute; top: 90px; left: 22px; z-index: 20;">↺ 重置量子球</button>
+      
       <div class="quantum-visual" id="quantumVisual">
         <canvas id="quantumCanvas"></canvas>
       </div>
@@ -211,6 +236,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   </section>
 
   <section class="screen" id="screen-intro">
+    <div class="back-btn-wrap">
+      <button class="page-back-btn" id="btnBackFromIntro">← 返回主页</button>
+    </div>
+    
     <div class="hero">
       <div class="badge">QBTI · Quantum Behavior Type Indicator</div>
       <h1>你，<span class="grad">尚未坍缩</span>。</h1>
@@ -225,16 +254,17 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       <div class="dim-preview" id="dimPreview"></div>
     </div>
     
-    <!-- 👇 新增：历史记录区块 -->
     <div class="history-section" id="historySection" style="display:none;">
       <div class="history-title">历史观测记录</div>
       <div class="history-list" id="historyList"></div>
     </div>
-    <!-- ======================= -->
-
   </section>
 
   <section class="screen" id="screen-quiz">
+    <div class="back-btn-wrap">
+      <button class="page-back-btn" id="btnQuitQuiz">← 放弃答题</button>
+    </div>
+    
     <div class="quiz-head">
       <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
       <div class="progress-text"><b id="qIdx">1</b> / <span id="qTotal">40</span></div>
@@ -251,6 +281,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   </section>
 
   <section class="screen" id="screen-result">
+    <div class="back-btn-wrap">
+      <button class="page-back-btn" id="btnBackFromResult">← 返回 QBTI 首页</button>
+    </div>
+    
     <div class="result-hero">
       <div class="r-label">Your Quantum Learning Type</div>
       <div class="type-portrait"><img id="rTypeImage" src="" alt="人格画像"></div>
@@ -285,6 +319,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   </section>
 
   <section class="screen" id="screen-contact">
+    <div class="back-btn-wrap">
+      <button class="page-back-btn" id="btnBackFromContact">← 返回主页</button>
+    </div>
+    
     <div class="contact-page">
       <div class="contact-inner">
         <div class="contact-kicker">CONTACT</div>
@@ -383,6 +421,40 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
 
+  // 通用界面切换
+  function goToScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(id);
+    if(target) target.classList.add('active');
+    document.querySelectorAll('.quantum-link').forEach(b => {
+      b.classList.toggle('active', b.dataset.target === id);
+    });
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    if(id === 'screen-home' && window.QuantumSphere){
+      setTimeout(() => window.QuantumSphere.resize(), 50);
+      setTimeout(() => window.QuantumSphere.resize(), 200);
+      setTimeout(() => window.QuantumSphere.resize(), 500);
+    }
+  }
+
+  // 绑定各界面返回键
+  $('btnBackFromIntro').addEventListener('click', () => goToScreen('screen-home'));
+  $('btnBackFromContact').addEventListener('click', () => goToScreen('screen-home'));
+  $('btnBackFromResult').addEventListener('click', () => goToScreen('screen-intro'));
+  
+  $('btnQuitQuiz').addEventListener('click', () => {
+    if(confirm('确定要放弃本次答题并返回吗？当前答题进度将不会保存。')) {
+      goToScreen('screen-intro');
+    }
+  });
+
+  $('btnResetSphere').addEventListener('click', () => {
+    if(window.QuantumSphere && window.QuantumSphere.reset) {
+      window.QuantumSphere.reset();
+    }
+  });
+
+
   (function(){
     const el = $('dimPreview');
     if(!el) return;
@@ -459,20 +531,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
   }
 
-  function getLatestResultFromUser(){
-    if(!window.QAuth || !window.QAuth.isLoggedIn()) return null;
-    const u = window.QAuth.getCurrentUser();
-    if(!u || !u.email) return null;
-    const key = RESULT_KEY_PREFIX + u.email;
-    let history = [];
-    try {
-      history = JSON.parse(localStorage.getItem(key) || '[]');
-      if(!Array.isArray(history)) history = [];
-    } catch(e){ history = []; }
-    if(history.length === 0) return null;
-    return history[history.length - 1];
-  }
-
   function getAllResultsFromUser(){
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return [];
     const u = window.QAuth.getCurrentUser();
@@ -515,7 +573,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     return true;
   }
 
-  /* 👇 新增：渲染历史记录列表 */
   function renderHistory(){
     const section = $('historySection');
     const listEl = $('historyList');
@@ -528,15 +585,10 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
 
     section.style.display = 'block';
-    
-    // 反转列表，最新的在最上面
     const sorted = history.slice().reverse();
 
     listEl.innerHTML = sorted.map(entry => {
       const code = entry.code + '-' + entry.suffix;
-      const typeName = Q.TYPE_NAMES[entry.code] || '未知类型';
-      
-      // 计算耗时
       let durationStr = '时长未知';
       if(entry.timings && Object.keys(entry.timings).length > 0){
         const totalSec = Object.values(entry.timings).reduce((a,b) => a + b, 0);
@@ -544,10 +596,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
         const s = Math.round(totalSec % 60);
         durationStr = `耗时 ${m > 0 ? m + '分' : ''}${s}秒`;
       }
-
-      // 获取类型名
       const nameObj = Q.TYPE_NAMES[entry.code] || '';
-      
       return `<div class="history-card" data-ts="${entry.ts}">
         <div class="hc-left">
           <div class="hc-code">${code}</div>
@@ -560,24 +609,19 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       </div>`;
     }).join('');
 
-    // 绑定点击事件
     listEl.querySelectorAll('.history-card').forEach(card => {
       card.addEventListener('click', () => {
         const ts = Number(card.dataset.ts);
         const entry = history.find(h => h.ts === ts);
         if(entry){
           restoreFromHistory(entry);
-          const target = document.getElementById('screen-result');
-          document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-          if(target) target.classList.add('active');
-          window.scrollTo({top: 0, behavior: 'smooth'});
+          goToScreen('screen-result');
         }
       });
     });
   }
 
   function updateRestoreBanner(){
-    // 既然有了历史记录列表，之前的横幅就可以去掉了，这里直接调用 renderHistory 更新
     renderHistory();
   }
 
@@ -659,7 +703,6 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.result = Q.computeResult(state.answers);
     state.restoredTs = null;
     state.aiReportText = null;
-    // 计算真实性，但不渲染在学生端
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
 
     let qs = null, ds = null;
@@ -678,11 +721,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     renderQuantumStateBadge(qs, ds);
 
     syncReportToServer();
-
-    const target = document.getElementById('screen-result');
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    if(target) target.classList.add('active');
-    window.scrollTo({top: 0, behavior: 'smooth'});
+    goToScreen('screen-result');
   }
 
   function renderQuantumStateBadge(qs, dimStates){
@@ -872,10 +911,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.restoredTs = null;
     state.locked = false;
     renderQuestion();
-    const target = document.getElementById('screen-quiz');
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    if(target) target.classList.add('active');
-    window.scrollTo({top: 0, behavior: 'smooth'});
+    goToScreen('screen-quiz');
   });
 
   $('btnRestart').addEventListener('click', () => {
@@ -891,10 +927,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     state.restoredTs = null;
     state.locked = false;
     updateRestoreBanner();
-    const target = document.getElementById('screen-intro');
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    if(target) target.classList.add('active');
-    window.scrollTo({top: 0, behavior: 'smooth'});
+    goToScreen('screen-intro');
   });
 
   $('btnCopy').addEventListener('click', async () => {
