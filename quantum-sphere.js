@@ -1,12 +1,14 @@
 /* ============================================================
    Quantum Sphere —— 量子球视觉引擎 + 触感音效 + 手机震动
-   新增：effectsMode (simple/normal) 与 interactiveEnabled 开关
+   - effectsMode: simple / normal（融合精简与交互）
+   - simple：取消爆炸，星云变同色量子点呼吸；粒子/电路/节点网络减量
+   - normal：全特效
    ============================================================ */
 (function(){
   'use strict';
 
   /* ==========================================================
-     HapticFX —— 手机震动反馈
+     HapticFX
      ========================================================== */
   const HapticFX = (function(){
     const isSupported = typeof navigator !== 'undefined' && 'vibrate' in navigator;
@@ -20,7 +22,7 @@
   })();
 
   /* ==========================================================
-     AudioFX —— Web Audio API 合成音效
+     AudioFX
      ========================================================== */
   const AudioFX = (function(){
     let ctx = null;
@@ -43,7 +45,6 @@
         master.connect(ctx.destination);
       } catch(e){ ctx = null; }
     }
-
     function warmup(){
       if(!ctx || !master) return;
       try {
@@ -52,13 +53,10 @@
         const gain = ctx.createGain();
         gain.gain.value = 0.0001;
         osc.frequency.value = 440;
-        osc.connect(gain);
-        gain.connect(master);
-        osc.start(t0);
-        osc.stop(t0 + 0.03);
+        osc.connect(gain); gain.connect(master);
+        osc.start(t0); osc.stop(t0 + 0.03);
       } catch(e){}
     }
-
     function unlock(){
       createContext();
       if(!ctx) return;
@@ -69,22 +67,15 @@
             p.then(function(){ unlocked = true; warmup(); }).catch(function(){});
           }
         } catch(e){}
-      } else {
-        unlocked = true;
-      }
+      } else { unlocked = true; }
       if(ctx.state === 'running' && !unlocked){ unlocked = true; warmup(); }
     }
-
     function ensure(){
       createContext();
       if(!ctx) return;
       if(ctx.state === 'suspended'){ try { ctx.resume(); } catch(e){} }
     }
-
-    function setBase(brightness){
-      baseFreq = 200 + (brightness / 255) * 320;
-    }
-
+    function setBase(brightness){ baseFreq = 200 + (brightness / 255) * 320; }
     function isEnabled(){ return enabled; }
     function setEnabled(v){
       enabled = !!v;
@@ -95,7 +86,6 @@
     function loadPreference(){
       try { const saved = localStorage.getItem('qs_sound_enabled'); if(saved === '0') enabled = false; } catch(e){}
     }
-
     function playTone(o){
       if(!enabled) return;
       ensure();
@@ -125,7 +115,6 @@
       gain.connect(master);
       osc.start(t0); osc.stop(t0 + dur + 0.05);
     }
-
     function playNoise(o){
       if(!enabled) return;
       ensure();
@@ -151,7 +140,6 @@
       src.connect(filter); filter.connect(gain); gain.connect(master);
       src.start(t0); src.stop(t0 + dur + 0.05);
     }
-
     function hover(){
       if(!enabled) return;
       const now = performance.now();
@@ -238,12 +226,10 @@
     function debugState(){
       return { hasContext: !!ctx, state: ctx ? ctx.state : 'none', enabled: enabled, unlocked: unlocked, baseFreq: baseFreq, masterGain: master ? master.gain.value : 0 };
     }
-
     return {
       unlock, ensure, setBase, isEnabled, setEnabled, toggle, loadPreference,
       hover, ripple, burst, focus, unfocus, drag,
-      startCharge, updateCharge, stopCharge,
-      superRelease, split, debugState
+      startCharge, updateCharge, stopCharge, superRelease, split, debugState
     };
   })();
 
@@ -268,7 +254,6 @@
   function injectSoundToggle(){
     if(document.getElementById('qSoundToggle')) return;
     const style = document.createElement('style');
-    /* ★ 位置下移到 124px，避让新增的 settings 按钮（72px） */
     style.textContent = '.q-sound-toggle{position:fixed;right:20px;bottom:124px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;transition:.25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:0;font-family:inherit;}.q-sound-toggle:hover{color:var(--txt);border-color:var(--q-color);}.q-sound-toggle.muted{opacity:.5;}';
     document.head.appendChild(style);
     const btn = document.createElement('button');
@@ -306,9 +291,8 @@
     const DIM_STATE_KEY = 'qbti_dimension_states';
     const SETTINGS_KEY = 'qbti_settings_v1';
 
-    /* ★ 新设置状态 */
-    let effectsMode = 'normal';        // 'simple' | 'normal'
-    let interactiveEnabled = true;     // 控制星云 / 点击爆炸
+    /* effectsMode：'simple' | 'normal' */
+    let effectsMode = 'normal';
 
     function loadPrefsFromStorage(){
       try {
@@ -316,7 +300,6 @@
         if(!raw) return;
         const s = JSON.parse(raw) || {};
         if(s.effectsMode === 'simple' || s.effectsMode === 'normal') effectsMode = s.effectsMode;
-        if(typeof s.interactive === 'boolean') interactiveEnabled = s.interactive;
       } catch(e){}
     }
     loadPrefsFromStorage();
@@ -348,7 +331,6 @@
       document.documentElement.style.setProperty('--q-color', 'rgb('+c[0]+','+c[1]+','+c[2]+')');
       AudioFX.setBase((c[0]+c[1]+c[2]) / 3);
     }
-
     function applyColor(cr, cg, cb){
       CR = cr; CG = cg; CB = cb;
       PR = CR; PG = CG; PB = CB;
@@ -359,7 +341,6 @@
       document.documentElement.style.setProperty('--q-color', 'rgb('+CR+','+CG+','+CB+')');
       AudioFX.setBase((CR + CG + CB) / 3);
     }
-
     function colorForBall(ball, idx){
       if(!hasSplit) return globalColor;
       if(dimensionStates){
@@ -371,7 +352,6 @@
       }
       return globalColor;
     }
-
     (function initColors(){
       let savedState = null, savedDim = null;
       try {
@@ -403,13 +383,11 @@
     const FOCUS_SCALE = 1.55;
     const FOCUS_SHIFT = 0.45;
     const MIN_BASE_R = 24;
-
     const CHARGE_RATE = 1.6;
     const CHARGE_FULL = 0.999;
 
     let hasSplit = false;
     let flash = 0;
-
     let soloNebula = false;
     let explodedBall = null;
     let soloR = 0;
@@ -435,17 +413,13 @@
       const w = Math.max(20, Math.floor(cssW * DPR));
       const h = Math.max(20, Math.floor(cssH * DPR));
       if(w === W && h === H) return;
-
       W = canvas.width = w;
       H = canvas.height = h;
       BASE_CX = W / 2;
       BASE_CY = H / 2;
-
       const minDim = Math.min(W, H);
       BASE_R = minDim * 0.45;
-
       if(!isFinite(BASE_R) || BASE_R < MIN_BASE_R) BASE_R = MIN_BASE_R;
-
       if(aura.targetR === 0){
         aura.r = BASE_R * 0.4;
         aura.targetR = BASE_R * 0.4;
@@ -571,22 +545,18 @@
       const padY = 26 * DPR;
       const labelPad = 50 * DPR;
       const denom = Math.max(1, (1 - FOCUS_SHIFT) * BR);
-
       let safeHx = (W/2 - padX - focusR) / denom;
       let safeHy = (H/2 - padY - labelPad - focusR) / denom;
       if(!isFinite(safeHx) || safeHx <= 0) safeHx = 1.0;
       if(!isFinite(safeHy) || safeHy <= 0) safeHy = 0.6;
-
       const aspect = W / Math.max(1, H);
       const wantHx = 0.76 * Math.min(1.10, Math.max(0.85, Math.sqrt(aspect)));
       const wantHy = 0.52 * Math.min(1.05, Math.max(0.85, 1/Math.sqrt(aspect)));
-
       const minHx = 0.55, minHy = 0.40;
       let hx = Math.max(minHx, Math.min(wantHx, safeHx));
       let hy = Math.max(minHy, Math.min(wantHy, safeHy));
       if(!isFinite(hx)) hx = minHx;
       if(!isFinite(hy)) hy = minHy;
-
       return [
         {ox:-hx, oy:-hy, name: BALL_NAMES[0], short: BALL_SHORT[0], dim: 'PO'},
         {ox: hx, oy:-hy, name: BALL_NAMES[1], short: BALL_SHORT[1], dim: 'II'},
@@ -594,22 +564,19 @@
         {ox: hx, oy: hy, name: BALL_NAMES[3], short: BALL_SHORT[3], dim: 'UR'}
       ];
     }
-
     function updateLayoutTargets(instant){
       const layout = computeSplitLayout();
       for(let i = 0; i < balls.length; i++){
         if(i >= layout.length) break;
         const p = layout[i];
         const b = balls[i];
-        b.toOx = p.ox;
-        b.toOy = p.oy;
+        b.toOx = p.ox; b.toOy = p.oy;
         if(instant && b.arrived){ b.ox = p.ox; b.oy = p.oy; }
         if(p.name) b.name = p.name;
         if(p.short) b.short = p.short;
         if(p.dim) b._dim = p.dim;
       }
     }
-
     function easeOutBack(t){const c1=1.70158,c3=c1+1;return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2);}
     function easeOutCubic(t){return 1 - Math.pow(1-t,3);}
 
@@ -625,18 +592,11 @@
         yawOffset: 0, tiltOffset: 0,
         breathSeed: Math.random() * 6.28,
         seed: Math.random() * 6.28,
-        jitterAmp: 0,
-        jitterDecay: 4,
-        jitterPhaseX: 0,
-        jitterPhaseY: 0,
-        name: opts.name || '',
-        short: opts.short || '',
-        _dim: opts.dim || null,
-        focusAmount: 0,
-        focusPing: 0
+        jitterAmp: 0, jitterDecay: 4, jitterPhaseX: 0, jitterPhaseY: 0,
+        name: opts.name || '', short: opts.short || '', _dim: opts.dim || null,
+        focusAmount: 0, focusPing: 0
       };
     }
-
     const balls = [ makeBall({ox:0, oy:0, scale:1}) ];
 
     function splitSpheres(inheritAmp){
@@ -646,33 +606,24 @@
       const maxJitter = Math.min(inheritAmp * 0.6, safeBaseR() * 0.07);
       const next = layout.map((p, i) => {
         const b = makeBall({ox:0, oy:0, scale:1});
-        b.fromOx = 0; b.fromOy = 0; b.fromScale = 1;
         b.toOx = p.ox; b.toOy = p.oy; b.toScale = SPLIT_SCALE;
-        b.ox = 0; b.oy = 0; b.scale = 1;
-        b.t0 = now + i * 70;
-        b.dur = 1.55;
-        b.arrived = false;
+        b.t0 = now + i * 70; b.dur = 1.55; b.arrived = false;
         b.yawPhase = i * 1.75 + Math.random() * 0.5;
         b.jitterAmp = maxJitter * (0.85 + Math.random() * 0.4);
         b.jitterDecay = 3.2 + Math.random() * 1.6;
         b.jitterPhaseX = Math.random() * 6.28;
         b.jitterPhaseY = Math.random() * 6.28;
-        b.name = p.name;
-        b.short = p.short;
-        b._dim = p.dim;
+        b.name = p.name; b.short = p.short; b._dim = p.dim;
         return b;
       });
       balls.length = 0;
       balls.push.apply(balls, next);
       flash = 1;
       screenShake = Math.max(screenShake, 1.0);
-
       const hint = document.querySelector('.quantum-hint');
       if(hint) hint.style.display = 'none';
-
       AudioFX.split();
       HapticFX.vibrate([40, 30, 40, 30, 80]);
-
       for(let i=0;i<5;i++){
         pushRing(BASE_CX, BASE_CY, {
           delay: i * 0.07, duration: 2.2 - i*0.15,
@@ -696,8 +647,7 @@
           let age = (now - b.t0) / (b.dur * 1000);
           if(age < 0) age = 0;
           if(age >= 1){
-            b.ox = b.toOx; b.oy = b.toOy; b.scale = b.toScale;
-            b.arrived = true;
+            b.ox = b.toOx; b.oy = b.toOy; b.scale = b.toScale; b.arrived = true;
           } else {
             const k = easeOutCubic(age);
             const kScale = easeOutBack(age);
@@ -726,7 +676,6 @@
       let visOy = b.oy;
       let visAlpha = 1;
       const f = b.focusAmount;
-
       if(hasSplit && f > 0.0005){
         visScale = b.scale * (1 + f * (FOCUS_SCALE - 1));
         visOx = b.ox * (1 - f * FOCUS_SHIFT);
@@ -737,21 +686,14 @@
         const dimFactor = 1 - (1 - f) * globalFocus * 0.72;
         visAlpha *= dimFactor;
       }
-
       if (transitionType === 'nebula-to-split') {
         const ep = easeOutCubic(transitionProgress);
-        visScale *= ep;
-        visOx *= ep;
-        visOy *= ep;
-        visAlpha *= transitionProgress;
+        visScale *= ep; visOx *= ep; visOy *= ep; visAlpha *= transitionProgress;
       } else if (transitionType === 'split-to-single') {
         const ep = easeOutCubic(transitionProgress);
-        visScale *= (1 - ep);
-        visOx *= (1 - ep);
-        visOy *= (1 - ep);
+        visScale *= (1 - ep); visOx *= (1 - ep); visOy *= (1 - ep);
         visAlpha *= (1 - transitionProgress);
       }
-
       if(!isFinite(visScale) || visScale < 0.01) visScale = 0.01;
       if(!isFinite(visOx)) visOx = 0;
       if(!isFinite(visOy)) visOy = 0;
@@ -797,7 +739,6 @@
       const rect = canvas.getBoundingClientRect();
       return { x:(e.clientX-rect.left)*DPR, y:(e.clientY-rect.top)*DPR };
     }
-
     function pushRing(x, y, cfg){
       shocks.push(Object.assign({
         x, y, t0: performance.now(), delay: 0,
@@ -818,7 +759,6 @@
         color: cfg.color || 'bright'
       });
     }
-
     function emitSphereWave(sourceBall, strength){
       if(!sourceBall || balls.indexOf(sourceBall) < 0) return;
       const BR = safeBaseR();
@@ -826,7 +766,6 @@
       const sy = BASE_CY + sourceBall.oy * BR;
       waves.push({ x:sx, y:sy, t0:performance.now(), speed:BR*3.2, strength:strength, lifetime:2.6 });
     }
-
     function getBallPulse(ball, now){
       const BR = safeBaseR();
       const bx = BASE_CX + ball.ox * BR;
@@ -850,7 +789,6 @@
       }
       return Math.min(1, total);
     }
-
     function purgeWaves(now){
       for(let i = waves.length - 1; i >= 0; i--){
         const age = (now - waves[i].t0) / 1000;
@@ -915,13 +853,9 @@
       }
 
       const hoverBall = findBall(p.x, p.y);
-
       if(hoverBall !== prevHoveredBall){
         prevHoveredBall = hoverBall;
-        if(hoverBall){
-          AudioFX.hover();
-          HapticFX.vibrate(10);
-        }
+        if(hoverBall){ AudioFX.hover(); HapticFX.vibrate(10); }
       }
       hoveredBall = hoverBall;
       pointer.inside = !!hoverBall;
@@ -985,10 +919,8 @@
           AudioFX.stopCharge();
           AudioFX.superRelease();
           HapticFX.vibrate([50, 30, 100]);
-
           pushRing(cx, cy, { duration: 2.5, maxR: Math.max(W, H) * 1.2, width: 4.0, alpha: 0.9, glow: 1.5, ease: 2.5 });
           pushRing(cx, cy, { delay: 0.15, duration: 2.0, maxR: Math.max(W, H) * 0.9, width: 2.0, alpha: 0.6, color:'base', ease: 2.5 });
-
           for(let p of nebulaDust) {
             const dx = p.px - cx, dy = p.py - cy;
             const dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -1027,6 +959,7 @@
         activeBall = null; return;
       }
 
+      /* ★ 蓄力满：首次分裂（结构）+ 后续进入星云（simple 下也是星云，但视觉简化） */
       if(charging && chargeVal >= CHARGE_FULL){
         const releaseShakeAmp = chargeVal * chargeVal * 26 * DPR;
         AudioFX.superRelease();
@@ -1036,7 +969,8 @@
           const BR = safeBaseR();
           const k = 0.62 + power*0.38;
           const br = R;
-          for(let i=0;i<6;i++){
+          const ringCount = (effectsMode === 'simple') ? 3 : 6;
+          for(let i=0;i<ringCount;i++){
             pushRing(x, y, {
               delay: i*0.11, duration: 2.8 - i*0.13,
               maxR: Math.max(br*(2.35 - i*0.20)*k, BR*(2.12 - i*0.10)),
@@ -1047,32 +981,27 @@
           }
           emitSphereWave(sourceBall, 1.0);
           if(!hasSplit) screenShake = Math.max(screenShake, 0.85);
-          for(let i=0;i<64;i++){ pushSpark(x, y, { speed: 2.4 + Math.random()*6.5, duration: 1.2 + Math.random()*1.2, size: 1.2 + Math.random()*2.4 }); }
+          const sparkCount = (effectsMode === 'simple') ? 24 : 64;
+          for(let i=0;i<sparkCount;i++){ pushSpark(x, y, { speed: 2.4 + Math.random()*6.5, duration: 1.2 + Math.random()*1.2, size: 1.2 + Math.random()*2.4 }); }
         })(cx, cy, chargeVal, activeBall);
 
         if(!hasSplit){
-          /* ★ 首次分裂：核心功能，始终允许（不受 interactiveEnabled 影响） */
           hasSplit = true;
           splitSpheres(releaseShakeAmp);
-        } else if(interactiveEnabled){
-          /* ★ 星云：仅在交互特效开启时触发 */
+        } else {
+          /* 进入星云（simple 与 normal 都进入，但渲染简化） */
           soloNebula = true;
           explodedBall = activeBall;
           soloR = safeBaseR() * activeBall.scale;
-
           const bColor = colorForBall(activeBall, balls.indexOf(activeBall));
           applyColor(bColor[0], bColor[1], bColor[2]);
-
           focusedBall = null;
           hoveredBall = null;
           prevHoveredBall = null;
           flash = 1;
           screenShake = Math.max(screenShake, 1.5);
-
           initNebula();
         }
-        /* ★ 若 hasSplit && !interactiveEnabled：不做任何额外操作，保持 4 球状态 */
-
         activeBall = null; return;
       }
 
@@ -1098,8 +1027,8 @@
         activeBall = null; return;
       }
 
-      /* ★ 双击爆炸（burst）：仅在交互特效开启时触发 */
-      if(now - pointer.lastTap < 340 && pointer.taps >= 1 && interactiveEnabled){
+      /* ★ 双击爆炸：仅 normal 模式 */
+      if(now - pointer.lastTap < 340 && pointer.taps >= 1 && effectsMode === 'normal'){
         pointer.taps = 0;
         AudioFX.burst();
         HapticFX.vibrate([30, 20, 30]);
@@ -1149,29 +1078,22 @@
     function initNebula() {
       nebulaDust = [];
       nebulaLinks = [];
-
       const numDust = 1200;
-
       for(let i = 0; i < numDust; i++){
         const r = Math.cbrt(Math.random());
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(Math.random() * 2 - 1);
-
         const nx = r * Math.sin(phi) * Math.cos(theta);
         const ny = r * Math.sin(phi) * Math.sin(theta);
         const nz = r * Math.cos(phi);
-
         let s = 0;
         const type = Math.random();
         if(type < 0.05) { s = 3.0 + Math.random() * 4.0; }
         else if(type < 0.3) { s = 1.5 + Math.random() * 1.5; }
         else { s = 0.5 + Math.random() * 1.0; }
-
         nebulaDust.push({
-          nx, ny, nz,
-          px: 0, py: 0, vx: 0, vy: 0,
-          size: s * DPR,
-          isLarge: type < 0.05,
+          nx, ny, nz, px: 0, py: 0, vx: 0, vy: 0,
+          size: s * DPR, isLarge: type < 0.05,
           twinkle: Math.random() * Math.PI * 2,
           strobe: 0.5 + Math.random() * 4.0,
           baseAlpha: 0.4 + Math.random() * 0.6,
@@ -1181,27 +1103,113 @@
           wavePhaseY: Math.random() * Math.PI * 2
         });
       }
-
       const samplePoints = nebulaDust.filter(p => !p.isLarge).slice(0, 300);
       for(let i = 0; i < samplePoints.length; i++) {
         for(let j = i + 1; j < samplePoints.length; j++) {
           const a = samplePoints[i], b = samplePoints[j];
           const d2 = (a.nx-b.nx)**2 + (a.ny-b.ny)**2 + (a.nz-b.nz)**2;
           if (d2 < 0.12) {
-            nebulaLinks.push({
-              a, b,
-              pulsePhase: Math.random() * Math.PI * 2,
-              pulseSpeed: 1.5 + Math.random() * 2.0
-            });
+            nebulaLinks.push({ a, b, pulsePhase: Math.random() * Math.PI * 2, pulseSpeed: 1.5 + Math.random() * 2.0 });
           }
         }
       }
     }
 
+    /* ★ 简洁版星云：同色量子点呼吸 */
+    function drawNebulaSimple(now, t){
+      currentYaw = t * 0.05;
+      tiltCur = TILT_BASE + Math.sin(t * 0.2) * 0.15;
+      const targetR = Math.max(W, H) * 0.9;
+      soloR += (targetR - soloR) * 0.01;
+      R = soloR * (1 + Math.sin(t * 0.5) * 0.03);
+
+      let gravityCenterX = -9999, gravityCenterY = -9999, gravityStrength = 0;
+      if (nebulaCharge.active) {
+        nebulaCharge.value = Math.min(1, nebulaCharge.value + 0.02);
+        gravityCenterX = nebulaCharge.x;
+        gravityCenterY = nebulaCharge.y;
+        gravityStrength = nebulaCharge.value * 220 * DPR;
+        AudioFX.updateCharge(nebulaCharge.value);
+      }
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
+      const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
+
+      for(let i = 0; i < nebulaDust.length; i += 5){
+        const p = nebulaDust[i];
+        const x1 = p.nx*cy + p.nz*sy, z1 = -p.nx*sy + p.nz*cy;
+        const y1 = p.ny*ct - z1*st, z2 = p.ny*st + z1*ct;
+        const persp = CAM / (CAM - z2);
+        let fx = CX + x1*R*persp + p.px;
+        let fy = CY + y1*R*persp + p.py;
+
+        if (gravityStrength > 0) {
+          const dx = gravityCenterX - fx, dy = gravityCenterY - fy;
+          const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          if (dist < 500 * DPR) {
+            const force = (1 - dist / (500 * DPR)) * gravityStrength * 0.8;
+            p.vx += (dx/dist) * force;
+            p.vy += (dy/dist) * force;
+          }
+        } else if (aura.strength > 0.02) {
+          const dx = fx - aura.x, dy = fy - aura.y;
+          const d2 = dx*dx + dy*dy;
+          if (d2 < aura.r * aura.r) {
+            const dist = Math.sqrt(d2) || 1;
+            const force = (1 - dist/aura.r) * aura.strength * 5;
+            p.vx += (dx/dist) * force;
+            p.vy += (dy/dist) * force;
+          }
+        }
+        p.vx *= 0.94; p.vy *= 0.94;
+        p.px += p.vx; p.py += p.vy;
+
+        const depth = (z2 + 1) / 2;
+        const breath = 0.5 + 0.5 * Math.sin(t * 1.6 + p.twinkle);
+        const alpha = (0.25 + depth * 0.65) * (0.35 + breath * 0.65);
+        const size = p.size * persp * (0.7 + depth * 0.9);
+
+        ctx.fillStyle = `rgba(${PR},${PG},${PB},${alpha})`;
+        ctx.beginPath();
+        ctx.arc(fx, fy, Math.max(1.0, size), 0, Math.PI * 2);
+        ctx.fill();
+
+        if (depth > 0.45) {
+          ctx.globalAlpha = alpha * 0.28;
+          const g = size * 4;
+          ctx.drawImage(glowSprite, fx - g, fy - g, g * 2, g * 2);
+          ctx.globalAlpha = 1;
+        }
+      }
+
+      if (gravityStrength > 0) {
+        const pulse = 0.5 + 0.5 * Math.sin(now * 0.02);
+        const coreR = 24 + 60 * nebulaCharge.value * pulse;
+        const cg = ctx.createRadialGradient(gravityCenterX, gravityCenterY, 0, gravityCenterX, gravityCenterY, coreR * 3);
+        cg.addColorStop(0, `rgba(${PR},${PG},${PB},0.95)`);
+        cg.addColorStop(0.3, `rgba(${PR},${PG},${PB},0.5)`);
+        cg.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
+        ctx.fillStyle = cg;
+        ctx.beginPath();
+        ctx.arc(gravityCenterX, gravityCenterY, coreR * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
     function drawNebula(now, t) {
+      if (effectsMode === 'simple') {
+        CX = BASE_CX; CY = BASE_CY;
+        drawNebulaSimple(now, t);
+        return;
+      }
+
       CX = BASE_CX;
       CY = BASE_CY;
-
       const targetR = Math.max(W, H) * 1.8;
       soloR += (targetR - soloR) * 0.01;
       R = soloR * (1 + Math.sin(t * 0.5) * 0.03);
@@ -1220,23 +1228,17 @@
 
       const projected = [];
       for(let p of nebulaDust) {
-        p.vx *= 0.94;
-        p.vy *= 0.94;
-        p.px += p.vx;
-        p.py += p.vy;
-
+        p.vx *= 0.94; p.vy *= 0.94;
+        p.px += p.vx; p.py += p.vy;
         const waveX = Math.sin(t * p.waveSpeed + p.wavePhaseX) * p.waveAmp;
         const waveY = Math.cos(t * p.waveSpeed + p.wavePhaseY) * p.waveAmp;
-
         const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
         const x1 = p.nx*cy + p.nz*sy, z1 = -p.nx*sy + p.nz*cy;
         const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
         const y1 = p.ny*ct - z1*st, z2 = p.ny*st + z1*ct;
-
         const persp = CAM / (CAM - z2);
         let finalX = CX + x1*R*persp + p.px + waveX;
         let finalY = CY + y1*R*persp + p.py + waveY;
-
         if (gravityStrength > 0) {
           const dx = gravityCenterX - finalX, dy = gravityCenterY - finalY;
           const dist = Math.sqrt(dx*dx + dy*dy) || 1;
@@ -1256,21 +1258,18 @@
             p.vy += (dy/dist) * force;
           }
         }
-
         projected.push({ p, x: finalX, y: finalY, z: z2, scale: persp });
       }
-
       projected.sort((a, b) => a.z - b.z);
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-
       ctx.lineCap = 'round';
+
       for(let link of nebulaLinks) {
         const a = link.a, b = link.b;
         const cy = Math.cos(currentYaw), sy = Math.sin(currentYaw);
         const ct = Math.cos(tiltCur), st = Math.sin(tiltCur);
-
         function getProj(p) {
           const x1 = p.nx*cy + p.nz*sy, z1 = -p.nx*sy + p.nz*cy;
           const y1 = p.ny*ct - z1*st, z2 = p.ny*st + z1*ct;
@@ -1278,26 +1277,18 @@
           return { x: CX + x1*R*persp + p.px, y: CY + y1*R*persp + p.py, z: z2 };
         }
         const pa = getProj(a), pb = getProj(b);
-
         if (pa.z < -0.5 || pb.z < -0.5) continue;
-
         const depth = (pa.z + pb.z) / 2;
         const normalizedDepth = Math.max(0, (depth + 1) / 2);
-
         const baseAlpha = 0.05 + normalizedDepth * 0.15;
         ctx.strokeStyle = `rgba(${PR},${PG},${PB},${baseAlpha})`;
         ctx.lineWidth = (1.0 + normalizedDepth * 2.0) * DPR;
-        ctx.beginPath();
-        ctx.moveTo(pa.x, pa.y);
-        ctx.lineTo(pb.x, pb.y);
-        ctx.stroke();
-
+        ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
         const pulseVal = Math.sin(t * link.pulseSpeed + link.pulsePhase);
         if (pulseVal > 0.6) {
            const progress = (pulseVal - 0.6) / 0.4;
            const px = pa.x + (pb.x - pa.x) * progress;
            const py = pa.y + (pb.y - pa.y) * progress;
-
            ctx.strokeStyle = `rgba(${PR},${PG},${PB},${0.6 + normalizedDepth * 0.4})`;
            ctx.lineWidth = (2.0 + normalizedDepth * 2.5) * DPR;
            ctx.beginPath();
@@ -1313,34 +1304,21 @@
       for(let item of projected) {
         const { p, x, y, z, scale } = item;
         const normalizedDepth = (z + 1) / 2;
-
         const twinkle = 0.8 + 0.2 * Math.sin(now * 0.001 * p.strobe + p.twinkle);
         let alpha = p.baseAlpha * Math.max(0.2, normalizedDepth * twinkle);
-
         const finalSize = p.size * scale * (0.5 + normalizedDepth * 1.5);
         const colorStr = `${PR},${PG},${PB}`;
-
         if (p.isLarge) {
           ctx.globalAlpha = alpha * 0.7;
-          ctx.drawImage(
-            glowSprite,
-            x - finalSize * 1.5, y - finalSize * 1.5, finalSize * 3, finalSize * 3
-          );
+          ctx.drawImage(glowSprite, x - finalSize * 1.5, y - finalSize * 1.5, finalSize * 3, finalSize * 3);
           ctx.fillStyle = `rgba(${colorStr},${alpha})`;
-          ctx.beginPath();
-          ctx.arc(x, y, finalSize * 0.4, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.beginPath(); ctx.arc(x, y, finalSize * 0.4, 0, Math.PI * 2); ctx.fill();
         } else {
           ctx.fillStyle = `rgba(${colorStr},${alpha})`;
-          ctx.beginPath();
-          ctx.arc(x, y, Math.max(1.0, finalSize), 0, Math.PI * 2);
-          ctx.fill();
-
+          ctx.beginPath(); ctx.arc(x, y, Math.max(1.0, finalSize), 0, Math.PI * 2); ctx.fill();
           if (normalizedDepth > 0.6) {
             ctx.fillStyle = `rgba(${colorStr},${alpha * 0.2})`;
-            ctx.beginPath();
-            ctx.arc(x, y, finalSize * 2.5, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(x, y, finalSize * 2.5, 0, Math.PI * 2); ctx.fill();
           }
         }
       }
@@ -1348,25 +1326,18 @@
       if (gravityStrength > 0) {
         const pulse = 0.5 + 0.5 * Math.sin(now * 0.02);
         const coreR = 30 + 80 * nebulaCharge.value * pulse;
-
         const cg = ctx.createRadialGradient(gravityCenterX, gravityCenterY, 0, gravityCenterX, gravityCenterY, coreR * 3);
         cg.addColorStop(0, `rgba(${PR},${PG},${PB},1)`);
         cg.addColorStop(0.2, `rgba(${PR},${PG},${PB},0.8)`);
         cg.addColorStop(0.6, `rgba(${CR},${CG},${CB},0.3)`);
         cg.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
         ctx.fillStyle = cg;
-        ctx.beginPath();
-        ctx.arc(gravityCenterX, gravityCenterY, coreR * 3, 0, Math.PI * 2);
-        ctx.fill();
-
+        ctx.beginPath(); ctx.arc(gravityCenterX, gravityCenterY, coreR * 3, 0, Math.PI * 2); ctx.fill();
         ctx.globalCompositeOperation = 'source-over';
         ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(gravityCenterX, gravityCenterY, coreR * nebulaCharge.value * 0.4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(gravityCenterX, gravityCenterY, coreR * nebulaCharge.value * 0.4, 0, Math.PI * 2); ctx.fill();
         ctx.globalCompositeOperation = 'lighter';
       }
-
       ctx.restore();
     }
 
@@ -1381,7 +1352,6 @@
       ctx.fillStyle = grad; ctx.fillRect(CX-R, CY-R, R*2, R*2);
       ctx.restore();
     }
-
     function drawOutline(){
       ctx.strokeStyle = 'rgba('+CR+','+CG+','+CB+',0.55)';
       ctx.lineWidth = 1.3*DPR;
@@ -1395,7 +1365,6 @@
         ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2); ctx.stroke();
       }
     }
-
     function drawPulseRings(t){
       if(pulse < 0.15) return;
       for(let i=0;i<3;i++){
@@ -1410,7 +1379,6 @@
         ctx.beginPath(); ctx.arc(CX,CY,radius,0,Math.PI*2); ctx.stroke();
       }
     }
-
     function drawShocks(now){
       for(let i = shocks.length - 1; i >= 0; i--){
         const s = shocks[i];
@@ -1442,7 +1410,6 @@
         }
       }
     }
-
     function drawSparks(now, dt){
       const k60 = dt*60;
       for(let i = sparks.length - 1; i >= 0; i--){
@@ -1465,7 +1432,6 @@
         ctx.beginPath(); ctx.arc(sp.x, sp.y, Math.max(0.3, sp.size*k*0.85), 0, Math.PI*2); ctx.fill();
       }
     }
-
     function drawTrails(now){
       for(let i = trails.length - 1; i >= 0; i--){
         const tr = trails[i];
@@ -1479,7 +1445,6 @@
         ctx.beginPath(); ctx.arc(tr.x, tr.y, r*0.42, 0, Math.PI*2); ctx.fill();
       }
     }
-
     function drawAura(t){
       if(aura.strength < 0.02) return;
       const r = aura.r * (1 + Math.sin(t*0.9)*0.05);
@@ -1503,7 +1468,6 @@
       ctx.beginPath(); ctx.arc(0, 0, r*0.62, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
-
     function drawCharge(t){
       if(!charge.active || charge.value <= 0.001 || soloNebula) return;
       const v = charge.value;
@@ -1535,7 +1499,6 @@
         ctx.beginPath(); ctx.arc(charge.x, charge.y, dotR, 0, Math.PI*2); ctx.fill();
       }
     }
-
     function drawSegments(proj, front){
       let drawing = false;
       ctx.beginPath();
@@ -1547,7 +1510,6 @@
       }
       if(drawing) ctx.stroke();
     }
-
     function drawInnerBands(t){
       for(const band of innerBands){
         const phi = band.lat*Math.PI/180;
@@ -1582,7 +1544,6 @@
         }
       }
     }
-
     function drawLatitudes(){
       for(const phi of latPhis){
         const cosPhi = Math.cos(phi), sinPhi = Math.sin(phi);
@@ -1606,7 +1567,6 @@
         }
       }
     }
-
     function drawLongitudes(){
       for(const theta of lonThetas){
         const cosT = Math.cos(theta), sinT = Math.sin(theta);
@@ -1631,9 +1591,7 @@
         }
       }
     }
-
     function drawNodeNetwork(t){
-      /* ★ simple 模式跳过 */
       if(effectsMode === 'simple') return;
       for(const link of nodeLinks){
         const a = nodes[link.a], b = nodes[link.b];
@@ -1654,9 +1612,7 @@
         }
       }
     }
-
     function drawCircuits(t){
-      /* ★ simple 模式跳过 */
       if(effectsMode === 'simple') return;
       for(const c of circuits){
         const proj = c.pts.map(p=>project(p.x,p.y,p.z));
@@ -1691,15 +1647,13 @@
         }
       }
     }
-
     function drawParticles(now, t){
       const auraOn = aura.strength > 0.02;
       const ar = aura.r * 1.25;
       const ar2 = ar*ar;
-      /* ★ simple 模式跳过一部分粒子 */
+      const step = (effectsMode === 'simple') ? 2 : 1;
       const list = [];
-      for(let pi = 0; pi < particles.length; pi++){
-        if(effectsMode === 'simple' && (pi % 2 === 1)) continue;
+      for(let pi = 0; pi < particles.length; pi += step){
         const p = particles[pi];
         const cp = Math.cos(p.phi);
         const x = cp*Math.cos(p.theta), y = Math.sin(p.phi), z = cp*Math.sin(p.theta);
@@ -1734,7 +1688,7 @@
         ctx.beginPath(); ctx.arc(pr.x, pr.y, size, 0, Math.PI*2); ctx.fill();
         const localPulse = 0.5 + 0.5*Math.sin(t*0.85 + p.edgePhase);
         const hp = pulse * localPulse;
-        if(hp > 0.08){
+        if(hp > 0.08 && effectsMode === 'normal'){
           ctx.strokeStyle = 'rgba('+PR+','+PG+','+PB+','+(hp * depth * 0.9).toFixed(3)+')';
           ctx.lineWidth = (0.9 + hp*0.9)*DPR;
           ctx.beginPath(); ctx.arc(pr.x, pr.y, size*(1.7 + hp*1.4), 0, Math.PI*2); ctx.stroke();
@@ -1743,9 +1697,7 @@
         }
       }
     }
-
     function drawFlowParticles(now, t){
-      /* ★ simple 模式跳过 */
       if(effectsMode === 'simple') return;
       for(const fp of flowParticles){
         fp.phi += fp.speed*fp.dir*0.008;
@@ -1779,9 +1731,10 @@
         }
       }
     }
-
     function drawPulsePoints(t){
-      for(const pp of pulsePoints){
+      const step = (effectsMode === 'simple') ? 2 : 1;
+      for(let pi = 0; pi < pulsePoints.length; pi += step){
+        const pp = pulsePoints[pi];
         const theta = lonThetas[pp.lon], phi = latPhis[pp.lat];
         const cosT = Math.cos(theta), sinT = Math.sin(theta);
         const cp = Math.cos(phi), sp = Math.sin(phi);
@@ -1802,9 +1755,7 @@
         ctx.beginPath(); ctx.arc(proj.x, proj.y, ringR, 0, Math.PI*2); ctx.stroke();
       }
     }
-
     function drawOrbitRings(now){
-      /* ★ simple 模式：只画 3 条 ring，跳过小球 */
       const ringList = (effectsMode === 'simple') ? rings.slice(0, 3) : rings;
       for(const ring of ringList){
         const N = 140;
@@ -1850,17 +1801,9 @@
         ctx.beginPath(); ctx.arc(p.x, p.y, size, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = 'rgba('+PR+','+PG+','+PB+','+(0.75 + depth*0.25).toFixed(3)+')';
         ctx.beginPath(); ctx.arc(p.x, p.y, size*0.4, 0, Math.PI*2); ctx.fill();
-        const hp = pulse * (0.5 + depth*0.5);
-        if(hp > 0.08){
-          ctx.strokeStyle = 'rgba('+PR+','+PG+','+PB+','+hp.toFixed(3)+')';
-          ctx.lineWidth = 1.2*DPR;
-          ctx.beginPath(); ctx.arc(p.x, p.y, size*(2.0 + pulse*1.8), 0, Math.PI*2); ctx.stroke();
-        }
       }
     }
-
     function drawCoreOrbiters(){
-      /* ★ simple 模式减半 */
       const n = (effectsMode === 'simple') ? Math.floor(coreOrbiters.length / 2) : coreOrbiters.length;
       for(let i = 0; i < n; i++){
         const o = coreOrbiters[i];
@@ -1878,15 +1821,8 @@
         const alpha = 0.75 + depth*0.25;
         ctx.fillStyle = 'rgba('+PR+','+PG+','+PB+','+alpha.toFixed(3)+')';
         ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2); ctx.fill();
-        const hp = pulse * (0.5 + depth*0.5);
-        if(hp > 0.08){
-          ctx.strokeStyle = 'rgba('+PR+','+PG+','+PB+','+hp.toFixed(3)+')';
-          ctx.lineWidth = 1.0*DPR;
-          ctx.beginPath(); ctx.arc(x, y, size*(2.2 + pulse*1.5), 0, Math.PI*2); ctx.stroke();
-        }
       }
     }
-
     function drawCore(now){
       const kx = CX, ky = CY;
       ctx.fillStyle = 'rgba('+PR+','+PG+','+PB+',0.98)';
@@ -1907,18 +1843,12 @@
       ctx.strokeStyle = 'rgba('+CR+','+CG+','+CB+',0.85)';
       ctx.lineWidth = 1.2*DPR;
       ctx.beginPath(); ctx.ellipse(0, 0, R*0.09, R*0.032, 0, 0, Math.PI*2); ctx.stroke();
-      if(pulse > 0.05){
-        ctx.strokeStyle = 'rgba('+PR+','+PG+','+PB+','+(pulse*0.85).toFixed(3)+')';
-        ctx.lineWidth = 2.0*DPR;
-        ctx.beginPath(); ctx.ellipse(0, 0, R*0.09, R*0.032, 0, 0, Math.PI*2); ctx.stroke();
-      }
       ctx.rotate(-rot*2.4);
       ctx.strokeStyle = 'rgba('+CR+','+CG+','+CB+',0.5)';
       ctx.lineWidth = 1.0*DPR;
       ctx.beginPath(); ctx.ellipse(0, 0, R*0.13, R*0.045, 0, 0, Math.PI*2); ctx.stroke();
       ctx.restore();
     }
-
     function drawFocusRing(t, alpha, extraPing){
       if(alpha < 0.02) return;
       const ping = extraPing || 0;
@@ -1942,7 +1872,6 @@
       ctx.setLineDash([]);
       ctx.restore();
     }
-
     function drawHoverRing(t, alpha){
       if(alpha < 0.02) return;
       const hr = R * 1.16;
@@ -1954,7 +1883,6 @@
       ctx.lineWidth = 9 * DPR;
       ctx.beginPath(); ctx.arc(CX, CY, hr, 0, Math.PI*2); ctx.stroke();
     }
-
     function drawBallLabel(ball, cx, cy, ballR, alpha, isFocused, focusAmt){
       if(!ball.name) return;
       const logicalR = ballR / DPR;
@@ -1964,7 +1892,6 @@
       const fontSize = baseSize * DPR;
       const labelY = cy + ballR * 1.08 + 14 * DPR;
       ctx.save();
-      ctx.font = '700 '+fontSize+'px -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       const subFontSize = fontSize * 0.62;
@@ -2033,7 +1960,6 @@
       }
 
       updateBalls(now, dt);
-
       let gf = 0;
       for(const b of balls){ if(b.focusAmount > gf) gf = b.focusAmount; }
       globalFocus = gf;
@@ -2042,7 +1968,6 @@
       hoverT += (hoverTarget - hoverT) * Math.min(1, dt*10);
 
       purgeWaves(now);
-
       ctx.clearRect(0, 0, W, H);
 
       const globalShake = hasSplit ? 0 : screenShake;
@@ -2053,7 +1978,6 @@
       ctx.translate(shakeX, shakeY);
 
       const BR = safeBaseR();
-
       setDrawColor(globalColor);
 
       if (soloNebula) {
@@ -2071,25 +1995,19 @@
 
       if (hasSplit && !soloNebula && transitionType !== 'split-to-single') {
         const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
-
         for(let k = 0; k < drawOrder.length; k++){
           const ball = drawOrder[k].b;
           const idx = drawOrder[k].i;
-
           const ballColor = colorForBall(ball, idx);
           setDrawColor(ballColor);
-
           const vis = computeBallVisual(ball);
           CX = BASE_CX + vis.visOx * BR;
           CY = BASE_CY + vis.visOy * BR;
           R = BR * vis.visScale;
           if(!isFinite(CX) || !isFinite(CY) || !isFinite(R) || R <= 0.5) continue;
-
           currentYaw = YAW_BASE + t*0.075 + ball.yawPhase + ball.yawOffset;
           tiltCur = TILT_BASE + ball.tiltOffset + Math.sin(t*0.23 + ball.seed)*0.045;
-
           const localPulse = getBallPulse(ball, now);
-
           let ambientPulse = 0;
           if(!hasSplit){
             const breathRaw = (Math.sin(t * 0.40 + ball.breathSeed) + 1) / 2;
@@ -2097,7 +2015,6 @@
           }
           const chargePulse = (charge.active && activeBall === ball && !hasSplit) ? charge.value * 0.28 : 0;
           pulse = Math.min(1, ambientPulse + localPulse * 0.92 + chargePulse + ball.focusAmount * 0.18 + ball.focusPing * 0.20);
-
           let breathY = 0, breathS = 1;
           if(!hasSplit){
             breathY = Math.sin(t * 0.40 + ball.breathSeed) * 6 * DPR;
@@ -2105,18 +2022,12 @@
           } else {
             breathS = 1 - localPulse*0.05 + ball.focusPing * 0.018;
           }
-
           let chargeShakeX = 0, chargeShakeY = 0;
           if(charge.active && activeBall === ball && !hasSplit){
             const shakeAmp = charge.value * charge.value * 26 * DPR;
-            const sx1 = Math.sin(t*63 + ball.seed*1.7);
-            const sy1 = Math.cos(t*71 + ball.seed*2.3);
-            const sx2 = Math.sin(t*113 + ball.seed*3.1) * 0.5;
-            const sy2 = Math.cos(t*127 + ball.seed*4.7) * 0.5;
-            chargeShakeX = (sx1 + sx2) * shakeAmp;
-            chargeShakeY = (sy1 + sy2) * shakeAmp;
+            chargeShakeX = (Math.sin(t*63 + ball.seed*1.7) + Math.sin(t*113 + ball.seed*3.1)*0.5) * shakeAmp;
+            chargeShakeY = (Math.cos(t*71 + ball.seed*2.3) + Math.cos(t*127 + ball.seed*4.7)*0.5) * shakeAmp;
           }
-
           if(ball.jitterAmp > 0.1){ ball.jitterAmp *= Math.exp(-dt * ball.jitterDecay); }
           else { ball.jitterAmp = 0; }
           let jitterX = 0, jitterY = 0;
@@ -2124,16 +2035,13 @@
             jitterX = Math.sin(t*68 + ball.jitterPhaseX) * ball.jitterAmp;
             jitterY = Math.cos(t*76 + ball.jitterPhaseY) * ball.jitterAmp;
           }
-
           const effCx = CX + chargeShakeX + jitterX;
           const effCy = CY + breathY + chargeShakeY + jitterY;
-
           ctx.save();
           ctx.globalAlpha = vis.visAlpha;
           ctx.translate(effCx, effCy);
           ctx.scale(breathS, breathS);
           ctx.translate(-CX, -CY);
-
           drawSphereFill();
           drawPulseRings(t);
           drawInnerBands(t);
@@ -2148,7 +2056,6 @@
           drawCoreOrbiters();
           drawOutline();
           drawCore(now);
-
           if(ball.focusAmount > 0.02 && !transitionType){
             drawFocusRing(t, ball.focusAmount * vis.visAlpha, ball.focusPing);
           }
@@ -2156,7 +2063,6 @@
             drawHoverRing(t, hoverT * vis.visAlpha);
           }
           ctx.restore();
-
           if(hasSplit && ball.name && !transitionType){
             const labelAlpha = ball.focusAmount > 0.5 ? 1 : Math.max(0.35, vis.visAlpha);
             drawBallLabel(ball, effCx, effCy, R * breathS, labelAlpha, ball.focusAmount > 0.5, ball.focusAmount);
@@ -2166,32 +2072,23 @@
 
       if (!hasSplit || transitionType === 'split-to-single') {
         let targetBall = balls[0];
-        let extraAlpha = 1;
-        let extraScale = 1;
-
+        let extraAlpha = 1, extraScale = 1;
         if (transitionType === 'split-to-single') {
           extraAlpha = transitionProgress;
           extraScale = easeOutCubic(transitionProgress);
         }
-
-        const oScale = targetBall.scale;
-        const oOx = targetBall.ox;
-        const oOy = targetBall.oy;
-
+        const oScale = targetBall.scale, oOx = targetBall.ox, oOy = targetBall.oy;
         targetBall.scale = oScale * extraScale;
         targetBall.ox = oOx * extraScale;
         targetBall.oy = oOy * extraScale;
-
         const vis = computeBallVisual(targetBall);
         CX = BASE_CX + vis.visOx * BR;
         CY = BASE_CY + vis.visOy * BR;
         R = BR * vis.visScale;
-
         if (isFinite(CX) && isFinite(CY) && isFinite(R) && R > 0.5) {
           setDrawColor(globalColor);
           currentYaw = YAW_BASE + t*0.075 + targetBall.yawPhase + targetBall.yawOffset;
           tiltCur = TILT_BASE + targetBall.tiltOffset + Math.sin(t*0.23 + targetBall.seed)*0.045;
-
           const localPulse = getBallPulse(targetBall, now);
           let ambientPulse = 0;
           if(!hasSplit){
@@ -2199,19 +2096,16 @@
             ambientPulse = Math.pow(breathRaw, 3);
           }
           pulse = Math.min(1, ambientPulse + localPulse * 0.92 + targetBall.focusAmount * 0.18);
-
           let breathY = 0, breathS = 1;
           if(!hasSplit){
             breathY = Math.sin(t * 0.40 + targetBall.breathSeed) * 6 * DPR;
             breathS = 1 + Math.sin(t * 0.40 + targetBall.breathSeed) * 0.006 - localPulse*0.034;
           }
-
           ctx.save();
           ctx.globalAlpha = vis.visAlpha * extraAlpha;
           ctx.translate(CX, CY + breathY);
           ctx.scale(breathS, breathS);
           ctx.translate(-CX, -CY);
-
           drawSphereFill();
           drawPulseRings(t);
           drawInnerBands(t);
@@ -2228,7 +2122,6 @@
           drawCore(now);
           ctx.restore();
         }
-
         targetBall.scale = oScale;
         targetBall.ox = oOx;
         targetBall.oy = oOy;
@@ -2253,7 +2146,6 @@
         ctx.fillRect(0, 0, W, H);
       }
       ctx.restore();
-
       requestAnimationFrame(frame);
     }
 
@@ -2330,15 +2222,11 @@
         fallbackColor = palette[Math.floor(Math.random() * palette.length)];
         if (!soloNebula) applyGlobalColor(fallbackColor);
       },
-      /* ★ 设置 API */
       setEffectsMode: function(mode){
         effectsMode = (mode === 'simple') ? 'simple' : 'normal';
         return effectsMode;
       },
-      setInteractiveEnabled: function(v){
-        interactiveEnabled = !!v;
-        return interactiveEnabled;
-      },
+      getEffectsMode: function(){ return effectsMode; },
       sound: {
         isEnabled: function(){ return AudioFX.isEnabled(); },
         setEnabled: function(v){ AudioFX.setEnabled(v); },

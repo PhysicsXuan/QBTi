@@ -8,17 +8,13 @@
 :root{
   --q-r:255;--q-g:138;--q-b:72;
   --q-color:rgb(var(--q-r),var(--q-g),var(--q-b));
-  --txt:#E9EBFF;
-  --muted:#8B90B8;
-  --q-brightness:1;
-  --q-fs:1;
+  --txt:#E9EBFF;--muted:#8B90B8;
+  --q-brightness:1;--q-fs:1;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.65;}
 body.q-bold{-webkit-text-stroke:0.35px currentColor;}
-
-/* ★ 量子球亮度 */
 #quantumCanvas{filter:brightness(var(--q-brightness,1));transition:filter .3s;}
 
 .app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
@@ -56,16 +52,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .hc-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
 .hc-time{font-size:12px;color:var(--muted);}
 .hc-duration{font-size:11px;color:rgba(255,255,255,.4);}
-.history-empty{font-size:13px;color:var(--muted);padding:20px 0;text-align:center;}
 
-.page-back-btn{
-  display:inline-flex;align-items:center;gap:6px;
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
-  color:var(--muted);font-size:calc(13.5px * var(--q-fs,1));
-  cursor:pointer;padding:8px 16px;border-radius:99px;
-  font-family:inherit;transition:.2s;backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);text-decoration:none;
-}
+.page-back-btn{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:var(--muted);font-size:calc(13.5px * var(--q-fs,1));cursor:pointer;padding:8px 16px;border-radius:99px;font-family:inherit;transition:.2s;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);text-decoration:none;}
 .page-back-btn:hover{color:#fff;border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.5);background:rgba(var(--q-r),var(--q-g),var(--q-b),.1);}
 .back-btn-wrap{padding-top:12px;margin-bottom:20px;}
 
@@ -169,10 +157,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .test-result.ok{background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.3);color:#A6F0FF}
 .test-result.err{background:rgba(255,107,157,.08);border:1px solid rgba(255,107,157,.3);color:#FFB4CB}
 
-/* ★ 右下角按钮栈：gear(20) → settings(72) → sound(124) → auth(176) */
 .gear{position:fixed;right:20px;bottom:20px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;transition:.25s;backdrop-filter:blur(8px);}
 .gear:hover{color:var(--txt);border-color:var(--q-color);transform:rotate(45deg)}
-
 .settings-btn{position:fixed;right:20px;bottom:72px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:16px;transition:.25s;backdrop-filter:blur(8px);padding:0;font-family:inherit;}
 .settings-btn:hover{color:var(--txt);border-color:var(--q-color);transform:rotate(45deg)}
 
@@ -198,7 +184,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .contact-text{margin:20px auto 30px;color:rgba(255,255,255,.48);max-width:500px;font-size:15px;line-height:1.9;}
 .contact-mail{display:inline-flex;padding:12px 20px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:#fff;text-decoration:none;font-size:13px;}
 
-/* ★ 设置面板 */
+/* 设置面板 */
 .settings-mask{position:fixed;inset:0;background:rgba(3,4,12,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;display:none;place-items:center;padding:20px;overflow-y:auto;}
 .settings-mask.show{display:grid;}
 .settings-modal{width:100%;max-width:480px;padding:28px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:#0B0D1C;position:relative;max-height:90vh;overflow-y:auto;animation:sSlide .28s cubic-bezier(.2,.9,.3,1.2);}
@@ -266,7 +252,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   <section class="screen active" id="screen-home">
     <div class="home-stage">
       <button class="page-back-btn" id="btnBackSphere" style="position:absolute; top: 90px; left: 22px; z-index: 20;" data-i18n="back">← 返回</button>
-
       <div class="quantum-visual" id="quantumVisual">
         <canvas id="quantumCanvas"></canvas>
       </div>
@@ -278,7 +263,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnBackFromIntro" data-i18n="backHome">← 返回主页</button>
     </div>
-
     <div class="hero">
       <div class="badge">QBTI · Quantum Behavior Type Indicator</div>
       <h1 data-i18n="intro.title">你，<span class="grad">尚未坍缩</span>。</h1>
@@ -292,7 +276,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       </div>
       <div class="dim-preview" id="dimPreview"></div>
     </div>
-
     <div class="history-section" id="historySection" style="display:none;">
       <div class="history-title" data-i18n="intro.history">历史观测记录</div>
       <div class="history-list" id="historyList"></div>
@@ -303,7 +286,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnQuitQuiz" data-i18n="quiz.quit">← 放弃答题</button>
     </div>
-
     <div class="quiz-head">
       <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
       <div class="progress-text"><b id="qIdx">1</b> / <span id="qTotal">40</span></div>
@@ -323,10 +305,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnBackFromResult" data-i18n="backQbti">← 返回 QBTI 首页</button>
     </div>
-
     <div class="result-hero">
       <div class="r-label">Your Quantum Learning Type</div>
-      <div class="type-portrait"><img id="rTypeImage" src="" alt="人格画像"></div>
+      <div class="type-portrait"><img id="rTypeImage" src="" alt="portrait"></div>
       <div class="code" id="rCode">—</div>
       <div class="type-name" id="rTypeName">—</div>
       <p class="r-tagline" id="rTagline"></p>
@@ -353,7 +334,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     </div>
     <div class="result-actions">
       <button class="btn" id="btnRestart" data-i18n="result.restart">重新观测</button>
-      <button class="btn" id="btnCopy">复制结果</button>
+      <button class="btn" id="btnCopy" data-i18n="result.copy">复制结果</button>
     </div>
   </section>
 
@@ -361,7 +342,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnBackFromContact" data-i18n="backHome">← 返回主页</button>
     </div>
-
     <div class="contact-page">
       <div class="contact-inner">
         <div class="contact-kicker">CONTACT</div>
@@ -373,11 +353,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   </section>
 </div>
 
-<!-- 右下角按钮栈 -->
 <button class="gear" id="btnGear" title="API 设置" style="display:none;">⚙</button>
 <button class="settings-btn" id="btnSettings" title="设置">🎨</button>
 
-<!-- API 设置面板（管理员） -->
 <div class="modal-mask" id="modalMask">
   <div class="modal">
     <h3>API 设置</h3>
@@ -394,7 +372,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   </div>
 </div>
 
-<!-- ★ 设置面板（所有人） -->
 <div class="settings-mask" id="settingsMask">
   <div class="settings-modal">
     <button class="settings-close" id="settingsClose" aria-label="关闭">×</button>
@@ -403,7 +380,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
     <div class="settings-group">
       <div class="settings-group-title" data-i18n="settings.sectionSphere">量子球</div>
-
       <div class="settings-row">
         <label for="setBrightness" data-i18n="settings.brightness">亮度</label>
         <div class="settings-control">
@@ -411,7 +387,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           <span class="settings-val" id="setBrightnessVal">100%</span>
         </div>
       </div>
-
       <div class="settings-row">
         <label data-i18n="settings.effectsMode">特效模式</label>
         <div class="settings-seg" id="setEffectsMode">
@@ -419,30 +394,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           <button type="button" data-val="normal" data-i18n="settings.effectsMode.normal">常规</button>
         </div>
       </div>
-
-      <div class="settings-row">
-        <label>
-          <span data-i18n="settings.interactive">交互特效</span>
-          <span class="hint" data-i18n="settings.interactive.hint">（星云 / 点击爆炸）</span>
-        </label>
-        <div class="settings-seg" id="setInteractive">
-          <button type="button" data-val="on" data-i18n="settings.interactive.on">开</button>
-          <button type="button" data-val="off" data-i18n="settings.interactive.off">关</button>
-        </div>
-      </div>
     </div>
 
     <div class="settings-group">
       <div class="settings-group-title" data-i18n="settings.sectionDisplay">显示</div>
-
       <div class="settings-row">
         <label data-i18n="settings.language">语言</label>
-        <div class="settings-seg" id="setLang">
-          <button type="button" data-val="zh" data-i18n="settings.lang.zh">中文</button>
-          <button type="button" data-val="en" data-i18n="settings.lang.en">English</button>
-        </div>
+        <div class="settings-seg" id="setLang"></div>
       </div>
-
       <div class="settings-row">
         <label data-i18n="settings.fontSize">字体大小</label>
         <div class="settings-seg" id="setFontSize">
@@ -451,7 +410,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           <button type="button" data-val="lg" data-i18n="settings.fontSize.lg">大</button>
         </div>
       </div>
-
       <div class="settings-row">
         <label data-i18n="settings.fontWeight">字体粗细</label>
         <div class="settings-seg" id="setFontWeight">
@@ -461,7 +419,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       </div>
     </div>
 
-    <div class="settings-note" data-i18n="settings.langNote">※ 语言切换目前仅影响界面文字，测评题目与报告内容仍为中文。</div>
+    <div class="settings-note" data-i18n="settings.langNote">※ 语言切换会同步问卷题目与界面文字。日/韩语下问卷题目暂用英文显示。</div>
 
     <div class="settings-actions">
       <button class="settings-reset" id="setReset" data-i18n="settings.reset">恢复默认</button>
@@ -501,303 +459,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 </script>
 
 <script src="qbti-core.js"></script>
+<script src="qbti-i18n.js"></script>
+<script src="qbti-settings.js"></script>
 <script src="quantum-sphere.js"></script>
 <script src="qbti-auth.js"></script>
-
-<script>
-/* ============================================================
-   ★ 设置模块（i18n + 亮度 + 特效 + 字号 / 粗细）
-   ============================================================ */
-(function(){
-  'use strict';
-  const SETTINGS_KEY = 'qbti_settings_v1';
-  const DEFAULT_SETTINGS = {
-    brightness: 100,
-    effectsMode: 'normal',
-    interactive: true,
-    lang: 'zh',
-    fontSize: 'md',
-    fontWeight: 'normal'
-  };
-
-  const I18N = {
-    zh: {
-      'nav.home': '主页',
-      'nav.qbti': 'QBTI',
-      'nav.contact': '联系我们',
-      'back': '← 返回',
-      'backHome': '← 返回主页',
-      'backQbti': '← 返回 QBTI 首页',
-      'home.hint': '按住量子球以开始',
-      'intro.title': '你，<span class="grad">尚未坍缩</span>。',
-      'intro.lead': '在单一的评价框架里，每一次排名、每一张试卷，都是一次强观测。而观测，会让叠加态坍缩。<br>QBTI 用 40 道题、81 种人格类型、4 个发展方向，描述那些还没被观测到的你。',
-      'intro.start': '开始观测 →',
-      'intro.history': '历史观测记录',
-      'quiz.quit': '← 放弃答题',
-      'quiz.prev': '← 上一题',
-      'quiz.hint': '键盘 1–5 可快速作答',
-      'result.sec1': '四维倾向 · 每维度内三字母合计 100%',
-      'result.sec2': '发展向量 Developmental Vector',
-      'result.vecTitle': '你当前的学习状态更倾向于……',
-      'result.vecSub': '四条发展路径的相对权重。',
-      'result.sec3': 'AI 引导报告 · 面向家长',
-      'result.aiTitle': '个性化波函数解读',
-      'result.aiEmpty': '点击「生成报告」，AI 将基于孩子的十二维量子态与作答真实性，输出一份面向家长的引导路径。',
-      'result.restart': '重新观测',
-      'contact.title': '联系我们',
-      'contact.text': '如果你希望了解项目、提出建议，或者参与后续的量子态映射研究，可以通过邮件与我们联系。',
-      'settings.title': '设置',
-      'settings.sub': '调整界面与量子球效果，设置会保存在本地。',
-      'settings.sectionSphere': '量子球',
-      'settings.sectionDisplay': '显示',
-      'settings.brightness': '亮度',
-      'settings.effectsMode': '特效模式',
-      'settings.effectsMode.simple': '简洁',
-      'settings.effectsMode.normal': '常规',
-      'settings.interactive': '交互特效',
-      'settings.interactive.hint': '（星云 / 点击爆炸）',
-      'settings.interactive.on': '开',
-      'settings.interactive.off': '关',
-      'settings.language': '语言',
-      'settings.lang.zh': '中文',
-      'settings.lang.en': 'English',
-      'settings.fontSize': '字体大小',
-      'settings.fontSize.sm': '小',
-      'settings.fontSize.md': '中',
-      'settings.fontSize.lg': '大',
-      'settings.fontWeight': '字体粗细',
-      'settings.fontWeight.normal': '常规',
-      'settings.fontWeight.bold': '粗体',
-      'settings.langNote': '※ 语言切换目前仅影响界面文字，测评题目与报告内容仍为中文。',
-      'settings.reset': '恢复默认',
-      'settings.done': '完成'
-    },
-    en: {
-      'nav.home': 'Home',
-      'nav.qbti': 'QBTI',
-      'nav.contact': 'Contact',
-      'back': '← Back',
-      'backHome': '← Home',
-      'backQbti': '← Back to QBTI',
-      'home.hint': 'Press and hold the quantum sphere to start',
-      'intro.title': 'You, <span class="grad">not yet collapsed</span>.',
-      'intro.lead': 'In a single evaluation framework, every ranking and every exam paper is a strong measurement. And measurement collapses superposition.<br>QBTI uses 40 questions, 81 personality types, and 4 development directions to describe the parts of you that have not been observed yet.',
-      'intro.start': 'Begin observation →',
-      'intro.history': 'Observation history',
-      'quiz.quit': '← Quit',
-      'quiz.prev': '← Previous',
-      'quiz.hint': 'Press 1–5 to answer quickly',
-      'result.sec1': 'Four Dimensions · Each dimension sums to 100%',
-      'result.sec2': 'Developmental Vector',
-      'result.vecTitle': 'Your current learning state leans toward…',
-      'result.vecSub': 'Relative weights of the four development paths.',
-      'result.sec3': 'AI Guidance Report · For Parents',
-      'result.aiTitle': 'Personalized Wavefunction Reading',
-      'result.aiEmpty': 'Click "Generate" — AI will interpret the child\'s 12-dimensional quantum state and response authenticity for parents.',
-      'result.restart': 'Re-observe',
-      'contact.title': 'Contact',
-      'contact.text': 'If you would like to learn about the project, offer suggestions, or participate in future quantum-state mapping research, please reach out via email.',
-      'settings.title': 'Settings',
-      'settings.sub': 'Adjust interface and quantum sphere. Settings are saved locally.',
-      'settings.sectionSphere': 'Quantum Sphere',
-      'settings.sectionDisplay': 'Display',
-      'settings.brightness': 'Brightness',
-      'settings.effectsMode': 'Effects Mode',
-      'settings.effectsMode.simple': 'Simple',
-      'settings.effectsMode.normal': 'Normal',
-      'settings.interactive': 'Interactive Effects',
-      'settings.interactive.hint': '(nebula / click burst)',
-      'settings.interactive.on': 'On',
-      'settings.interactive.off': 'Off',
-      'settings.language': 'Language',
-      'settings.lang.zh': '中文',
-      'settings.lang.en': 'English',
-      'settings.fontSize': 'Font Size',
-      'settings.fontSize.sm': 'S',
-      'settings.fontSize.md': 'M',
-      'settings.fontSize.lg': 'L',
-      'settings.fontWeight': 'Font Weight',
-      'settings.fontWeight.normal': 'Normal',
-      'settings.fontWeight.bold': 'Bold',
-      'settings.langNote': 'Note: Language only affects UI text. Questions and reports remain in Chinese.',
-      'settings.reset': 'Reset',
-      'settings.done': 'Done'
-    }
-  };
-
-  function loadSettings(){
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if(!raw) return Object.assign({}, DEFAULT_SETTINGS);
-      const s = JSON.parse(raw) || {};
-      return Object.assign({}, DEFAULT_SETTINGS, s);
-    } catch(e){ return Object.assign({}, DEFAULT_SETTINGS); }
-  }
-  function saveSettings(s){
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch(e){}
-  }
-
-  function applyLang(lang){
-    const dict = I18N[lang] || I18N.zh;
-    document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.dataset.i18n;
-      if(dict[key] == null) return;
-      if(dict[key].indexOf('<') >= 0){
-        el.innerHTML = dict[key];
-      } else {
-        el.textContent = dict[key];
-      }
-    });
-  }
-
-  function applyFontSize(size){
-    const map = { sm: 0.92, md: 1, lg: 1.14 };
-    document.documentElement.style.setProperty('--q-fs', map[size] || 1);
-    if(window.QuantumSphere && window.QuantumSphere.resize){
-      setTimeout(() => window.QuantumSphere.resize(), 60);
-    }
-  }
-
-  function applyFontWeight(weight){
-    document.body.classList.toggle('q-bold', weight === 'bold');
-  }
-
-  function applyBrightness(v){
-    const b = Math.max(50, Math.min(150, Number(v) || 100)) / 100;
-    document.documentElement.style.setProperty('--q-brightness', b);
-  }
-
-  function applySpherePrefs(s){
-    if(!window.QuantumSphere) return;
-    if(window.QuantumSphere.setEffectsMode){
-      window.QuantumSphere.setEffectsMode(s.effectsMode || 'normal');
-    }
-    if(window.QuantumSphere.setInteractiveEnabled){
-      window.QuantumSphere.setInteractiveEnabled(s.interactive !== false);
-    }
-  }
-
-  function applyAll(s){
-    applyBrightness(s.brightness);
-    applyFontSize(s.fontSize);
-    applyFontWeight(s.fontWeight);
-    applyLang(s.lang);
-    applySpherePrefs(s);
-  }
-
-  /* ============ 面板 UI ============ */
-  const $ = id => document.getElementById(id);
-  const mask = $('settingsMask');
-  const setBrightness = $('setBrightness');
-  const setBrightnessVal = $('setBrightnessVal');
-  const groups = {
-    effectsMode: $('setEffectsMode'),
-    interactive: $('setInteractive'),
-    lang: $('setLang'),
-    fontSize: $('setFontSize'),
-    fontWeight: $('setFontWeight')
-  };
-
-  let cur = loadSettings();
-
-  function syncUI(){
-    setBrightness.value = cur.brightness;
-    setBrightnessVal.textContent = cur.brightness + '%';
-    Object.keys(groups).forEach(k => {
-      if(!groups[k]) return;
-      let val = cur[k];
-      if(k === 'interactive') val = cur.interactive ? 'on' : 'off';
-      groups[k].querySelectorAll('button').forEach(b => {
-        b.classList.toggle('active', b.dataset.val === String(val));
-      });
-    });
-  }
-
-  function bindGroup(name, onChange){
-    const el = groups[name];
-    if(!el) return;
-    el.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        onChange(btn.dataset.val);
-      });
-    });
-  }
-
-  bindGroup('effectsMode', v => {
-    cur.effectsMode = (v === 'simple') ? 'simple' : 'normal';
-    saveSettings(cur); applySpherePrefs(cur); syncUI();
-  });
-  bindGroup('interactive', v => {
-    cur.interactive = (v === 'on');
-    saveSettings(cur); applySpherePrefs(cur); syncUI();
-  });
-  bindGroup('lang', v => {
-    cur.lang = (v === 'en') ? 'en' : 'zh';
-    saveSettings(cur); applyLang(cur.lang); syncUI();
-  });
-  bindGroup('fontSize', v => {
-    if(['sm','md','lg'].indexOf(v) < 0) return;
-    cur.fontSize = v;
-    saveSettings(cur); applyFontSize(cur.fontSize); syncUI();
-  });
-  bindGroup('fontWeight', v => {
-    cur.fontWeight = (v === 'bold') ? 'bold' : 'normal';
-    saveSettings(cur); applyFontWeight(cur.fontWeight); syncUI();
-  });
-
-  setBrightness.addEventListener('input', () => {
-    const v = Number(setBrightness.value);
-    cur.brightness = v;
-    setBrightnessVal.textContent = v + '%';
-    applyBrightness(v);
-  });
-  setBrightness.addEventListener('change', () => {
-    saveSettings(cur);
-  });
-
-  $('setReset').addEventListener('click', () => {
-    if(!confirm(cur.lang === 'en' ? 'Reset all settings to default?' : '确定恢复所有设置为默认值吗？')) return;
-    cur = Object.assign({}, DEFAULT_SETTINGS);
-    saveSettings(cur);
-    applyAll(cur);
-    syncUI();
-  });
-
-  function openMask(){ mask.classList.add('show'); syncUI(); }
-  function closeMask(){ mask.classList.remove('show'); }
-
-  $('btnSettings').addEventListener('click', openMask);
-  $('settingsClose').addEventListener('click', closeMask);
-  $('setDone').addEventListener('click', closeMask);
-  mask.addEventListener('click', e => { if(e.target === mask) closeMask(); });
-  document.addEventListener('keydown', e => {
-    if(e.key === 'Escape' && mask.classList.contains('show')) closeMask();
-  });
-
-  /* ============ 初始化 ============ */
-  function init(){
-    applyAll(cur);
-    // 等 QuantumSphere 就绪后补应用一次
-    let tries = 0;
-    const wait = setInterval(() => {
-      tries++;
-      if(window.QuantumSphere || tries > 30){
-        clearInterval(wait);
-        applySpherePrefs(cur);
-      }
-    }, 100);
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
-
-  window.QBTISettings = {
-    get: () => Object.assign({}, cur),
-    reset: () => { cur = Object.assign({}, DEFAULT_SETTINGS); saveSettings(cur); applyAll(cur); syncUI(); },
-    open: openMask
-  };
-})();
-</script>
 
 <script>
 (function(){
@@ -830,7 +495,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function isAdmin(){
     return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin());
   }
-
   function refreshAdminUI(info){
     const gear = $('btnGear');
     if(!gear) return;
@@ -843,14 +507,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(mask) mask.classList.remove('show');
     }
   }
-
   function formatTime(ts){
     const d = new Date(ts);
     const pad = n => n < 10 ? '0'+n : ''+n;
     return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) +
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
-
   function goToScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(id);
@@ -869,39 +531,40 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('btnBackFromIntro').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromContact').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromResult').addEventListener('click', () => goToScreen('screen-intro'));
-
   $('btnQuitQuiz').addEventListener('click', () => {
-    if(confirm('确定要放弃本次答题并返回吗？当前答题进度将不会保存。')) {
-      goToScreen('screen-intro');
-    }
+    const msg = window.QBTI_I18N && window.QBTI_I18N.current !== 'zh'
+      ? 'Quit the quiz and return? Progress will not be saved.'
+      : '确定要放弃本次答题并返回吗？当前答题进度将不会保存。';
+    if(confirm(msg)) goToScreen('screen-intro');
   });
-
   $('btnBackSphere').addEventListener('click', () => {
-    if(window.QuantumSphere && window.QuantumSphere.goBack) {
-      window.QuantumSphere.goBack();
-    }
+    if(window.QuantumSphere && window.QuantumSphere.goBack) window.QuantumSphere.goBack();
   });
 
-  (function(){
+  /* ★ 维度预览（i18n） */
+  function renderDimPreview(){
     const el = $('dimPreview');
     if(!el) return;
-    el.innerHTML = Q.DIMS.map((d, i) =>
-      '<div class="pv-card">'
-      + '<div class="pv-idx">0' + (i+1) + '</div>'
-      + '<div class="pv-name">' + d.name + '</div>'
-      + '<div class="pv-en">' + d.en + '</div>'
-      + '<div class="pv-tags">' + d.letters.map(l => {
-        const s = Q.SUBDIMS.find(x => x.id === l);
-        return '<span class="pv-tag" style="background:' + Q.DIM_COLORS[d.id][l] + '22;color:' + Q.DIM_COLORS[d.id][l] + '">' + l + ' · ' + s.name + '</span>';
-      }).join('') + '</div></div>'
-    ).join('');
-  })();
+    const I18N = window.QBTI_I18N;
+    el.innerHTML = Q.DIMS.map((d, i) => {
+      const dimName = I18N ? I18N.dim(d.id, 'name') : d.name;
+      return '<div class="pv-card">'
+        + '<div class="pv-idx">0' + (i+1) + '</div>'
+        + '<div class="pv-name">' + dimName + '</div>'
+        + '<div class="pv-en">' + d.en + '</div>'
+        + '<div class="pv-tags">' + d.letters.map(l => {
+          const s = Q.SUBDIMS.find(x => x.id === l);
+          const subName = I18N ? I18N.sub(l) : s.name;
+          return '<span class="pv-tag" style="background:' + Q.DIM_COLORS[d.id][l] + '22;color:' + Q.DIM_COLORS[d.id][l] + '">' + l + ' · ' + subName + '</span>';
+        }).join('') + '</div></div>';
+    }).join('');
+  }
+  renderDimPreview();
 
   async function syncReportToServer(){
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
     const u = window.QAuth.getCurrentUser();
     if(!u || !u.email || !state.result) return;
-
     const payload = {
       code: state.result.letters.join('') + '-' + state.result.suffix.letter,
       baseCode: state.result.letters.join(''),
@@ -918,21 +581,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       aiReport: state.aiReportText || null,
       fullResult: state.result
     };
-
     try {
       const res = await fetch('/api/report/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentEmail: u.email,
-          studentUsername: u.username,
-          payload
-        })
+        body: JSON.stringify({ studentEmail: u.email, studentUsername: u.username, payload })
       });
       if(res.ok) console.log('[QBTI] 报告已同步到服务器');
-    } catch(e){
-      console.warn('[QBTI] 报告同步失败', e);
-    }
+    } catch(e){ console.warn('[QBTI] 报告同步失败', e); }
   }
 
   function saveResultToUser(result, qs, ds, answers){
@@ -983,7 +639,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     state.result = Q.computeResult(state.answers);
     state.restoredTs = entry.ts || null;
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
-
     let qs = null, ds = null;
     if(Q.analyzeQuantumState){
       qs = Q.analyzeQuantumState(state.result);
@@ -1004,24 +659,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const section = $('historySection');
     const listEl = $('historyList');
     if(!section || !listEl) return;
-
     const history = getAllResultsFromUser();
-    if(history.length === 0){
-      section.style.display = 'none';
-      return;
-    }
-
+    if(history.length === 0){ section.style.display = 'none'; return; }
     section.style.display = 'block';
     const sorted = history.slice().reverse();
-
     listEl.innerHTML = sorted.map(entry => {
       const code = entry.code + '-' + entry.suffix;
-      let durationStr = '时长未知';
+      let durationStr = '—';
       if(entry.timings && Object.keys(entry.timings).length > 0){
         const totalSec = Object.values(entry.timings).reduce((a,b) => a + b, 0);
         const m = Math.floor(totalSec / 60);
         const s = Math.round(totalSec % 60);
-        durationStr = `耗时 ${m > 0 ? m + '分' : ''}${s}秒`;
+        durationStr = `${m > 0 ? m + 'm ' : ''}${s}s`;
       }
       const nameObj = Q.TYPE_NAMES[entry.code] || '';
       return `<div class="history-card" data-ts="${entry.ts}">
@@ -1035,28 +684,27 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         </div>
       </div>`;
     }).join('');
-
     listEl.querySelectorAll('.history-card').forEach(card => {
       card.addEventListener('click', () => {
         const ts = Number(card.dataset.ts);
         const entry = history.find(h => h.ts === ts);
-        if(entry){
-          restoreFromHistory(entry);
-          goToScreen('screen-result');
-        }
+        if(entry){ restoreFromHistory(entry); goToScreen('screen-result'); }
       });
     });
   }
 
-  function updateRestoreBanner(){
-    renderHistory();
-  }
-
+  function updateRestoreBanner(){ renderHistory(); }
   $('qTotal').textContent = Q.QUESTIONS.length;
 
   function renderGroupStrip(){
     const cur = Q.QUESTIONS[state.idx].group;
-    const labels = ['潜能开放度','内在驱动力','学习自主性','未知应对方式'];
+    const I18N = window.QBTI_I18N;
+    const labels = [
+      I18N ? I18N.dim('PO','name') : '潜能开放度',
+      I18N ? I18N.dim('II','name') : '内在驱动力',
+      I18N ? I18N.dim('LA','name') : '学习自主性',
+      I18N ? I18N.dim('UR','name') : '未知应对方式'
+    ];
     $('groupStrip').innerHTML = [1,2,3,4].map(g => {
       let cls = 'group-dot';
       if(g < cur) cls += ' done'; else if(g === cur) cls += ' active';
@@ -1067,12 +715,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function renderQuestion(){
     const q = Q.QUESTIONS[state.idx];
     if(!state.questionShownAt[q.id]) state.questionShownAt[q.id] = Date.now();
-    $('qText').textContent = q.text;
+    const I18N = window.QBTI_I18N;
+    $('qText').textContent = I18N ? I18N.q(q.id) : q.text;
     $('qIdx').textContent = state.idx + 1;
     $('progFill').style.width = (state.idx / Q.QUESTIONS.length * 100) + '%';
     renderGroupStrip();
     $('options').innerHTML = Q.OPTIONS.map((o, i) =>
-      '<button class="opt" data-v="' + o.v + '"><span class="num">' + (i+1) + '</span><span class="dot"></span><span>' + o.t + '</span></button>'
+      '<button class="opt" data-v="' + o.v + '"><span class="num">' + (i+1) + '</span><span class="dot"></span><span>'
+      + (I18N ? I18N.opt(i) : o.t) + '</span></button>'
     ).join('');
     const chosen = state.answers[q.id];
     if(chosen != null){
@@ -1120,18 +770,26 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(e.key === 'Backspace' && state.idx > 0){ e.preventDefault(); state.idx--; renderQuestion(); }
   });
 
-  const STABILITY_LABEL = {
-    clear:    {text:'明确',       cls:'clear'},
-    moderate: {text:'中等',       cls:'moderate'},
-    weak:     {text:'尚未坍缩',   cls:'weak'}
+  const STABILITY_LABEL_ZH = {
+    clear: { text:'明确', cls:'clear' },
+    moderate: { text:'中等', cls:'moderate' },
+    weak: { text:'尚未坍缩', cls:'weak' }
   };
+  const STABILITY_LABEL_EN = {
+    clear: { text:'Clear', cls:'clear' },
+    moderate: { text:'Moderate', cls:'moderate' },
+    weak: { text:'Uncollapsed', cls:'weak' }
+  };
+  function stabLabel(stab){
+    const I18N = window.QBTI_I18N;
+    return (I18N && I18N.current !== 'zh') ? (STABILITY_LABEL_EN[stab] || STABILITY_LABEL_EN.weak) : STABILITY_LABEL_ZH[stab];
+  }
 
   function finish(){
     state.result = Q.computeResult(state.answers);
     state.restoredTs = null;
     state.aiReportText = null;
     state.validity = Q.analyzeResponseValidity(state.answers, state.timings);
-
     let qs = null, ds = null;
     if(Q.analyzeQuantumState){
       qs = Q.analyzeQuantumState(state.result);
@@ -1146,7 +804,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     saveResultToUser(state.result, qs, ds, state.answers);
     renderResult(state.result, null);
     renderQuantumStateBadge(qs, ds);
-
     syncReportToServer();
     goToScreen('screen-result');
   }
@@ -1154,35 +811,33 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function renderQuantumStateBadge(qs, dimStates){
     if(!qs) return;
     const labels = {
-      good:          { text: '良好量子态', color: '#50DC8C' },
-      danger:        { text: '危险量子态', color: '#EB414B' },
+      good: { text: '良好量子态', color: '#50DC8C' },
+      danger: { text: '危险量子态', color: '#EB414B' },
       superposition: { text: '叠加量子态', color: '#5A8CF5' }
     };
     const info = labels[qs.type];
     if(!info) return;
     const old = document.getElementById('quantumStateBadge');
     if(old) old.remove();
-
     const wrap = document.createElement('div');
     wrap.id = 'quantumStateBadge';
     wrap.style.cssText = 'margin:20px auto 0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;';
     const total = document.createElement('div');
     total.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:99px;font-size:13.5px;font-weight:700;letter-spacing:.06em;border:1px solid ' + info.color + '44;background:' + info.color + '14;color:' + info.color + ';';
-    total.innerHTML = '<span style="text-shadow:0 0 8px ' + info.color + '">●</span>整体 · ' + info.text
-      + '<span style="opacity:.55;font-weight:400;font-size:11.5px;margin-left:4px">主页大球已变色</span>';
+    total.innerHTML = '<span style="text-shadow:0 0 8px ' + info.color + '">●</span>' + info.text;
     wrap.appendChild(total);
-
     if(dimStates){
       const dimRow = document.createElement('div');
       dimRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center;';
-      const dimNames = { PO:'潜能开放度', II:'内在驱动力', LA:'学习自主性', UR:'未知应对方式' };
+      const I18N = window.QBTI_I18N;
       ['PO','II','LA','UR'].forEach(id => {
         const t = dimStates[id];
         const meta = labels[t];
         if(!meta) return;
+        const dimName = I18N ? I18N.dim(id, 'name') : id;
         const chip = document.createElement('span');
         chip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;font-size:11.5px;font-weight:600;border:1px solid ' + meta.color + '44;background:' + meta.color + '12;color:' + meta.color + ';';
-        chip.innerHTML = '<span style="font-size:9px">●</span>' + dimNames[id] + ' · ' + meta.text;
+        chip.innerHTML = '<span style="font-size:9px">●</span>' + dimName + ' · ' + meta.text;
         dimRow.appendChild(chip);
       });
       wrap.appendChild(dimRow);
@@ -1192,20 +847,25 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   function renderResult(res, restoredTs){
+    const I18N = window.QBTI_I18N;
     const baseCode = res.letters.join('');
-    const typeName = Q.TYPE_NAMES[baseCode] || '未知类型';
+    const typeName = Q.TYPE_NAMES[baseCode] || '';
+    const suffixName = I18N ? I18N.sfx(res.suffix.letter, 'name') : res.suffix.name;
+    const suffixDesc = I18N ? I18N.sfx(res.suffix.letter, 'desc') : res.suffix.desc;
     const portrait = $('rTypeImage');
     if(portrait){ portrait.src = Q.makeTypeImage(baseCode); portrait.alt = baseCode + ' · ' + typeName; }
     $('rCode').innerHTML = baseCode + '<span class="code-suffix">-' + res.suffix.letter + '</span>';
-    $('rTypeName').innerHTML = typeName + ' <span class="tn-suffix">· ' + res.suffix.name + '</span>';
-    const sufStab = STABILITY_LABEL[res.suffixStability];
-    $('rTagline').innerHTML = '你当前的发展方向为「<strong style="color:#C6CBF5">' + res.suffix.name + '</strong>」——' + res.suffix.desc + '<br><span style="opacity:.75;font-size:13px">主导差值 ' + res.suffixGap + '% · ' + sufStab.text + '</span>';
+    const showChineseName = (I18N && I18N.current === 'zh');
+    $('rTypeName').innerHTML = (showChineseName && typeName ? typeName + ' · ' : '') + suffixName;
+    const sufStab = stabLabel(res.suffixStability);
+    $('rTagline').innerHTML = suffixDesc + '<br><span style="opacity:.75;font-size:13px">' + res.suffixGap + '% · ' + sufStab.text + '</span>';
 
     $('dimStacks').innerHTML = Q.DIMS.map(d => {
       const ratios = res.dimGroupRatio[d.id];
       const info = res.dimLeadInfo[d.id];
       const colors = Q.DIM_COLORS[d.id];
-      const stab = STABILITY_LABEL[info.stability];
+      const stab = stabLabel(info.stability);
+      const dimName = I18N ? I18N.dim(d.id, 'name') : d.name;
       const segments = d.letters.map(l => {
         const pct = ratios[l]; const color = colors[l];
         let sc = '';
@@ -1213,18 +873,20 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         return '<div class="dsc-seg ' + sc + '" style="width:0%;background:' + color + ';" data-w="' + pct + '"><span class="dsc-seg-letter">' + l + '</span><span class="dsc-seg-pct">' + pct + '%</span></div>';
       }).join('');
       const legend = d.letters.map(l => {
-        const s = Q.SUBDIMS.find(x => x.id === l);
+        const subName = I18N ? I18N.sub(l) : (Q.SUBDIMS.find(x=>x.id===l)||{}).name;
         const isLead = l === info.lead;
-        return '<span class="dsc-leg ' + (isLead?'lead':'') + '"><span class="dsc-dot" style="background:' + colors[l] + '"></span><span class="dsc-leg-name">' + l + ' ' + s.name + '</span></span>';
+        return '<span class="dsc-leg ' + (isLead?'lead':'') + '"><span class="dsc-dot" style="background:' + colors[l] + '"></span><span class="dsc-leg-name">' + l + ' ' + subName + '</span></span>';
       }).join('');
-      return '<div class="dim-stack-card"><div class="dsc-head"><div><div class="dsc-title">' + d.name + '</div><div class="dsc-en">' + d.en + '</div></div><div class="dsc-lead">主导 <span class="dsc-lead-letter" style="background:' + colors[info.lead] + ';">' + info.lead + '</span><span class="dsc-gap ' + stab.cls + '">差值 ' + info.gap + '% · ' + stab.text + '</span></div></div><div class="dsc-bar">' + segments + '</div><div class="dsc-legend">' + legend + '</div></div>';
+      return '<div class="dim-stack-card"><div class="dsc-head"><div><div class="dsc-title">' + dimName + '</div><div class="dsc-en">' + d.en + '</div></div><div class="dsc-lead"><span class="dsc-lead-letter" style="background:' + colors[info.lead] + ';">' + info.lead + '</span><span class="dsc-gap ' + stab.cls + '">' + info.gap + '% · ' + stab.text + '</span></div></div><div class="dsc-bar">' + segments + '</div><div class="dsc-legend">' + legend + '</div></div>';
     }).join('');
 
     const maxSuf = Math.max.apply(null, Q.SUFFIXES.map(sf => res.suffixRatio[sf.letter]));
     $('vectorGrid').innerHTML = Q.SUFFIXES.map(sf => {
       const pct = res.suffixRatio[sf.letter];
       const isTop = pct === maxSuf;
-      return '<div class="vector-card ' + (isTop?'top':'') + '"><div class="vc-letter">' + sf.letter + '</div><div class="vc-name">' + sf.name + '</div><div class="vc-en">' + sf.name + '</div><div class="vc-pct">' + pct + '%</div><div class="vc-bar"><div class="vc-fill" data-w="' + pct + '"></div></div><div class="vc-desc">' + sf.desc + '</div></div>';
+      const sName = I18N ? I18N.sfx(sf.letter, 'name') : sf.name;
+      const sDesc = I18N ? I18N.sfx(sf.letter, 'desc') : sf.desc;
+      return '<div class="vector-card ' + (isTop?'top':'') + '"><div class="vc-letter">' + sf.letter + '</div><div class="vc-name">' + sName + '</div><div class="vc-en">' + sName + '</div><div class="vc-pct">' + pct + '%</div><div class="vc-bar"><div class="vc-fill" data-w="' + pct + '"></div></div><div class="vc-desc">' + sDesc + '</div></div>';
     }).join('');
 
     const oldTip = document.getElementById('restoredTip');
@@ -1233,7 +895,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       const tip = document.createElement('div');
       tip.id = 'restoredTip';
       tip.style.cssText = 'margin:18px auto 0;padding:10px 18px;border-radius:99px;font-size:12.5px;display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:var(--muted);';
-      tip.innerHTML = '⏱ 本次记录时间：' + formatTime(restoredTs);
+      tip.innerHTML = '⏱ ' + formatTime(restoredTs);
       const hero = document.querySelector('.result-hero');
       if(hero) hero.appendChild(tip);
     }
@@ -1243,9 +905,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       document.querySelectorAll('.vc-fill').forEach((el, i) => setTimeout(() => { el.style.width = el.dataset.w + '%'; }, 320 + i*80));
     });
 
-    $('aiBody').innerHTML = '<div class="ai-empty">点击「生成报告」，AI 将基于孩子的十二维量子态与作答真实性，输出一份面向家长的引导路径。</div>';
+    const i18nEmpty = (I18N ? I18N.t('result.aiEmpty') : '点击「生成报告」…');
+    $('aiBody').innerHTML = '<div class="ai-empty">' + i18nEmpty + '</div>';
     $('btnAI').disabled = false;
-    $('btnAI').textContent = '生成报告';
+    $('btnAI').textContent = (I18N && I18N.current === 'en') ? 'Generate' : (I18N && I18N.current === 'ja') ? '生成' : (I18N && I18N.current === 'ko') ? '생성' : '生成报告';
   }
 
   function getCfg(){
@@ -1297,12 +960,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(!state.result) return;
     const btn = $('btnAI');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>生成中…';
-    $('aiBody').innerHTML = '<div class="ai-empty"><span class="spinner"></span>正在解析孩子的波函数与作答真实性…</div>';
-
+    btn.innerHTML = '<span class="spinner"></span>…';
+    $('aiBody').innerHTML = '<div class="ai-empty"><span class="spinner"></span>…</div>';
     const validity = state.validity || Q.analyzeResponseValidity(state.answers, state.timings);
     state.validity = validity;
-
     try {
       const text = await callAPI(Q.buildPrompt(state.result, validity));
       state.aiReportText = text;
@@ -1312,12 +973,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       const msg = String(err.message || err);
       let extra = '';
       if(msg.indexOf('CORS_OR_NETWORK') >= 0){
-        extra = '<br><br><span style="color:#FFD98A">⚠ 浏览器跨域限制。用本地服务器打开或换允许 CORS 的代理地址。下方已切换本地报告。</span>';
+        extra = '<br><span style="color:#FFD98A">⚠ CORS/网络受限，下方已切本地报告。</span>';
       }
       $('aiBody').innerHTML =
-        '<div class="ai-empty" style="color:#FF9BB5">AI 调用失败：'
-        + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim())
-        + extra + '</div>'
+        '<div class="ai-empty" style="color:#FF9BB5">' + Q.escapeHTML(msg.split('CORS_OR_NETWORK:').pop().trim()) + extra + '</div>'
         + Q.renderMD(Q.localReport(state.result, validity));
       state.aiReportText = Q.localReport(state.result, validity);
       syncReportToServer();
@@ -1342,8 +1001,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   });
 
   $('btnRestart').addEventListener('click', () => {
-    if(!confirm('若重做问卷，量子球将会被新问卷覆盖，但您仍可访问历史问卷记录。\n\n确定要重新开始吗？')) return;
-
+    if(!confirm('重新开始？量子球会被新结果覆盖，历史记录仍保留。')) return;
     state.idx = 0;
     state.answers = {};
     state.timings = {};
@@ -1360,34 +1018,30 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('btnCopy').addEventListener('click', async () => {
     if(!state.result) return;
     const res = state.result;
+    const I18N = window.QBTI_I18N;
     const baseCode = res.letters.join('');
     const typeName = Q.TYPE_NAMES[baseCode] || '';
     const fullCode = baseCode + '-' + res.suffix.letter;
+    const sName = I18N ? I18N.sfx(res.suffix.letter, 'name') : res.suffix.name;
     const dimLines = Q.DIMS.map(d => {
       const r = res.dimGroupRatio[d.id]; const info = res.dimLeadInfo[d.id];
-      return d.name + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → 主导 ' + info.lead + '（差值 ' + info.gap + '%）';
+      const dimName = I18N ? I18N.dim(d.id, 'name') : d.name;
+      return dimName + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → ' + info.lead + ' (' + info.gap + '%)';
     }).join('\n');
-    const vecLines = Q.SUFFIXES.map(sf => sf.letter + ' ' + sf.name + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
-
-    const txt = 'QBTI 量子人格测评结果（面向家长）\n'
-      + '类型：' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）\n'
-      + '发展方向：' + res.suffix.desc + '\n\n'
-      + '四大维度倾向：\n' + dimLines + '\n\n'
-      + '四个发展向量占比：\n' + vecLines;
+    const vecLines = Q.SUFFIXES.map(sf => sf.letter + ' ' + (I18N ? I18N.sfx(sf.letter, 'name') : sf.name) + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
+    const txt = 'QBTI\n' + fullCode + ' · ' + (typeName || '') + ' · ' + sName + '\n\n' + dimLines + '\n\n' + vecLines;
     try {
       await navigator.clipboard.writeText(txt);
       const b = $('btnCopy');
-      b.textContent = '已复制 ✓';
-      setTimeout(() => b.textContent = '复制结果', 1800);
-    } catch(e){ alert('复制失败'); }
+      const orig = b.textContent;
+      b.textContent = '✓';
+      setTimeout(() => b.textContent = orig, 1500);
+    } catch(e){ alert('Copy failed'); }
   });
 
+  /* ★ 齿轮（仅管理员） */
   $('btnGear').addEventListener('click', () => {
-    if(!isAdmin()){
-      const mask = $('modalMask');
-      if(mask) mask.classList.remove('show');
-      return;
-    }
+    if(!isAdmin()){ const mask = $('modalMask'); if(mask) mask.classList.remove('show'); return; }
     const cfg = getCfg();
     $('inpUrl').value = cfg.url;
     $('inpKey').value = cfg.key;
@@ -1406,14 +1060,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     });
     $('modalMask').classList.remove('show');
     const b = $('btnSaveCfg');
-    b.textContent = '已保存 ✓';
+    b.textContent = '✓';
     setTimeout(() => b.textContent = '保存', 1500);
   });
   $('btnTestCfg').addEventListener('click', async () => {
     if(!isAdmin()) return;
     const tr = $('testResult');
     tr.className = 'test-result show';
-    tr.textContent = '正在测试…';
+    tr.textContent = '...';
     tr.style.color = '#A8AEDA';
     const url = $('inpUrl').value.trim() || DEFAULT_CFG.url;
     const key = $('inpKey').value.trim() || DEFAULT_CFG.key;
@@ -1426,12 +1080,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       });
       if(!r.ok){ const t = await r.text().catch(() => ''); throw new Error('HTTP ' + r.status + ' · ' + t.slice(0,120)); }
       tr.className = 'test-result show ok';
-      tr.textContent = '✓ 连接成功，API 可用。';
+      tr.textContent = '✓ OK';
     } catch(err){
       const m = String(err.message || err);
       if(/Failed to fetch|NetworkError|Load failed/i.test(m)){
         tr.className = 'test-result show err';
-        tr.innerHTML = '✕ 浏览器直连被拦截（CORS / 网络）。<br>请改用本地服务器打开页面。';
+        tr.innerHTML = '✕ CORS/网络受限';
       } else {
         tr.className = 'test-result show err';
         tr.textContent = '✕ ' + m;
@@ -1439,9 +1093,25 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
   });
 
+  /* ★ 设置变化监听：语言 → 重新渲染当前 UI */
+  if(window.QBTISettings && window.QBTISettings.onChange){
+    window.QBTISettings.onChange(function(info){
+      if(info.key === 'lang'){
+        /* 语言包已经应用，动态内容需要重新渲染 */
+        renderDimPreview();
+        if($('screen-quiz').classList.contains('active')){
+          renderQuestion();
+        }
+        if($('screen-result').classList.contains('active') && state.result){
+          renderResult(state.result, state.restoredTs);
+          renderQuantumStateBadge(state.quantumState, state.dimStates ? state.dimStates.types : null);
+        }
+      }
+    });
+  }
+
   if(window.QAuth && window.QAuth.onChange){
     window.QAuth.onChange(function(info){
-      console.log('[QBTI] 登录状态变化:', info);
       refreshAdminUI(info);
       if(info.isLoggedIn){
         updateRestoreBanner();
