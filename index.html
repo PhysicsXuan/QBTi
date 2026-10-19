@@ -223,9 +223,8 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 <div class="app">
   <section class="screen active" id="screen-home">
     <div class="home-stage">
-      <!-- 👇 返回键 -->
       <button class="page-back-btn" id="btnBackSphere" style="position:absolute; top: 90px; left: 22px; z-index: 20;">← 返回</button>
-      
+
       <div class="quantum-visual" id="quantumVisual">
         <canvas id="quantumCanvas"></canvas>
       </div>
@@ -237,7 +236,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnBackFromIntro">← 返回主页</button>
     </div>
-    
+
     <div class="hero">
       <div class="badge">QBTI · Quantum Behavior Type Indicator</div>
       <h1>你，<span class="grad">尚未坍缩</span>。</h1>
@@ -251,7 +250,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       </div>
       <div class="dim-preview" id="dimPreview"></div>
     </div>
-    
+
     <div class="history-section" id="historySection" style="display:none;">
       <div class="history-title">历史观测记录</div>
       <div class="history-list" id="historyList"></div>
@@ -262,7 +261,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnQuitQuiz">← 放弃答题</button>
     </div>
-    
+
     <div class="quiz-head">
       <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
       <div class="progress-text"><b id="qIdx">1</b> / <span id="qTotal">40</span></div>
@@ -282,7 +281,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnBackFromResult">← 返回 QBTI 首页</button>
     </div>
-    
+
     <div class="result-hero">
       <div class="r-label">Your Quantum Learning Type</div>
       <div class="type-portrait"><img id="rTypeImage" src="" alt="人格画像"></div>
@@ -320,7 +319,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnBackFromContact">← 返回主页</button>
     </div>
-    
+
     <div class="contact-page">
       <div class="contact-inner">
         <div class="contact-kicker">CONTACT</div>
@@ -332,12 +331,13 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   </section>
 </div>
 
-<button class="gear" id="btnGear" title="API 设置">⚙</button>
+<!-- ★ 右下角 API 调试按钮：默认隐藏，仅管理员登录后显示 -->
+<button class="gear" id="btnGear" title="API 设置" style="display:none;">⚙</button>
 
 <div class="modal-mask" id="modalMask">
   <div class="modal">
     <h3>API 设置</h3>
-    <p class="sub">密钥仅保存在本地浏览器（localStorage），不会上传到任何第三方。</p>
+    <p class="sub">密钥仅保存在本地浏览器（localStorage），不会上传到任何第三方。<br><span style="color:#FFD98A">⚠ 仅管理员可见此面板</span></p>
     <div class="field"><label>接口地址</label><input id="inpUrl" type="text" placeholder="https://api.deepseek.com/chat/completions"></div>
     <div class="field"><label>API Key</label><input id="inpKey" type="password" placeholder="sk-..."></div>
     <div class="field"><label>模型名称</label><input id="inpModel" type="text" placeholder="deepseek-chat"></div>
@@ -412,6 +412,26 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     model: 'deepseek-chat'
   };
 
+  /* ★ 管理员权限判断：统一入口 */
+  function isAdmin(){
+    return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin());
+  }
+
+  /* ★ 刷新右下角齿轮的可见性 */
+  function refreshAdminUI(info){
+    const gear = $('btnGear');
+    if(!gear) return;
+    const admin = info && info.isLoggedIn
+      ? (info.user && info.user.role === 'admin')
+      : isAdmin();
+    gear.style.display = admin ? '' : 'none';
+    if(!admin){
+      // 非管理员：强制收起 API 弹窗
+      const mask = $('modalMask');
+      if(mask) mask.classList.remove('show');
+    }
+  }
+
   function formatTime(ts){
     const d = new Date(ts);
     const pad = n => n < 10 ? '0'+n : ''+n;
@@ -437,14 +457,13 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   $('btnBackFromIntro').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromContact').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromResult').addEventListener('click', () => goToScreen('screen-intro'));
-  
+
   $('btnQuitQuiz').addEventListener('click', () => {
     if(confirm('确定要放弃本次答题并返回吗？当前答题进度将不会保存。')) {
       goToScreen('screen-intro');
     }
   });
 
-  // 👇 绑定新的返回键
   $('btnBackSphere').addEventListener('click', () => {
     if(window.QuantumSphere && window.QuantumSphere.goBack) {
       window.QuantumSphere.goBack();
@@ -912,7 +931,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 
   $('btnRestart').addEventListener('click', () => {
     if(!confirm('若重做问卷，量子球将会被新问卷覆盖，但您仍可访问历史问卷记录。\n\n确定要重新开始吗？')) return;
-    
+
     state.idx = 0;
     state.answers = {};
     state.timings = {};
@@ -937,7 +956,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
       return d.name + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → 主导 ' + info.lead + '（差值 ' + info.gap + '%）';
     }).join('\n');
     const vecLines = Q.SUFFIXES.map(sf => sf.letter + ' ' + sf.name + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
-    
+
     const txt = 'QBTI 量子人格测评结果（面向家长）\n'
       + '类型：' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）\n'
       + '发展方向：' + res.suffix.desc + '\n\n'
@@ -951,7 +970,13 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     } catch(e){ alert('复制失败'); }
   });
 
+  /* ★ 点击齿轮：二次校验管理员权限 */
   $('btnGear').addEventListener('click', () => {
+    if(!isAdmin()){
+      const mask = $('modalMask');
+      if(mask) mask.classList.remove('show');
+      return;
+    }
     const cfg = getCfg();
     $('inpUrl').value = cfg.url;
     $('inpKey').value = cfg.key;
@@ -962,6 +987,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
   $('btnCancelCfg').addEventListener('click', () => $('modalMask').classList.remove('show'));
   $('modalMask').addEventListener('click', e => { if(e.target === $('modalMask')) $('modalMask').classList.remove('show'); });
   $('btnSaveCfg').addEventListener('click', () => {
+    if(!isAdmin()){ $('modalMask').classList.remove('show'); return; }
     saveCfg({
       url: $('inpUrl').value.trim() || DEFAULT_CFG.url,
       key: $('inpKey').value.trim(),
@@ -973,6 +999,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     setTimeout(() => b.textContent = '保存', 1500);
   });
   $('btnTestCfg').addEventListener('click', async () => {
+    if(!isAdmin()) return;
     const tr = $('testResult');
     tr.className = 'test-result show';
     tr.textContent = '正在测试…';
@@ -1001,9 +1028,11 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
     }
   });
 
+  /* ★ 登录状态变化：刷新管理员 UI */
   if(window.QAuth && window.QAuth.onChange){
     window.QAuth.onChange(function(info){
       console.log('[QBTI] 登录状态变化:', info);
+      refreshAdminUI(info);
       if(info.isLoggedIn){
         updateRestoreBanner();
       } else {
@@ -1021,6 +1050,7 @@ body{background:#000;color:var(--txt);font-family:-apple-system,BlinkMacSystemFo
 
   renderQuestion();
   updateRestoreBanner();
+  refreshAdminUI(); // ★ 首次加载同步一次
   console.log('[QBTI] 初始化完成');
 })();
 </script>

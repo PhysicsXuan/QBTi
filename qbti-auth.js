@@ -1,5 +1,5 @@
 /* ============================================================
-   QAuth —— QBTI 学生登录/注册/绑定家长 (含二维码生成 + 忘记密码)
+   QAuth —— QBTI 学生登录/注册/绑定家长 (含二维码生成 + 忘记密码 + 管理员)
    ============================================================ */
 (function(){
   'use strict';
@@ -9,6 +9,11 @@
   const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000;
   const CODE_COOLDOWN = 60 * 1000;
   const API_BASE = '';
+
+  /* ★ 内置管理员账户 */
+  const ADMIN_USERNAME = 'Administrator';
+  const ADMIN_PASSWORD = 'admin123456';
+  const ADMIN_EMAIL    = 'administrator@qbti.local';
 
   let currentUser = null;
   let codeTimer = null;
@@ -65,6 +70,33 @@
     return users.find(u => u.phone === id) || null;
   }
 
+  /* ★ 确保内置管理员账户存在 */
+  function ensureAdminUser(){
+    const users = loadUsers();
+    const exists = users.find(u => u.username && u.username.toLowerCase() === ADMIN_USERNAME.toLowerCase());
+    if(exists){
+      // 修正可能残留的 role 字段
+      if(exists.role !== 'admin'){
+        exists.role = 'admin';
+        saveUsers(users);
+      }
+      return;
+    }
+    const salt = genSalt();
+    users.push({
+      email: ADMIN_EMAIL,
+      emailLower: ADMIN_EMAIL,
+      phone: '',
+      username: ADMIN_USERNAME,
+      salt: salt,
+      passwordHash: hashPassword(ADMIN_PASSWORD, salt),
+      createdAt: Date.now(),
+      role: 'admin',
+      builtin: true
+    });
+    saveUsers(users);
+  }
+
   function loadSession(){
     try {
       const raw = localStorage.getItem(SESSION_KEY);
@@ -106,7 +138,15 @@
 
   function publicUser(u){
     if(!u) return null;
-    return { email: u.email, phone: u.phone, username: u.username, createdAt: u.createdAt };
+    const isAdmin = u.role === 'admin' ||
+      (u.username && u.username.toLowerCase() === ADMIN_USERNAME.toLowerCase());
+    return {
+      email: u.email,
+      phone: u.phone,
+      username: u.username,
+      createdAt: u.createdAt,
+      role: isAdmin ? 'admin' : 'student'
+    };
   }
 
   function injectStyles(){
@@ -199,6 +239,7 @@
 .qauth-invite-copy:hover{filter:brightness(1.1);}
 .qauth-invite-close{background:transparent;border:1px solid rgba(255,255,255,.14);color:var(--muted,#8B90B8);}
 .qauth-invite-close:hover{color:#fff;border-color:rgba(255,255,255,.28);}
+.qauth-admin-badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:.1em;background:rgba(255,180,60,.15);color:#FFD98A;border:1px solid rgba(255,180,60,.35);margin-left:6px;}
 `;
     document.head.appendChild(style);
   }
@@ -409,17 +450,17 @@
     modal.querySelectorAll('[data-switch]').forEach(a => {
       a.addEventListener('click', () => showView(a.dataset.switch));
     });
-    
+
     const sendBtn = modal.querySelector('[data-action="send-code"]');
     if(sendBtn) sendBtn.addEventListener('click', handleSendCode);
-    
+
     const sendForgotBtn = modal.querySelector('[data-action="send-forgot-code"]');
     if(sendForgotBtn) sendForgotBtn.addEventListener('click', handleSendForgotCode);
 
     modal.querySelector('[data-form="login"]').addEventListener('submit', handleLoginSubmit);
     modal.querySelector('[data-form="register"]').addEventListener('submit', handleRegisterSubmit);
     modal.querySelector('[data-form="forgot"]').addEventListener('submit', handleForgotSubmit);
-    
+
     const logoutBtn = modal.querySelector('[data-action="logout"]');
     if(logoutBtn) logoutBtn.addEventListener('click', handleLogout);
   }
@@ -516,11 +557,18 @@
       const users = loadUsers();
       const idx = users.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
       if(idx > -1){
+        // 内置管理员不允许通过此路径重置密码
+        if(users[idx].role === 'admin' || users[idx].builtin){
+          toast('内置管理员密码不可通过此方式重置', 'err');
+          submitBtn.disabled = false;
+          submitBtn.textContent = '重置密码';
+          return;
+        }
         const salt = genSalt();
         users[idx].salt = salt;
         users[idx].passwordHash = hashPassword(data.password, salt);
         saveUsers(users);
-        
+
         toast('密码重置成功，请使用新密码登录', 'ok');
         showView('login');
       } else {
@@ -614,6 +662,12 @@
       toast('请检查表单填写', 'err');
       return;
     }
+    /* ★ 保留用户名拦截 */
+    if(data.username.toLowerCase() === ADMIN_USERNAME.toLowerCase()){
+      setFieldError(form, 'username', '该用户名为系统保留，不可注册');
+      toast('该用户名不可用', 'err');
+      return;
+    }
     if(findUserByEmail(data.email)){ setFieldError(form, 'email', '该邮箱已被注册'); return; }
     if(findUserByPhone(data.phone)){ setFieldError(form, 'phone', '该手机号已被注册'); return; }
     const users = loadUsers();
@@ -655,11 +709,12 @@
         username: data.username,
         salt: salt,
         passwordHash: hashPassword(data.password, salt),
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        role: 'student'
       };
       users.push(user);
       saveUsers(users);
-      
+
       fetch(API_BASE + '/api/student/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -714,7 +769,6 @@
   }
 
   function handleLogout(){
-    // 🚨 二次询问弹窗
     if(!confirm('确定要退出登录吗？')) return;
 
     clearSession();
@@ -733,18 +787,21 @@
       return;
     }
     const initial = (currentUser.username || '?').slice(0, 1).toUpperCase();
+    const adminBadge = currentUser.role === 'admin'
+      ? '<span class="qauth-admin-badge">ADMIN</span>' : '';
     wrap.innerHTML = `
       <div class="qauth-profile-row">
         <div class="qauth-profile-avatar">${escapeHTML(initial)}</div>
         <div class="qauth-profile-info">
-          <div class="qauth-profile-name">${escapeHTML(currentUser.username)}</div>
+          <div class="qauth-profile-name">${escapeHTML(currentUser.username)}${adminBadge}</div>
           <div class="qauth-profile-meta">${escapeHTML(currentUser.email)}</div>
         </div>
       </div>
       <div class="qauth-profile-detail">
         <div class="qauth-profile-detail-row"><span class="k">邮箱</span><span class="v">${escapeHTML(currentUser.email)}</span></div>
-        <div class="qauth-profile-detail-row"><span class="k">手机号</span><span class="v">${escapeHTML(currentUser.phone)}</span></div>
+        <div class="qauth-profile-detail-row"><span class="k">手机号</span><span class="v">${escapeHTML(currentUser.phone || '—')}</span></div>
         <div class="qauth-profile-detail-row"><span class="k">用户名</span><span class="v">${escapeHTML(currentUser.username)}</span></div>
+        <div class="qauth-profile-detail-row"><span class="k">角色</span><span class="v">${currentUser.role === 'admin' ? '管理员' : '学生'}</span></div>
         <div class="qauth-profile-detail-row"><span class="k">注册时间</span><span class="v">${formatTime(currentUser.createdAt)}</span></div>
       </div>
       <div class="qauth-bind-section" id="qauthBindSection">
@@ -852,7 +909,7 @@
     const old = document.getElementById('qauthInviteMask');
     if(old) old.remove();
 
-    const PARENT_APP_URL = 'https://你的家长端域名.onrender.com'; 
+    const PARENT_APP_URL = 'https://你的家长端域名.onrender.com';
     const shareUrl = PARENT_APP_URL + '?code=' + code;
 
     const mask = document.createElement('div');
@@ -862,9 +919,9 @@
       <div class="qauth-invite-card">
         <div class="qauth-invite-kicker">Bind Parent · 绑定家长</div>
         <div class="qauth-invite-title">请家长使用摄像头扫描此二维码</div>
-        
+
         <div class="qauth-qrcode-wrap" id="qrcodeBox"></div>
-        
+
         <div class="qauth-invite-code">${escapeHTML(code)}</div>
         <div class="qauth-invite-meta">
           邀请码有效期至 ${new Date(expiresAt).toLocaleString()}<br>
@@ -927,8 +984,9 @@
     if(!btn) return;
     if(currentUser){
       const initial = (currentUser.username || '?').slice(0, 1).toUpperCase();
+      const adminMark = currentUser.role === 'admin' ? ' <span style="font-size:9px;color:#FFD98A;font-weight:800;">ADMIN</span>' : '';
       btn.innerHTML = '<span class="qauth-btn-avatar">' + escapeHTML(initial) + '</span>'
-        + '<span class="qauth-btn-label">' + escapeHTML(currentUser.username) + '</span>';
+        + '<span class="qauth-btn-label">' + escapeHTML(currentUser.username) + adminMark + '</span>';
     } else {
       btn.innerHTML = '<span style="font-size:14px">🔐</span><span class="qauth-btn-label">登录 / 注册</span>';
     }
@@ -936,6 +994,7 @@
 
   function init(){
     injectStyles();
+    ensureAdminUser();               // ★ 初始化内置管理员
     const session = loadSession();
     if(session){
       const user = findUserByEmail(session.email);
@@ -952,13 +1011,15 @@
       });
     }
     updateFloatButton();
-    console.log('[QAuth] 已初始化，登录状态:', !!currentUser);
+    console.log('[QAuth] 已初始化，登录状态:', !!currentUser, '角色:', currentUser ? currentUser.role : '-');
     setTimeout(function(){ emitChange(); }, 0);
   }
 
   const api = {
     getCurrentUser: function(){ return currentUser ? Object.assign({}, currentUser) : null; },
     isLoggedIn: function(){ return !!currentUser; },
+    /* ★ 管理员判定 */
+    isAdmin: function(){ return !!(currentUser && currentUser.role === 'admin'); },
     logout: function(){ handleLogout(); },
     onChange: function(fn){
       if(typeof fn !== 'function') return function(){};
