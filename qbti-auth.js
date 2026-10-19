@@ -1,5 +1,6 @@
 /* ============================================================
    QAuth —— QBTI 学生登录/注册/绑定家长 (含二维码生成 + 忘记密码 + 管理员)
+   修复：ensureAdminUser 每次强制同步 Administrator / admin123456
    ============================================================ */
 (function(){
   'use strict';
@@ -10,7 +11,7 @@
   const CODE_COOLDOWN = 60 * 1000;
   const API_BASE = '';
 
-  /* ★ 内置管理员账户 */
+  /* ★ 内置管理员账户（固定，不可通过注册/忘记密码改动） */
   const ADMIN_USERNAME = 'Administrator';
   const ADMIN_PASSWORD = 'admin123456';
   const ADMIN_EMAIL    = 'administrator@qbti.local';
@@ -57,12 +58,15 @@
     const users = loadUsers();
     const id = String(identifier).trim().toLowerCase();
     if(!id) return null;
-    return users.find(u => u.email.toLowerCase() === id || u.username.toLowerCase() === id) || null;
+    return users.find(u =>
+      (u.email && u.email.toLowerCase() === id) ||
+      (u.username && u.username.toLowerCase() === id)
+    ) || null;
   }
   function findUserByEmail(email){
     const users = loadUsers();
     const id = String(email).trim().toLowerCase();
-    return users.find(u => u.email.toLowerCase() === id) || null;
+    return users.find(u => u.email && u.email.toLowerCase() === id) || null;
   }
   function findUserByPhone(phone){
     const users = loadUsers();
@@ -70,31 +74,57 @@
     return users.find(u => u.phone === id) || null;
   }
 
-  /* ★ 确保内置管理员账户存在 */
+  /* ★ 核心修复：每次 init 都强制把内置管理员"同步"到 localStorage
+     - 存在同名用户：强制改 role / builtin / salt / passwordHash（密码固定 admin123456）
+     - 存在同邮箱用户：同上
+     - 都不存在：新建一条
+     这样保证 Administrator / admin123456 永远可以登录，即使之前
+     用同名注册过别的密码、或旧版本残留了不同 salt 的账户。        */
   function ensureAdminUser(){
     const users = loadUsers();
-    const exists = users.find(u => u.username && u.username.toLowerCase() === ADMIN_USERNAME.toLowerCase());
-    if(exists){
-      // 修正可能残留的 role 字段
-      if(exists.role !== 'admin'){
-        exists.role = 'admin';
-        saveUsers(users);
-      }
+    const newSalt = genSalt();
+    const newHash = hashPassword(ADMIN_PASSWORD, newSalt);
+
+    /* 1) 按 username 找 */
+    let idx = users.findIndex(u =>
+      u.username && String(u.username).toLowerCase() === ADMIN_USERNAME.toLowerCase()
+    );
+    /* 2) 按 email 找 */
+    if(idx < 0){
+      idx = users.findIndex(u =>
+        u.email && String(u.email).toLowerCase() === ADMIN_EMAIL.toLowerCase()
+      );
+    }
+
+    if(idx >= 0){
+      const u = users[idx];
+      u.username = ADMIN_USERNAME;
+      u.role = 'admin';
+      u.builtin = true;
+      u.salt = newSalt;
+      u.passwordHash = newHash;
+      if(!u.email){ u.email = ADMIN_EMAIL; }
+      u.emailLower = String(u.email).toLowerCase();
+      if(!u.createdAt) u.createdAt = Date.now();
+      if(u.phone == null) u.phone = '';
+      saveUsers(users);
+      console.log('[QAuth] 已同步内置管理员：' + ADMIN_USERNAME + ' / ' + ADMIN_PASSWORD + '（role=admin）');
       return;
     }
-    const salt = genSalt();
+
     users.push({
       email: ADMIN_EMAIL,
       emailLower: ADMIN_EMAIL,
       phone: '',
       username: ADMIN_USERNAME,
-      salt: salt,
-      passwordHash: hashPassword(ADMIN_PASSWORD, salt),
+      salt: newSalt,
+      passwordHash: newHash,
       createdAt: Date.now(),
       role: 'admin',
       builtin: true
     });
     saveUsers(users);
+    console.log('[QAuth] 已创建内置管理员：' + ADMIN_USERNAME + ' / ' + ADMIN_PASSWORD);
   }
 
   function loadSession(){
@@ -139,7 +169,7 @@
   function publicUser(u){
     if(!u) return null;
     const isAdmin = u.role === 'admin' ||
-      (u.username && u.username.toLowerCase() === ADMIN_USERNAME.toLowerCase());
+      (u.username && String(u.username).toLowerCase() === ADMIN_USERNAME.toLowerCase());
     return {
       email: u.email,
       phone: u.phone,
@@ -473,6 +503,11 @@
 
     if(!RE_EMAIL.test(data.email)){ setFieldError(form, 'email', '请先填写正确的邮箱'); return; }
     if(!findUserByEmail(data.email)){ setFieldError(form, 'email', '该邮箱尚未注册'); return; }
+    const target = findUserByEmail(data.email);
+    if(target && (target.role === 'admin' || target.builtin)){
+      setFieldError(form, 'email', '内置管理员账户不支持找回密码');
+      return;
+    }
 
     btn.disabled = true;
     const originalText = btn.textContent;
@@ -529,6 +564,13 @@
     if(!data.password || data.password.length < 6){ setFieldError(form, 'password', '密码至少 6 位'); return; }
     if(data.password !== data.confirm){ setFieldError(form, 'confirm', '两次密码不一致'); return; }
 
+    /* 内置管理员禁止通过找回密码修改 */
+    const target = findUserByEmail(data.email);
+    if(target && (target.role === 'admin' || target.builtin)){
+      setFieldError(form, 'email', '内置管理员密码固定，不支持修改');
+      return;
+    }
+
     submitBtn.disabled = true;
     submitBtn.textContent = '验证中…';
 
@@ -557,7 +599,6 @@
       const users = loadUsers();
       const idx = users.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
       if(idx > -1){
-        // 内置管理员不允许通过此路径重置密码
         if(users[idx].role === 'admin' || users[idx].builtin){
           toast('内置管理员密码不可通过此方式重置', 'err');
           submitBtn.disabled = false;
@@ -662,7 +703,7 @@
       toast('请检查表单填写', 'err');
       return;
     }
-    /* ★ 保留用户名拦截 */
+    /* ★ 保留用户名 */
     if(data.username.toLowerCase() === ADMIN_USERNAME.toLowerCase()){
       setFieldError(form, 'username', '该用户名为系统保留，不可注册');
       toast('该用户名不可用', 'err');
@@ -671,7 +712,7 @@
     if(findUserByEmail(data.email)){ setFieldError(form, 'email', '该邮箱已被注册'); return; }
     if(findUserByPhone(data.phone)){ setFieldError(form, 'phone', '该手机号已被注册'); return; }
     const users = loadUsers();
-    if(users.some(u => u.username.toLowerCase() === data.username.toLowerCase())){
+    if(users.some(u => u.username && u.username.toLowerCase() === data.username.toLowerCase())){
       setFieldError(form, 'username', '该用户名已被占用');
       return;
     }
@@ -789,6 +830,21 @@
     const initial = (currentUser.username || '?').slice(0, 1).toUpperCase();
     const adminBadge = currentUser.role === 'admin'
       ? '<span class="qauth-admin-badge">ADMIN</span>' : '';
+    const bindSection = currentUser.role === 'admin'
+      ? '<div class="qauth-bind-section" style="border-color:rgba(255,180,60,.3);background:rgba(255,180,60,.06);"><div class="qauth-bind-title"><span>🔧 管理员模式</span></div><div class="qauth-bind-empty">作为内置管理员，您可以：<br>• 使用右下角 ⚙ 按钮调试 AI 接口<br>• 使用调试面板测试 API 连通性<br>• 不参与家长绑定流程</div></div>'
+      : `
+      <div class="qauth-bind-section" id="qauthBindSection">
+        <div class="qauth-bind-title">
+          <span>已绑定的家长</span>
+          <span class="qauth-bind-count" id="qauthBindCount">加载中…</span>
+        </div>
+        <div id="qauthBindList" class="qauth-bind-empty">正在加载…</div>
+        <div class="qauth-bind-actions">
+          <button type="button" class="qauth-bind-gen-btn" id="qauthBindGen" disabled>生成绑定邀请码</button>
+          <button type="button" class="qauth-bind-refresh-btn" id="qauthBindRefresh">刷新</button>
+        </div>
+      </div>`;
+
     wrap.innerHTML = `
       <div class="qauth-profile-row">
         <div class="qauth-profile-avatar">${escapeHTML(initial)}</div>
@@ -804,21 +860,14 @@
         <div class="qauth-profile-detail-row"><span class="k">角色</span><span class="v">${currentUser.role === 'admin' ? '管理员' : '学生'}</span></div>
         <div class="qauth-profile-detail-row"><span class="k">注册时间</span><span class="v">${formatTime(currentUser.createdAt)}</span></div>
       </div>
-      <div class="qauth-bind-section" id="qauthBindSection">
-        <div class="qauth-bind-title">
-          <span>已绑定的家长</span>
-          <span class="qauth-bind-count" id="qauthBindCount">加载中…</span>
-        </div>
-        <div id="qauthBindList" class="qauth-bind-empty">正在加载…</div>
-        <div class="qauth-bind-actions">
-          <button type="button" class="qauth-bind-gen-btn" id="qauthBindGen" disabled>生成绑定邀请码</button>
-          <button type="button" class="qauth-bind-refresh-btn" id="qauthBindRefresh">刷新</button>
-        </div>
-      </div>
+      ${bindSection}
     `;
-    document.getElementById('qauthBindGen').addEventListener('click', handleGenerateInvite);
-    document.getElementById('qauthBindRefresh').addEventListener('click', loadBoundParents);
-    loadBoundParents();
+
+    if(currentUser.role !== 'admin'){
+      document.getElementById('qauthBindGen').addEventListener('click', handleGenerateInvite);
+      document.getElementById('qauthBindRefresh').addEventListener('click', loadBoundParents);
+      loadBoundParents();
+    }
   }
 
   async function loadBoundParents(){
@@ -994,7 +1043,7 @@
 
   function init(){
     injectStyles();
-    ensureAdminUser();               // ★ 初始化内置管理员
+    ensureAdminUser();               // ★ 每次 init 强制同步管理员
     const session = loadSession();
     if(session){
       const user = findUserByEmail(session.email);
@@ -1018,7 +1067,6 @@
   const api = {
     getCurrentUser: function(){ return currentUser ? Object.assign({}, currentUser) : null; },
     isLoggedIn: function(){ return !!currentUser; },
-    /* ★ 管理员判定 */
     isAdmin: function(){ return !!(currentUser && currentUser.role === 'admin'); },
     logout: function(){ handleLogout(); },
     onChange: function(fn){
@@ -1038,6 +1086,12 @@
       openModal('login');
       toast('请先登录', 'info');
       return false;
+    },
+    /* 调试用：强制重置内置管理员 */
+    resetAdmin: function(){
+      try { localStorage.removeItem(USERS_KEY); } catch(e){}
+      ensureAdminUser();
+      return ADMIN_USERNAME + ' / ' + ADMIN_PASSWORD;
     }
   };
 
