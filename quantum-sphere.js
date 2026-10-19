@@ -297,7 +297,6 @@
     const ctx = canvas.getContext('2d');
     const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-    /* ---------- 颜色系统 ---------- */
     const palette = [[255,140,80],[120,180,255],[180,130,255],[255,110,170],[100,230,200],[200,230,110],[255,210,90]];
     const QUANTUM_COLORS = { good: [80, 220, 140], danger: [235, 65, 75], superposition: [90, 140, 245] };
     const DIM_IDS = ['PO','II','LA','UR'];
@@ -1129,7 +1128,6 @@
       nebulaDust = [];
       nebulaLinks = [];
       
-      // 移除流星，更简洁
       const numDust = 1200; 
 
       for(let i = 0; i < numDust; i++){
@@ -1143,20 +1141,19 @@
 
         let s = 0;
         const type = Math.random();
-        // 放大粒子：5% 巨型，25% 中型，70% 小型
-        if(type < 0.05) { s = 4.0 + Math.random() * 5.0; } 
-        else if(type < 0.3) { s = 2.0 + Math.random() * 2.0; } 
-        else { s = 0.6 + Math.random() * 1.2; } 
+        if(type < 0.05) { s = 3.0 + Math.random() * 4.0; } 
+        else if(type < 0.3) { s = 1.5 + Math.random() * 1.5; } 
+        else { s = 0.5 + Math.random() * 1.0; } 
 
         nebulaDust.push({
           nx, ny, nz,
           px: 0, py: 0, vx: 0, vy: 0,
           size: s * DPR,
           isLarge: type < 0.05,
-          isWhite: Math.random() < 0.3,
+          // 👇 移除了 isWhite 属性
           twinkle: Math.random() * Math.PI * 2,
           strobe: 0.5 + Math.random() * 4.0,
-          baseAlpha: 0.5 + Math.random() * 0.5, 
+          baseAlpha: 0.4 + Math.random() * 0.6,
           waveAmp: Math.random() * 15 * DPR,
           waveSpeed: 0.5 + Math.random() * 2.0,
           wavePhaseX: Math.random() * Math.PI * 2,
@@ -1164,14 +1161,12 @@
         });
       }
 
-      // 连线：减少数量，提升质量
       const samplePoints = nebulaDust.filter(p => !p.isLarge).slice(0, 300); 
       for(let i = 0; i < samplePoints.length; i++) {
         for(let j = i + 1; j < samplePoints.length; j++) {
           const a = samplePoints[i], b = samplePoints[j];
           const d2 = (a.nx-b.nx)**2 + (a.ny-b.ny)**2 + (a.nz-b.nz)**2;
           if (d2 < 0.12) {
-            // 加入脉冲参数
             nebulaLinks.push({ 
               a, b, 
               pulsePhase: Math.random() * Math.PI * 2,
@@ -1249,7 +1244,7 @@
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // 🚨 优化连线：加粗，脉冲流动，极简呼吸
+      // 🚨 优化连线：加粗，同色脉冲流动
       ctx.lineCap = 'round';
       for(let link of nebulaLinks) {
         const a = link.a, b = link.b;
@@ -1269,7 +1264,7 @@
         const depth = (pa.z + pb.z) / 2;
         const normalizedDepth = Math.max(0, (depth + 1) / 2); 
         
-        // 基础线（微亮，体现结构）
+        // 基础线
         const baseAlpha = 0.05 + normalizedDepth * 0.15;
         ctx.strokeStyle = `rgba(${PR},${PG},${PB},${baseAlpha})`;
         ctx.lineWidth = (1.0 + normalizedDepth * 2.0) * DPR;
@@ -1278,21 +1273,18 @@
         ctx.lineTo(pb.x, pb.y);
         ctx.stroke();
 
-        // 脉冲流动（沿着连线移动的高亮段）
-        // 用 sin 波动来模拟能量在两点间流动
+        // 脉冲流动（全部使用主题色，不使用白色）
         const pulseVal = Math.sin(t * link.pulseSpeed + link.pulsePhase);
-        if (pulseVal > 0.5) {
-           // 将 -1~1 映射到 0~1 的进度
-           const progress = (pulseVal - 0.5) * 2; 
+        if (pulseVal > 0.6) {
+           const progress = (pulseVal - 0.6) / 0.4; // 0~1
            const px = pa.x + (pb.x - pa.x) * progress;
            const py = pa.y + (pb.y - pa.y) * progress;
            
-           // 脉冲高光
-           ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + normalizedDepth * 0.6})`;
+           ctx.strokeStyle = `rgba(${PR},${PG},${PB},${0.6 + normalizedDepth * 0.4})`;
            ctx.lineWidth = (2.0 + normalizedDepth * 2.5) * DPR;
            ctx.beginPath();
-           // 从当前进度往后退一点画一段，形成拖尾感
-           const tail = Math.max(0, progress - 0.15);
+           // 缩短拖尾，只保留一段
+           const tail = Math.max(0, progress - 0.1);
            const tx = pa.x + (pb.x - pa.x) * tail;
            const ty = pa.y + (pb.y - pa.y) * tail;
            ctx.moveTo(tx, ty);
@@ -1301,20 +1293,18 @@
         }
       }
 
-      // 🚨 优化粒子：清晰、明亮、大大小小
+      // 🚨 优化粒子：全部使用主题色，无白色
       for(let item of projected) {
         const { p, x, y, z, scale } = item;
         const normalizedDepth = (z + 1) / 2; 
         
-        // 缓慢呼吸，不再高频频闪
         const twinkle = 0.8 + 0.2 * Math.sin(now * 0.001 * p.strobe + p.twinkle);
         let alpha = p.baseAlpha * Math.max(0.2, normalizedDepth * twinkle);
         
         const finalSize = p.size * scale * (0.5 + normalizedDepth * 1.5);
-        const colorStr = p.isWhite ? '255,255,255' : `${PR},${PG},${PB}`;
+        const colorStr = `${PR},${PG},${PB}`; // 强制使用主题色
         
         if (p.isLarge) {
-          // 大光斑带光环
           ctx.globalAlpha = alpha * 0.7;
           ctx.drawImage(
             glowSprite, 
@@ -1325,13 +1315,11 @@
           ctx.arc(x, y, finalSize * 0.4, 0, Math.PI * 2);
           ctx.fill();
         } else {
-          // 普通粒子
           ctx.fillStyle = `rgba(${colorStr},${alpha})`;
           ctx.beginPath();
           ctx.arc(x, y, Math.max(1.0, finalSize), 0, Math.PI * 2);
           ctx.fill();
           
-          // 近处小粒子带光晕
           if (normalizedDepth > 0.6) {
             ctx.fillStyle = `rgba(${colorStr},${alpha * 0.2})`;
             ctx.beginPath();
@@ -1346,9 +1334,9 @@
         const coreR = 30 + 80 * nebulaCharge.value * pulse;
         
         const cg = ctx.createRadialGradient(gravityCenterX, gravityCenterY, 0, gravityCenterX, gravityCenterY, coreR * 3);
-        cg.addColorStop(0, `rgba(255,255,255,1)`);
-        cg.addColorStop(0.2, `rgba(${PR},${PG},${PB},0.9)`);
-        cg.addColorStop(0.6, `rgba(${CR},${CG},${CB},0.4)`);
+        cg.addColorStop(0, `rgba(${PR},${PG},${PB},1)`); // 使用主色
+        cg.addColorStop(0.2, `rgba(${PR},${PG},${PB},0.8)`);
+        cg.addColorStop(0.6, `rgba(${CR},${CG},${CB},0.3)`);
         cg.addColorStop(1, `rgba(${CR},${CG},${CB},0)`);
         ctx.fillStyle = cg;
         ctx.beginPath();
