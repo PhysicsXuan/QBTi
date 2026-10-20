@@ -1236,8 +1236,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(e){ alert('Copy failed'); }
   });
 
-  $('btnGear').addEventListener('click', () => {
+  $('btnGear').addEventListener('click', async () => {
     if(!isAdmin()){ const mask = $('modalMask'); if(mask) mask.classList.remove('show'); return; }
+    if(window.QAuth && window.QAuth.checkAdminPolicy){
+      const ok = await window.QAuth.checkAdminPolicy();
+      if(!ok) return;
+    }
     const cfg = getCfg();
     $('inpUrl').value = cfg.url;
     $('inpKey').value = cfg.key;

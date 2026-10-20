@@ -96,12 +96,27 @@ async function initDB() {
       "studentUsername" VARCHAR(100),
       payload JSONB,
       "updatedAt" BIGINT NOT NULL
+    );`,
+    `CREATE TABLE IF NOT EXISTS admin_policy (
+      id VARCHAR(32) PRIMARY KEY,
+      enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      salt VARCHAR(255) NOT NULL,
+      "passwordHash" VARCHAR(255) NOT NULL,
+      "updatedAt" BIGINT NOT NULL,
+      "updatedBy" VARCHAR(255)
     );`
   ];
   try {
     for (let q of queries) {
       await pool.query(q);
     }
+    const salt = genSalt();
+    await pool.query(
+      `INSERT INTO admin_policy (id, enabled, salt, "passwordHash", "updatedAt", "updatedBy")
+       VALUES ('student_admin', TRUE, $1, $2, $3, 'system')
+       ON CONFLICT (id) DO NOTHING`,
+      [salt, hashStudentPassword('admin123456', salt), Date.now()]
+    );
     console.log('✅ 数据库表检查/初始化完成');
   } catch (err) {
     console.error('❌ 数据库表初始化失败:', err.message);
@@ -143,6 +158,15 @@ function verifyStudentPassword(password, salt, stored) {
   } catch (err) {
     return false;
   }
+}
+
+/* ---------- 学生端管理员 token（受家长端策略控制） ---------- */
+const studentAdminTokens = new Map();
+const STUDENT_ADMIN_TTL = 2 * 60 * 60 * 1000;
+function studentAdminTokenFromReq(req){
+  const h = String(req.headers.authorization || '');
+  if(h.indexOf('Bearer ') === 0) return h.slice(7).trim();
+  return String(req.headers['x-admin-token'] || '');
 }
 
 /* ---------- 验证码消费（注册 / 重置密码共用） ---------- */
@@ -511,6 +535,69 @@ app.post('/api/student/reset-password', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[学生重置密码] 失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.4 学生端管理员登录（是否启用/密码由家长端管理员控制）
+app.post('/api/admin/login', async (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) return res.status(400).json({ error: '参数不完整', code: 'BAD_REQUEST' });
+  if (String(username).trim().toLowerCase() !== 'administrator') {
+    return res.status(401).json({ error: '管理员账号不正确', code: 'WRONG_USER' });
+  }
+  try {
+    const r = await pool.query(
+      'SELECT enabled, salt, "passwordHash", "updatedAt" FROM admin_policy WHERE id = $1',
+      ['student_admin']
+    );
+    const row = r.rows[0];
+    if (!row) return res.status(500).json({ error: '管理员策略未初始化', code: 'NO_POLICY' });
+    if (!row.enabled) {
+      return res.status(403).json({ error: '学生端管理员已被家长端管理员停用', code: 'ADMIN_DISABLED' });
+    }
+    if (!verifyStudentPassword(password, row.salt, row.passwordHash)) {
+      return res.status(401).json({ error: '管理员密码不正确', code: 'WRONG_PASSWORD' });
+    }
+    const token = crypto.randomBytes(24).toString('hex');
+    studentAdminTokens.set(token, {
+      expires: Date.now() + STUDENT_ADMIN_TTL,
+      policyUpdatedAt: Number(row.updatedAt) || 0
+    });
+    res.json({
+      success: true,
+      token,
+      user: { email: 'administrator@qbti.local', username: 'Administrator', phone: '', role: 'admin' },
+      policy: { enabled: true, updatedAt: Number(row.updatedAt) || null }
+    });
+  } catch (err) {
+    console.error('[学生端管理员登录] 失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.5 学生端管理员策略校验（停用/改密后旧会话失效）
+app.get('/api/admin/policy', async (req, res) => {
+  const token = studentAdminTokenFromReq(req);
+  const entry = studentAdminTokens.get(token);
+  if (!entry || entry.expires < Date.now()) {
+    if (token) studentAdminTokens.delete(token);
+    return res.status(401).json({ error: '管理员登录已过期，请重新登录', code: 'ADMIN_AUTH' });
+  }
+  try {
+    const r = await pool.query('SELECT enabled, "updatedAt" FROM admin_policy WHERE id = $1', ['student_admin']);
+    const row = r.rows[0];
+    if (!row || !row.enabled) {
+      studentAdminTokens.delete(token);
+      return res.status(403).json({ error: '学生端管理员已被家长端管理员停用', code: 'ADMIN_DISABLED' });
+    }
+    if ((Number(row.updatedAt) || 0) !== entry.policyUpdatedAt) {
+      studentAdminTokens.delete(token);
+      return res.status(401).json({ error: '学生端管理员策略已变更，请重新登录', code: 'ADMIN_POLICY_CHANGED' });
+    }
+    res.json({ success: true, policy: { enabled: true, updatedAt: Number(row.updatedAt) || null } });
+  } catch (err) {
+    console.error('[学生端管理员策略] 校验失败:', err.message);
     res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
   }
 });

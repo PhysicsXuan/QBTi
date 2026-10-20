@@ -17,6 +17,7 @@
   const ADMIN_EMAIL    = 'administrator@qbti.local';
 
   let currentUser = null;
+  let adminToken = null;
   let codeTimer = null;
   let listeners = [];
   let injected = false;
@@ -98,6 +99,47 @@
     return cached;
   }
 
+  function cacheAdminUser(user){
+    if(!user || !user.email) return null;
+    const users = loadUsers();
+    const emailLower = String(user.email).toLowerCase();
+    const idx = users.findIndex(u => u.email && u.email.toLowerCase() === emailLower);
+    const cached = {
+      email: user.email,
+      emailLower: emailLower,
+      phone: user.phone || '',
+      username: user.username || 'Administrator',
+      createdAt: user.createdAt || Date.now(),
+      role: 'admin',
+      server: true
+    };
+    if(idx >= 0) users[idx] = Object.assign({}, users[idx], cached);
+    else users.push(cached);
+    saveUsers(users);
+    return cached;
+  }
+
+  async function checkAdminPolicy(){
+    if(!currentUser || currentUser.role !== 'admin') return true;
+    if(!adminToken) return false;
+    try {
+      const res = await fetch(API_BASE + '/api/admin/policy', {
+        headers: { 'Authorization': 'Bearer ' + adminToken }
+      });
+      if(res.ok) return true;
+      const d = await res.json().catch(() => ({}));
+      adminToken = null;
+      clearSession();
+      currentUser = null;
+      toast(d.error || '学生端管理员权限已被收回', 'err');
+      emitChange();
+      return false;
+    } catch(e){
+      /* 网络异常时保留本地会话；策略变更会在下次校验时生效 */
+      return true;
+    }
+  }
+
   function ensureAdminUser(){
     const users = loadUsers();
     const newSalt = genSalt();
@@ -153,9 +195,9 @@
       return s;
     } catch(e){ return null; }
   }
-  function saveSession(email){
-    const s = { email, loginAt: Date.now(), expiresAt: Date.now() + SESSION_DURATION,
-      token: Math.random().toString(36).slice(2) + Date.now().toString(36) };
+  function saveSession(email, extra){
+    const s = Object.assign({ email, loginAt: Date.now(), expiresAt: Date.now() + SESSION_DURATION,
+      token: Math.random().toString(36).slice(2) + Date.now().toString(36) }, extra || {});
     try { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); } catch(e){}
     return s;
   }
@@ -758,18 +800,40 @@
     if(!data.identifier){ setFieldError(form, 'identifier', '请输入邮箱或用户名'); return; }
     if(!data.password){ setFieldError(form, 'password', '请输入密码'); return; }
 
-    /* 内置管理员仍走本地账户 */
-    const local = findUser(data.identifier);
-    if(local && (local.role === 'admin' || local.builtin)){
-      if(hashPassword(data.password, local.salt) !== local.passwordHash){
-        setFieldError(form, 'password', '密码不正确');
-        return;
+    /* 学生端管理员：账号/密码/启用状态由家长端管理员控制 */
+    const idLower = String(data.identifier || '').trim().toLowerCase();
+    if(idLower === 'administrator' || idLower === 'administrator@qbti.local'){
+      submitBtn.disabled = true;
+      submitBtn.textContent = '登录中…';
+      try {
+        const res = await fetch(API_BASE + '/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: 'Administrator', password: data.password })
+        });
+        const result = await res.json();
+        if(!res.ok || !result.success){
+          if(result.code === 'ADMIN_DISABLED') setFieldError(form, 'password', '学生端管理员已被家长端管理员停用');
+          else setFieldError(form, 'password', result.error || '管理员登录失败');
+          submitBtn.disabled = false;
+          submitBtn.textContent = '登录';
+          return;
+        }
+        const admin = Object.assign({}, result.user, { adminToken: result.token });
+        cacheAdminUser(admin);
+        adminToken = result.token;
+        saveSession(admin.email, { adminToken: result.token });
+        currentUser = publicUser(admin);
+        submitBtn.disabled = false;
+        submitBtn.textContent = '登录';
+        toast('管理员已登录', 'ok');
+        emitChange();
+        setTimeout(() => { closeModal(); updateFloatButton(); }, 500);
+      } catch(err){
+        setFieldError(form, 'password', '无法连接服务器');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '登录';
       }
-      saveSession(local.email);
-      currentUser = publicUser(local);
-      toast('欢迎回来，' + local.username, 'ok');
-      emitChange();
-      setTimeout(() => { closeModal(); updateFloatButton(); }, 500);
       return;
     }
 
@@ -822,6 +886,7 @@
     if(!confirm('确定要退出登录吗？')) return;
 
     clearSession();
+    adminToken = null;
     currentUser = null;
     toast('已退出登录', 'info');
     emitChange();
@@ -1055,10 +1120,19 @@
     ensureAdminUser();
     const session = loadSession();
     if(session){
+      adminToken = session.adminToken || null;
       const user = findUserByEmail(session.email);
       if(user) currentUser = publicUser(user);
       else clearSession();
+      if(currentUser && currentUser.role === 'admin' && !adminToken){
+        currentUser = null;
+        clearSession();
+      }
     }
+    if(currentUser && currentUser.role === 'admin') checkAdminPolicy();
+    setInterval(function(){
+      if(currentUser && currentUser.role === 'admin') checkAdminPolicy();
+    }, 60 * 1000);
     if(!document.getElementById('qauthFloatBtn')) buildFloatBtn();
     const floatBtn = document.getElementById('qauthFloatBtn');
     if(!floatBtn._qauthBound){
@@ -1096,6 +1170,7 @@
       toast('请先登录', 'info');
       return false;
     },
+    checkAdminPolicy: checkAdminPolicy,
     resetAdmin: function(){
       try { localStorage.removeItem(USERS_KEY); } catch(e){}
       ensureAdminUser();
