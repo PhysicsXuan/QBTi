@@ -67,8 +67,14 @@ async function initDB() {
     `CREATE TABLE IF NOT EXISTS student_emails (
       email VARCHAR(255) PRIMARY KEY,
       username VARCHAR(100),
+      phone VARCHAR(20),
+      salt VARCHAR(255),
+      "passwordHash" VARCHAR(255),
       "createdAt" BIGINT
     );`,
+    `ALTER TABLE student_emails ADD COLUMN IF NOT EXISTS phone VARCHAR(20);`,
+    `ALTER TABLE student_emails ADD COLUMN IF NOT EXISTS salt VARCHAR(255);`,
+    `ALTER TABLE student_emails ADD COLUMN IF NOT EXISTS "passwordHash" VARCHAR(255);`,
     `CREATE TABLE IF NOT EXISTS bindings (
       id SERIAL PRIMARY KEY,
       "studentEmail" VARCHAR(255) NOT NULL,
@@ -114,6 +120,49 @@ function genInviteCode() {
   let code = '';
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+}
+
+/* ---------- 学生密码：scrypt（新账号） ---------- */
+const SCRYPT_PREFIX = 'scrypt$';
+function hashStudentPassword(password, salt) {
+  const hash = crypto.scryptSync(String(password), String(salt), 64).toString('hex');
+  return SCRYPT_PREFIX + hash;
+}
+function verifyStudentPassword(password, salt, stored) {
+  if (!stored || !salt) return false;
+  try {
+    if (String(stored).indexOf(SCRYPT_PREFIX) === 0) {
+      const expected = Buffer.from(String(stored).slice(SCRYPT_PREFIX.length), 'hex');
+      const actual = crypto.scryptSync(String(password), String(salt), 64);
+      return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+    }
+    /* 兼容旧的 SHA-256 账户 */
+    const legacy = Buffer.from(hashPassword(password, salt), 'hex');
+    const storedBuf = Buffer.from(String(stored), 'hex');
+    return legacy.length === storedBuf.length && crypto.timingSafeEqual(legacy, storedBuf);
+  } catch (err) {
+    return false;
+  }
+}
+
+/* ---------- 验证码消费（注册 / 重置密码共用） ---------- */
+function checkCode(target, code) {
+  const entry = codeStore.get(target);
+  if (!entry) return { ok: false, error: '请先发送验证码' };
+  if (Date.now() > entry.expiresAt) {
+    codeStore.delete(target);
+    return { ok: false, error: '验证码已过期' };
+  }
+  if (entry.attempts >= 5) {
+    codeStore.delete(target);
+    return { ok: false, error: '错误次数过多' };
+  }
+  if (entry.code !== String(code)) {
+    entry.attempts++;
+    return { ok: false, error: '验证码不正确' };
+  }
+  codeStore.delete(target);
+  return { ok: true };
 }
 
 /* ---------- AgentMail 发信 ---------- */
@@ -298,6 +347,172 @@ app.post('/api/verify-code', (req, res) => {
   }
   codeStore.delete(target);
   res.json({ success: true });
+});
+
+/* ============================================================
+   学生账户（服务器侧，支持跨设备登录）
+   ============================================================ */
+
+// 4.1 学生注册 / 旧账号首次设置密码
+app.post('/api/student/register', async (req, res) => {
+  const { email, phone, username, password, code } = req.body || {};
+  const emailLower = String(email || '').toLowerCase().trim();
+  const uname = String(username || '').trim();
+  const tel = String(phone || '').trim();
+  const pw = String(password || '');
+
+  if (!emailLower || !uname || !pw || !code) {
+    return res.status(400).json({ error: '参数不完整', code: 'BAD_REQUEST' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower)) {
+    return res.status(400).json({ error: '邮箱格式不正确', code: 'BAD_REQUEST' });
+  }
+  if (!/^[a-zA-Z0-9_\u4e00-\u9fa5]{2,20}$/.test(uname)) {
+    return res.status(400).json({ error: '用户名 2-20 位（字母/数字/下划线/中文）', code: 'BAD_REQUEST' });
+  }
+  if (pw.length < 6) {
+    return res.status(400).json({ error: '密码至少 6 位', code: 'BAD_REQUEST' });
+  }
+  if (tel && !/^1[3-9]\d{9}$/.test(tel)) {
+    return res.status(400).json({ error: '手机号格式不正确', code: 'BAD_REQUEST' });
+  }
+  if (uname.toLowerCase() === 'administrator' || emailLower === 'administrator@qbti.local') {
+    return res.status(400).json({ error: '该账号为系统保留', code: 'BAD_REQUEST' });
+  }
+
+  const checked = checkCode('email:' + emailLower, code);
+  if (!checked.ok) return res.status(400).json({ error: checked.error, code: 'CODE_INVALID' });
+
+  try {
+    const parentCheck = await pool.query('SELECT email FROM parents WHERE email = $1', [emailLower]);
+    if (parentCheck.rows.length > 0) {
+      return res.status(409).json({ error: '该邮箱已注册为家长账号，不能同时注册为学生', code: 'PARENT_EMAIL' });
+    }
+
+    const existing = await pool.query(
+      'SELECT email, "passwordHash", "createdAt" FROM student_emails WHERE email = $1',
+      [emailLower]
+    );
+    if (existing.rows.length > 0 && existing.rows[0].passwordHash) {
+      return res.status(409).json({ error: '该邮箱已注册，请直接登录或使用忘记密码', code: 'EMAIL_EXISTS' });
+    }
+
+    const nameCheck = await pool.query(
+      'SELECT email FROM student_emails WHERE LOWER(username) = LOWER($1) AND email <> $2',
+      [uname, emailLower]
+    );
+    if (nameCheck.rows.length > 0) {
+      return res.status(409).json({ error: '该用户名已被占用', code: 'USERNAME_TAKEN' });
+    }
+
+    const salt = genSalt();
+    const passwordHash = hashStudentPassword(pw, salt);
+    let createdAt = Date.now();
+
+    if (existing.rows.length > 0) {
+      createdAt = Number(existing.rows[0].createdAt) || createdAt;
+      await pool.query(
+        `UPDATE student_emails
+         SET username = $1, phone = $2, salt = $3, "passwordHash" = $4
+         WHERE email = $5`,
+        [uname, tel, salt, passwordHash, emailLower]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO student_emails (email, username, phone, salt, "passwordHash", "createdAt")
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [emailLower, uname, tel, salt, passwordHash, createdAt]
+      );
+    }
+
+    res.json({
+      success: true,
+      user: { email: emailLower, phone: tel, username: uname, createdAt, role: 'student' }
+    });
+  } catch (err) {
+    console.error('[学生注册] 失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.2 学生登录（邮箱或用户名 + 密码）
+app.post('/api/student/login', async (req, res) => {
+  const { identifier, password } = req.body || {};
+  const id = String(identifier || '').trim().toLowerCase();
+  const pw = String(password || '');
+  if (!id || !pw) return res.status(400).json({ error: '参数不完整', code: 'BAD_REQUEST' });
+
+  try {
+    let result;
+    if (id.indexOf('@') >= 0) {
+      result = await pool.query('SELECT * FROM student_emails WHERE LOWER(email) = $1', [id]);
+    } else {
+      result = await pool.query('SELECT * FROM student_emails WHERE LOWER(username) = $1', [id]);
+      if (result.rows.length > 1) {
+        return res.status(409).json({ error: '该用户名对应多个账号，请使用邮箱登录', code: 'AMBIGUOUS_USERNAME' });
+      }
+    }
+
+    const user = result.rows[0];
+    if (!user) return res.status(404).json({ error: '账号不存在', code: 'NOT_FOUND' });
+    if (!user.passwordHash) {
+      return res.status(409).json({ error: '该账号是旧版账号，请先用邮箱验证设置密码', code: 'NEED_PASSWORD_SETUP' });
+    }
+    if (!verifyStudentPassword(pw, user.salt, user.passwordHash)) {
+      return res.status(401).json({ error: '密码不正确', code: 'WRONG_PASSWORD' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        email: user.email,
+        phone: user.phone || '',
+        username: user.username || '',
+        createdAt: Number(user.createdAt) || null,
+        role: 'student'
+      }
+    });
+  } catch (err) {
+    console.error('[学生登录] 失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.3 学生重置密码（新设备/旧账号首次设置密码）
+app.post('/api/student/reset-password', async (req, res) => {
+  const { email, code, newPassword } = req.body || {};
+  const emailLower = String(email || '').toLowerCase().trim();
+  const pw = String(newPassword || '');
+  if (!emailLower || !code || !pw) {
+    return res.status(400).json({ error: '参数不完整', code: 'BAD_REQUEST' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower)) {
+    return res.status(400).json({ error: '邮箱格式不正确', code: 'BAD_REQUEST' });
+  }
+  if (pw.length < 6) {
+    return res.status(400).json({ error: '密码至少 6 位', code: 'BAD_REQUEST' });
+  }
+
+  const checked = checkCode('email:' + emailLower, code);
+  if (!checked.ok) return res.status(400).json({ error: checked.error, code: 'CODE_INVALID' });
+
+  try {
+    const existing = await pool.query('SELECT email FROM student_emails WHERE LOWER(email) = $1', [emailLower]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: '该邮箱未注册学生账号', code: 'NOT_FOUND' });
+    }
+
+    const salt = genSalt();
+    const passwordHash = hashStudentPassword(pw, salt);
+    await pool.query(
+      'UPDATE student_emails SET salt = $1, "passwordHash" = $2 WHERE LOWER(email) = $3',
+      [salt, passwordHash, emailLower]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[学生重置密码] 失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
 });
 
 // 5. 家长注册
@@ -583,16 +798,16 @@ app.get('/api/health', async (req, res) => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/parent', (req, res) => res.sendFile(path.join(__dirname, 'parent.html')));
 
-// 启动服务
-app.listen(PORT, async () => {
-  console.log('');
-  console.log('===========================================');
-  console.log('  QBTI 学生端服务器已启动');
-  console.log('  端口: ' + PORT);
-  console.log('  邮件: ' + (AGENTMAIL_API_KEY ? '✅ 已启用' : '⚠️  未配置'));
-  console.log('  数据库: ' + (DATABASE_URL ? '✅ 已配置' : '❌ 未配置'));
-  console.log('===========================================');
-  console.log('');
-  
-  await initDB();
+// 启动服务：先补齐表结构，再开始接收请求
+initDB().finally(() => {
+  app.listen(PORT, () => {
+    console.log('');
+    console.log('===========================================');
+    console.log('  QBTI 学生端服务器已启动');
+    console.log('  端口: ' + PORT);
+    console.log('  邮件: ' + (AGENTMAIL_API_KEY ? '✅ 已启用' : '⚠️  未配置'));
+    console.log('  数据库: ' + (DATABASE_URL ? '✅ 已配置' : '❌ 未配置'));
+    console.log('===========================================');
+    console.log('');
+  });
 });

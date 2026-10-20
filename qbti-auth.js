@@ -74,6 +74,30 @@
     return users.find(u => u.phone === id) || null;
   }
 
+  /* 服务器登录成功后的本地缓存：只用于刷新后恢复会话，不再用于校验密码 */
+  function cacheServerUser(user){
+    if(!user || !user.email) return null;
+    const users = loadUsers();
+    const emailLower = String(user.email).toLowerCase();
+    const idx = users.findIndex(u => u.email && u.email.toLowerCase() === emailLower);
+    const cached = {
+      email: user.email,
+      emailLower: emailLower,
+      phone: user.phone || '',
+      username: user.username || '',
+      createdAt: user.createdAt || Date.now(),
+      role: 'student',
+      server: true
+    };
+    if(idx >= 0){
+      users[idx] = Object.assign({}, users[idx], cached);
+    } else {
+      users.push(cached);
+    }
+    saveUsers(users);
+    return cached;
+  }
+
   function ensureAdminUser(){
     const users = loadUsers();
     const newSalt = genSalt();
@@ -412,6 +436,20 @@
     });
   }
 
+  function prefillForgotEmail(email){
+    const form = document.querySelector('#qauthModal [data-form="forgot"]');
+    if(!form) return;
+    const inp = form.querySelector('input[name="email"]');
+    if(inp) inp.value = email || '';
+  }
+
+  function prefillLoginIdentifier(identifier){
+    const form = document.querySelector('#qauthModal [data-form="login"]');
+    if(!form) return;
+    const inp = form.querySelector('input[name="identifier"]');
+    if(inp) inp.value = identifier || '';
+  }
+
   function openModal(view){
     injectStyles();
     if(!injected){
@@ -495,12 +533,6 @@
     clearFormErrors(form);
 
     if(!RE_EMAIL.test(data.email)){ setFieldError(form, 'email', '请先填写正确的邮箱'); return; }
-    if(!findUserByEmail(data.email)){ setFieldError(form, 'email', '该邮箱尚未注册'); return; }
-    const target = findUserByEmail(data.email);
-    if(target && (target.role === 'admin' || target.builtin)){
-      setFieldError(form, 'email', '内置管理员账户不支持找回密码');
-      return;
-    }
 
     btn.disabled = true;
     const originalText = btn.textContent;
@@ -557,59 +589,32 @@
     if(!data.password || data.password.length < 6){ setFieldError(form, 'password', '密码至少 6 位'); return; }
     if(data.password !== data.confirm){ setFieldError(form, 'confirm', '两次密码不一致'); return; }
 
-    const target = findUserByEmail(data.email);
-    if(target && (target.role === 'admin' || target.builtin)){
-      setFieldError(form, 'email', '内置管理员密码固定，不支持修改');
-      return;
-    }
-
     submitBtn.disabled = true;
-    submitBtn.textContent = '验证中…';
+    submitBtn.textContent = '重置中…';
 
     try {
-      const res = await fetch(API_BASE + '/api/verify-code', {
+      const res = await fetch(API_BASE + '/api/student/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email, code: data.code })
+        body: JSON.stringify({ email: data.email, code: data.code, newPassword: data.password })
       });
       const result = await res.json();
       if(!res.ok || !result.success){
-        setFieldError(form, 'code', result.error || '验证码不正确');
+        if(result.code === 'NOT_FOUND') setFieldError(form, 'email', result.error || '该邮箱未注册学生账号');
+        else setFieldError(form, 'code', result.error || '重置失败');
         submitBtn.disabled = false;
         submitBtn.textContent = '重置密码';
         return;
       }
+      toast('密码重置成功，请使用新密码登录', 'ok');
+      showView('login');
+      prefillLoginIdentifier(data.email);
     } catch(err){
       setFieldError(form, 'code', '无法连接服务器');
+    } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = '重置密码';
-      return;
     }
-
-    submitBtn.textContent = '重置中…';
-    setTimeout(() => {
-      const users = loadUsers();
-      const idx = users.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
-      if(idx > -1){
-        if(users[idx].role === 'admin' || users[idx].builtin){
-          toast('内置管理员密码不可通过此方式重置', 'err');
-          submitBtn.disabled = false;
-          submitBtn.textContent = '重置密码';
-          return;
-        }
-        const salt = genSalt();
-        users[idx].salt = salt;
-        users[idx].passwordHash = hashPassword(data.password, salt);
-        saveUsers(users);
-
-        toast('密码重置成功，请使用新密码登录', 'ok');
-        showView('login');
-      } else {
-        toast('找不到该用户数据', 'err');
-      }
-      submitBtn.disabled = false;
-      submitBtn.textContent = '重置密码';
-    }, 320);
   }
 
   async function handleSendCode(){
@@ -621,7 +626,6 @@
 
     if(!RE_EMAIL.test(data.email)){ setFieldError(form, 'email', '请先填写正确的邮箱'); return; }
     if(!RE_PHONE.test(data.phone)){ setFieldError(form, 'phone', '请先填写正确的手机号'); return; }
-    if(findUserByEmail(data.email)){ setFieldError(form, 'email', '该邮箱已注册，请直接登录'); return; }
 
     sendBtn.disabled = true;
     const originalText = sendBtn.textContent;
@@ -700,59 +704,35 @@
       toast('该用户名不可用', 'err');
       return;
     }
-    if(findUserByEmail(data.email)){ setFieldError(form, 'email', '该邮箱已被注册'); return; }
-    if(findUserByPhone(data.phone)){ setFieldError(form, 'phone', '该手机号已被注册'); return; }
-    const users = loadUsers();
-    if(users.some(u => u.username && u.username.toLowerCase() === data.username.toLowerCase())){
-      setFieldError(form, 'username', '该用户名已被占用');
-      return;
-    }
-
     submitBtn.disabled = true;
-    submitBtn.textContent = '验证中…';
+    submitBtn.textContent = '创建中…';
 
     try {
-      const res = await fetch(API_BASE + '/api/verify-code', {
+      const res = await fetch(API_BASE + '/api/student/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email, code: data.code })
+        body: JSON.stringify({
+          email: data.email,
+          phone: data.phone,
+          username: data.username,
+          password: data.password,
+          code: data.code
+        })
       });
       const result = await res.json();
       if(!res.ok || !result.success){
-        setFieldError(form, 'code', result.error || '验证码不正确');
+        if(result.code === 'CODE_INVALID') setFieldError(form, 'code', result.error || '验证码不正确');
+        else if(result.code === 'EMAIL_EXISTS' || result.code === 'PARENT_EMAIL') setFieldError(form, 'email', result.error || '该邮箱不可用');
+        else if(result.code === 'USERNAME_TAKEN') setFieldError(form, 'username', result.error || '该用户名已被占用');
+        else setFieldError(form, 'code', result.error || '注册失败');
+        toast(result.error || '注册失败', 'err');
         submitBtn.disabled = false;
         submitBtn.textContent = '创建账户';
         return;
       }
-    } catch(err){
-      setFieldError(form, 'code', '无法连接服务器');
-      submitBtn.disabled = false;
-      submitBtn.textContent = '创建账户';
-      return;
-    }
 
-    submitBtn.textContent = '创建中…';
-    setTimeout(() => {
-      const salt = genSalt();
-      const user = {
-        email: data.email,
-        emailLower: data.email.toLowerCase(),
-        phone: data.phone,
-        username: data.username,
-        salt: salt,
-        passwordHash: hashPassword(data.password, salt),
-        createdAt: Date.now(),
-        role: 'student'
-      };
-      users.push(user);
-      saveUsers(users);
-
-      fetch(API_BASE + '/api/student/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, username: user.username })
-      }).catch(err => console.warn('同步邮箱失败:', err));
-
+      const user = cacheServerUser(result.user);
+      if(!user) throw new Error('返回用户数据异常');
       saveSession(user.email);
       currentUser = publicUser(user);
       submitBtn.disabled = false;
@@ -760,10 +740,15 @@
       toast('账户创建成功，已自动登录', 'ok');
       emitChange();
       setTimeout(() => { closeModal(); updateFloatButton(); }, 500);
-    }, 320);
+    } catch(err){
+      setFieldError(form, 'code', err && err.message === '返回用户数据异常' ? err.message : '无法连接服务器');
+      toast('无法连接服务器', 'err');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '创建账户';
+    }
   }
 
-  function handleLoginSubmit(e){
+  async function handleLoginSubmit(e){
     e.preventDefault();
     const form = e.target;
     const data = getFormData(form);
@@ -773,31 +758,64 @@
     if(!data.identifier){ setFieldError(form, 'identifier', '请输入邮箱或用户名'); return; }
     if(!data.password){ setFieldError(form, 'password', '请输入密码'); return; }
 
+    /* 内置管理员仍走本地账户 */
+    const local = findUser(data.identifier);
+    if(local && (local.role === 'admin' || local.builtin)){
+      if(hashPassword(data.password, local.salt) !== local.passwordHash){
+        setFieldError(form, 'password', '密码不正确');
+        return;
+      }
+      saveSession(local.email);
+      currentUser = publicUser(local);
+      toast('欢迎回来，' + local.username, 'ok');
+      emitChange();
+      setTimeout(() => { closeModal(); updateFloatButton(); }, 500);
+      return;
+    }
+
     submitBtn.disabled = true;
     submitBtn.textContent = '登录中…';
 
-    setTimeout(() => {
-      const user = findUser(data.identifier);
-      if(!user){
-        setFieldError(form, 'identifier', '该账户不存在');
+    try {
+      const res = await fetch(API_BASE + '/api/student/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: data.identifier, password: data.password })
+      });
+      const result = await res.json();
+
+      if(!res.ok || !result.success){
+        if(result.code === 'NEED_PASSWORD_SETUP'){
+          setFieldError(form, 'password', '该账号是旧版账号，请先通过“忘记密码”设置密码');
+          toast('请用“忘记密码”设置一次密码', 'info');
+          showView('forgot');
+          if(data.identifier.indexOf('@') >= 0) prefillForgotEmail(data.identifier);
+        } else if(result.code === 'AMBIGUOUS_USERNAME'){
+          setFieldError(form, 'identifier', result.error || '请使用邮箱登录');
+        } else if(res.status === 404){
+          setFieldError(form, 'identifier', result.error || '账号不存在');
+        } else {
+          setFieldError(form, 'password', result.error || '登录失败');
+        }
         submitBtn.disabled = false;
         submitBtn.textContent = '登录';
         return;
       }
-      if(hashPassword(data.password, user.salt) !== user.passwordHash){
-        setFieldError(form, 'password', '密码不正确');
-        submitBtn.disabled = false;
-        submitBtn.textContent = '登录';
-        return;
-      }
+
+      const user = cacheServerUser(result.user);
+      if(!user) throw new Error('返回用户数据异常');
       saveSession(user.email);
       currentUser = publicUser(user);
       submitBtn.disabled = false;
       submitBtn.textContent = '登录';
-      toast('欢迎回来，' + user.username, 'ok');
+      toast('欢迎回来，' + (user.username || ''), 'ok');
       emitChange();
       setTimeout(() => { closeModal(); updateFloatButton(); }, 500);
-    }, 320);
+    } catch(err){
+      setFieldError(form, 'password', err && err.message === '返回用户数据异常' ? err.message : '无法连接服务器');
+      submitBtn.disabled = false;
+      submitBtn.textContent = '登录';
+    }
   }
 
   function handleLogout(){
