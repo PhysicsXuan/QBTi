@@ -539,6 +539,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_DAILY_KEY = 'qbti_ai_daily_v1';
   const AI_DAILY_LIMIT = 10;
   const AI_MIN_INTERVAL = 30 * 1000;
+  const AI_HARD_MAX_TOKENS = 2600;
+  const AI_MAX_PROMPT_CHARS = 9000;
+  const AI_MAX_TOTAL_TOKENS = 4500;
+  const AI_TOKEN_BUDGET = 40000;
+  const AI_LOCK_MS = 15 * 60 * 1000;
+  const AI_LOCK_KEY = 'qbti_ai_lock_v1';
+  const AI_TOKEN_USAGE_KEY = 'qbti_ai_tokens_v1';
+  const AI_INFLIGHT_KEY = 'qbti_ai_inflight_v1';
   const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
 
   /* 生成按钮文案（8 语言；不对用户展示 API 消耗提示） */
@@ -555,6 +563,20 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function aiText(key){
     const pack = AI_TEXT[currentLang()] || AI_TEXT['zh-CN'];
     return pack[key] || AI_TEXT['zh-CN'][key] || '';
+  }
+
+  const AI_TOKEN_ERROR_TEXT = {
+    'zh-CN': '报告生成错误，请稍后再试。',
+    'zh-TW': '報告生成錯誤，請稍後再試。',
+    en: 'Report generation failed. Please try again later.',
+    es: 'No se pudo generar el informe. Inténtalo de nuevo más tarde.',
+    pt: 'Falha ao gerar o relatório. Tente novamente mais tarde.',
+    ko: '보고서 생성에 실패했습니다. 잠시 후 다시 시도하세요.',
+    ja: 'レポートの生成に失敗しました。しばらくしてから再度お試しください。',
+    fr: 'Échec de la génération du rapport. Réessayez plus tard.'
+  };
+  function aiTokenErrorText(){
+    return AI_TOKEN_ERROR_TEXT[currentLang()] || AI_TOKEN_ERROR_TEXT['zh-CN'];
   }
 
   /* 报告输出语言：跟随设置里的语言，只影响新生成的报告 */
@@ -793,6 +815,77 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     q.count += 1;
     try { localStorage.setItem(AI_DAILY_KEY, JSON.stringify(q)); } catch(e){}
     return q.count;
+  }
+
+  /* ---------- 强制 API 锁 / Token 异常保护 ---------- */
+  function aiActor(){
+    try {
+      const u = (window.QAuth && window.QAuth.getCurrentUser) ? window.QAuth.getCurrentUser() : null;
+      return u && u.email ? String(u.email).toLowerCase() : 'guest';
+    } catch(e){ return 'guest'; }
+  }
+  function aiKey(base){ return base + ':' + aiActor(); }
+  function aiLocalDay(){
+    const d = new Date();
+    const p = n => n < 10 ? '0' + n : '' + n;
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  function getAILock(){
+    try {
+      const raw = localStorage.getItem(aiKey(AI_LOCK_KEY));
+      if(!raw) return null;
+      const o = JSON.parse(raw);
+      if(o && Number(o.until) > Date.now()) return o;
+      localStorage.removeItem(aiKey(AI_LOCK_KEY));
+    } catch(e){}
+    return null;
+  }
+  function setAILock(reason, ms){
+    try {
+      localStorage.setItem(aiKey(AI_LOCK_KEY), JSON.stringify({
+        until: Date.now() + (ms || AI_LOCK_MS),
+        reason: reason || ''
+      }));
+    } catch(e){}
+  }
+  function getAITokenUsage(){
+    const day = aiLocalDay();
+    try {
+      const o = JSON.parse(localStorage.getItem(aiKey(AI_TOKEN_USAGE_KEY)) || 'null');
+      if(o && o.day === day) return { day: day, tokens: Number(o.tokens) || 0 };
+    } catch(e){}
+    return { day: day, tokens: 0 };
+  }
+  function addAITokens(n){
+    const u = getAITokenUsage();
+    u.tokens += Math.max(0, Number(n) || 0);
+    try { localStorage.setItem(aiKey(AI_TOKEN_USAGE_KEY), JSON.stringify(u)); } catch(e){}
+    return u.tokens;
+  }
+  function acquireAIInflight(){
+    try {
+      const key = aiKey(AI_INFLIGHT_KEY);
+      const raw = localStorage.getItem(key);
+      if(raw){
+        const o = JSON.parse(raw);
+        if(o && Number(o.until) > Date.now()) return null;
+      }
+      const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(key, JSON.stringify({ id: id, until: Date.now() + 90000 }));
+      return id;
+    } catch(e){ return 'no-storage'; }
+  }
+  function releaseAIInflight(id){
+    try {
+      const key = aiKey(AI_INFLIGHT_KEY);
+      const raw = localStorage.getItem(key);
+      if(!raw) return;
+      const o = JSON.parse(raw);
+      if(o && o.id === id) localStorage.removeItem(key);
+    } catch(e){}
+  }
+  function estimateTokens(text){
+    return Math.ceil(String(text || '').length / 2);
   }
   function updateHistoryAIReport(){
     if(!state.resultTs) return;
@@ -1226,10 +1319,29 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   async function callAPI(prompt){
     const cfg = getCfg();
     if(!cfg.key) throw new Error('未配置 API Key，请点击右下角 ⚙ 配置');
+
+    /* 强制 API 锁：同用户同一时间只允许一个生成请求 */
+    if(getAILock()) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
+    if(String(prompt || '').length > AI_MAX_PROMPT_CHARS){
+      setAILock('prompt-too-large', AI_LOCK_MS);
+      throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+    }
+    const beforeUsage = getAITokenUsage();
+    if(beforeUsage.tokens >= AI_TOKEN_BUDGET){
+      setAILock('daily-token-budget', AI_LOCK_MS);
+      throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+    }
+    const inflightId = acquireAIInflight();
+    if(!inflightId) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60000);
     let res;
     try {
       res = await fetch(cfg.url, {
-        method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer ' + cfg.key},
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Authorization':'Bearer ' + cfg.key},
+        signal: controller.signal,
         body: JSON.stringify({
           model: cfg.model,
           messages: [
@@ -1238,14 +1350,41 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
               : 'You are an educational guidance consultant who uses quantum metaphors to understand teenagers’ learning states. Your tone is warm, specific, and non-judgmental. Always write the report in the language requested by the user.'},
             {role: 'user', content: prompt}
           ],
-          temperature: cfg.temperature, max_tokens: cfg.maxTokens, stream: false
+          temperature: cfg.temperature,
+          max_tokens: Math.min(Number(cfg.maxTokens) || 2400, AI_HARD_MAX_TOKENS),
+          stream: false
         })
       });
-    } catch(e){ throw new Error('CORS_OR_NETWORK'); }
+    } catch(e){
+      if(e && e.name === 'AbortError'){
+        setAILock('timeout', AI_LOCK_MS);
+        throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+      }
+      throw new Error('CORS_OR_NETWORK');
+    } finally {
+      clearTimeout(timer);
+      releaseAIInflight(inflightId);
+    }
+
     if(!res.ok){ const t = await res.text().catch(() => ''); throw new Error('API ' + res.status + ' · ' + t.slice(0,180)); }
     const data = await res.json();
     const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if(!content) throw new Error('API 返回内容为空');
+
+    const usage = data.usage || {};
+    const promptTokens = Number(usage.prompt_tokens) || estimateTokens(prompt);
+    const completionTokens = Number(usage.completion_tokens) || estimateTokens(content);
+    const totalTokens = Number(usage.total_tokens) || (promptTokens + completionTokens);
+    const totalAfter = addAITokens(totalTokens);
+
+    /* 单次 token 明显异常，或当日累计异常：立刻锁定并终止报告生成 */
+    if(totalTokens > AI_MAX_TOTAL_TOKENS ||
+       promptTokens > AI_MAX_PROMPT_CHARS ||
+       completionTokens > AI_HARD_MAX_TOKENS ||
+       totalAfter > AI_TOKEN_BUDGET){
+      setAILock('token-anomaly', AI_LOCK_MS);
+      throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+    }
     return content;
   }
 
@@ -1290,6 +1429,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(err){
       if(reqId !== state.aiRequestId) return;
       const msg = String(err.message || err);
+      /* TOKEN_LOCK / TOKEN_ANOMALY：立刻终止本次应用，不再生成兜底报告 */
+      if(msg.indexOf('TOKEN_LOCK') >= 0 || msg.indexOf('TOKEN_ANOMALY') >= 0){
+        state.aiError = aiTokenErrorText();
+        return;
+      }
       state.aiError = msg.split('CORS_OR_NETWORK:').pop().trim();
       if(msg.indexOf('CORS_OR_NETWORK') >= 0) state.aiError += '（CORS/网络受限，已切换本地报告）';
       state.aiReportText = Q.localReport(state.result, validity);
