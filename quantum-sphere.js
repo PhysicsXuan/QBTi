@@ -579,6 +579,7 @@
     }
     function easeOutBack(t){const c1=1.70158,c3=c1+1;return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2);}
     function easeOutCubic(t){return 1 - Math.pow(1-t,3);}
+    function easeInOutCubic(t){return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;}
 
     function makeBall(opts){
       opts = opts || {};
@@ -670,29 +671,32 @@
       }
     }
 
-    function computeBallVisual(b){
+    function computeBallVisual(b, skipTransition){
       let visScale = b.scale;
       let visOx = b.ox;
       let visOy = b.oy;
       let visAlpha = 1;
       const f = b.focusAmount;
-      if(hasSplit && f > 0.0005){
+      if(!skipTransition && hasSplit && f > 0.0005){
         visScale = b.scale * (1 + f * (FOCUS_SCALE - 1));
         visOx = b.ox * (1 - f * FOCUS_SHIFT);
         visOy = b.oy * (1 - f * FOCUS_SHIFT);
         visAlpha = 1;
       }
-      if(hasSplit && globalFocus > 0.0005){
+      if(!skipTransition && hasSplit && globalFocus > 0.0005){
         const dimFactor = 1 - (1 - f) * globalFocus * 0.72;
         visAlpha *= dimFactor;
       }
-      if (transitionType === 'nebula-to-split') {
+      if (!skipTransition && transitionType === 'nebula-to-split') {
         const ep = easeOutCubic(transitionProgress);
         visScale *= ep; visOx *= ep; visOy *= ep; visAlpha *= transitionProgress;
-      } else if (transitionType === 'split-to-single') {
-        const ep = easeOutCubic(transitionProgress);
-        visScale *= (1 - ep); visOx *= (1 - ep); visOy *= (1 - ep);
-        visAlpha *= (1 - transitionProgress);
+      } else if (!skipTransition && transitionType === 'split-to-single') {
+        /* 四个小球向中心收拢并渐隐；新球单独用 extraScale 平滑放大 */
+        const ep = easeInOutCubic(transitionProgress);
+        visScale *= (1 - ep * 0.92);
+        visOx *= (1 - ep * 0.94);
+        visOy *= (1 - ep * 0.94);
+        visAlpha *= (1 - ep);
       }
       if(!isFinite(visScale) || visScale < 0.01) visScale = 0.01;
       if(!isFinite(visOx)) visOx = 0;
@@ -1945,7 +1949,7 @@
       aura.strength += (aura.targetStrength - aura.strength) * Math.min(1, dt*5);
 
       if (transitionType) {
-        transitionProgress += dt * 1.8;
+        transitionProgress += dt * 1.05;
         if (transitionProgress >= 1) {
           transitionProgress = 1;
           if (transitionType === 'nebula-to-split') {
@@ -1993,7 +1997,7 @@
         ctx.restore();
       }
 
-      if (hasSplit && !soloNebula && transitionType !== 'split-to-single') {
+      if (hasSplit && !soloNebula) {
         const drawOrder = balls.map((b, i) => ({b, i})).sort((a, c) => a.b.focusAmount - c.b.focusAmount);
         for(let k = 0; k < drawOrder.length; k++){
           const ball = drawOrder[k].b;
@@ -2074,14 +2078,22 @@
         let targetBall = balls[0];
         let extraAlpha = 1, extraScale = 1;
         if (transitionType === 'split-to-single') {
-          extraAlpha = transitionProgress;
-          extraScale = easeOutCubic(transitionProgress);
+          const ep = easeInOutCubic(transitionProgress);
+          extraAlpha = ep;
+          extraScale = 0.62 + 0.38 * easeInOutCubic(transitionProgress);
         }
         const oScale = targetBall.scale, oOx = targetBall.ox, oOy = targetBall.oy;
-        targetBall.scale = oScale * extraScale;
-        targetBall.ox = oOx * extraScale;
-        targetBall.oy = oOy * extraScale;
-        const vis = computeBallVisual(targetBall);
+        if (transitionType === 'split-to-single') {
+          /* 返回上一级：新球从中心长出，避免从某个小球的位置跳回中心 */
+          targetBall.scale = extraScale;
+          targetBall.ox = 0;
+          targetBall.oy = 0;
+        } else {
+          targetBall.scale = oScale * extraScale;
+          targetBall.ox = oOx * extraScale;
+          targetBall.oy = oOy * extraScale;
+        }
+        const vis = computeBallVisual(targetBall, transitionType === 'split-to-single');
         CX = BASE_CX + vis.visOx * BR;
         CY = BASE_CY + vis.visOy * BR;
         R = BR * vis.visScale;
@@ -2184,6 +2196,8 @@
           AudioFX.focus();
           HapticFX.vibrate(20);
         } else if (hasSplit) {
+          focusedBall = null;
+          hoveredBall = null;
           transitionType = 'split-to-single';
           transitionProgress = 0;
           AudioFX.focus();

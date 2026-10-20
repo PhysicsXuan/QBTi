@@ -64,6 +64,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .page-back-btn:hover{color:#fff;border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.5);background:rgba(var(--q-r),var(--q-g),var(--q-b),.1);}
 .back-btn-wrap{padding-top:12px;margin-bottom:20px;}
 
+#screen-quiz{position:relative;overflow:hidden}
+.quiz-orb-stage{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:.78}
+#quizQuantumCanvas{display:block;width:100%;height:100%}
+#screen-quiz > .back-btn-wrap,
+#screen-quiz > .quiz-head,
+#screen-quiz > .group-strip,
+#screen-quiz > .quiz-card,
+#screen-quiz > .quiz-foot{position:relative;z-index:1}
 .quiz-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}
 .progress-track{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
 .progress-fill{height:100%;width:0;border-radius:99px;background:var(--q-color);transition:width .45s}
@@ -317,6 +325,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   </section>
 
   <section class="screen" id="screen-quiz">
+    <div class="quiz-orb-stage"><canvas id="quizQuantumCanvas"></canvas></div>
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnQuitQuiz" data-i18n="quiz.quit">← 放弃答题</button>
     </div>
@@ -498,6 +507,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 <script src="qbti-i18n.js"></script>
 <script src="qbti-settings.js"></script>
 <script src="quantum-sphere.js"></script>
+<script src="quiz-sphere.js"></script>
 <script src="qbti-auth.js"></script>
 
 <script>
