@@ -118,8 +118,20 @@ async function initDB() {
       content TEXT NOT NULL,
       "userEmail" VARCHAR(255),
       page VARCHAR(50),
+      app VARCHAR(20) NOT NULL DEFAULT 'student',
+      reply TEXT,
+      "replySubject" VARCHAR(255),
+      "replyAt" BIGINT,
+      "replyBy" VARCHAR(255),
+      "replyTo" VARCHAR(255),
       "createdAt" BIGINT NOT NULL
     );`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS app VARCHAR(20) NOT NULL DEFAULT 'student';`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS reply TEXT;`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS "replySubject" VARCHAR(255);`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS "replyAt" BIGINT;`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS "replyBy" VARCHAR(255);`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS "replyTo" VARCHAR(255);`,
     `CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback ("createdAt" DESC);`,
     `CREATE TABLE IF NOT EXISTS admin_policy (
       id VARCHAR(32) PRIMARY KEY,
@@ -314,6 +326,59 @@ async function sendCodeEmail(to, code) {
   } catch (err) {
     console.error('[AgentMail] 发送异常:', err.message);
     return { ok: false };
+  }
+}
+
+function escapeEmailHtml(text){
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function sendFeedbackReplyEmail(to, subject, body, feedback) {
+  if (!AGENTMAIL_API_KEY) return { ok: false, error: '未配置邮件服务' };
+  if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return { ok: false, error: '收件邮箱无效' };
+  const inbox = await ensureInbox();
+  if (!inbox) return { ok: false, error: '邮件服务不可用' };
+  const safeBody = escapeEmailHtml(body).replace(/\n/g, '<br>');
+  const safeOriginal = escapeEmailHtml(String(feedback.content || '').slice(0, 600)).replace(/\n/g, '<br>');
+  try {
+    const sendRes = await fetch(
+      AGENTMAIL_BASE + '/inboxes/' + inbox + '/messages/send',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + AGENTMAIL_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to,
+          subject: '【QBTI】' + (subject || '关于你的反馈回复'),
+          html: [
+            '<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:32px;background:#0B0D1C;color:#E9EBFF;border-radius:16px;">',
+            '  <h2 style="color:#fff;margin-bottom:16px;">QBTI 反馈回复</h2>',
+            '  <p style="color:#8B90B8;line-height:1.7;">你好，感谢你的反馈。以下是管理员给你的回复：</p>',
+            '  <div style="margin:20px 0;padding:16px;border-radius:12px;background:rgba(124,92,255,.12);color:#E9EBFF;line-height:1.8;">' + safeBody + '</div>',
+            '  <p style="color:#8B90B8;font-size:12px;margin-top:24px;">你提交的原始反馈：</p>',
+            '  <div style="padding:12px;border-left:3px solid #5A8CF5;color:#A8AEDA;font-size:13px;line-height:1.7;">' + safeOriginal + '</div>',
+            '  <p style="color:#8B90B8;font-size:12px;margin-top:24px;">如需继续沟通，请联系：1182332400@qq.com</p>',
+            '</div>'
+          ].join('\n')
+        })
+      }
+    );
+    if (!sendRes.ok) {
+      const t = await sendRes.text().catch(() => '');
+      console.error('[AgentMail] 反馈回复发送失败:', sendRes.status, t.slice(0, 200));
+      return { ok: false, error: '邮件发送失败' };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error('[AgentMail] 反馈回复异常:', err.message);
+    return { ok: false, error: '邮件发送异常' };
   }
 }
 
@@ -725,8 +790,8 @@ app.post('/api/feedback', async (req, res) => {
 
   try {
     const r = await pool.query(
-      `INSERT INTO feedback (name, email, role, type, content, "userEmail", page, "createdAt")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO feedback (name, email, role, type, content, "userEmail", page, app, "createdAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'student', $8)
        RETURNING id, "createdAt"`,
       [name, email, role, type, content, userEmail, page, now]
     );
@@ -748,15 +813,53 @@ app.post('/api/feedback', async (req, res) => {
 app.get('/api/admin/feedback', requireStudentAdmin, async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT id, name, email, role, type, content, "userEmail", page, "createdAt"
+      SELECT id, name, email, role, type, content, "userEmail", page, "createdAt",
+             app, reply, "replySubject", "replyAt", "replyBy", "replyTo"
       FROM feedback
+      WHERE app = 'student'
       ORDER BY "createdAt" DESC
       LIMIT 500
     `);
-    const list = r.rows.map(row => Object.assign({}, row, { createdAt: Number(row.createdAt) || 0 }));
+    const list = r.rows.map(row => Object.assign({}, row, { createdAt: Number(row.createdAt) || 0, replyAt: row.replyAt ? Number(row.replyAt) : null }));
     res.json({ success: true, list: list, count: list.length });
   } catch (err) {
     console.error('[反馈] 管理员读取失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.8 学生端管理员邮件回复反馈
+app.post('/api/admin/feedback/:id/reply', requireStudentAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ error: '反馈 ID 不正确' });
+  const subject = String((req.body && req.body.subject) || '').trim().slice(0, 120) || '关于你的反馈回复';
+  const body = String((req.body && req.body.body) || '').trim();
+  if (body.length < 1 || body.length > 5000) {
+    return res.status(400).json({ error: '回复内容需要 1-5000 字' });
+  }
+  try {
+    const r = await pool.query(
+      `SELECT id, name, email, content, "userEmail" FROM feedback WHERE id = $1 AND app = 'student'`,
+      [id]
+    );
+    const fb = r.rows[0];
+    if (!fb) return res.status(404).json({ error: '反馈不存在' });
+    const to = String(fb.email || fb.userEmail || '').trim();
+    if (!to) return res.status(400).json({ error: '该反馈没有可回复的邮箱' });
+
+    const sent = await sendFeedbackReplyEmail(to, subject, body, fb);
+    if (!sent.ok) return res.status(502).json({ error: sent.error || '邮件发送失败', code: 'MAIL_FAILED' });
+
+    const now = Date.now();
+    await pool.query(
+      `UPDATE feedback
+       SET reply = $1, "replySubject" = $2, "replyAt" = $3, "replyBy" = $4, "replyTo" = $5
+       WHERE id = $6`,
+      [body, subject, now, 'Administrator', to, id]
+    );
+    res.json({ success: true, replyAt: now, replyTo: to });
+  } catch (err) {
+    console.error('[反馈回复] 失败:', err.message);
     res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
   }
 });

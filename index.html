@@ -220,6 +220,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .feedback-admin-type.other{background:rgba(255,217,61,.14);color:#FFE58A;}
 .feedback-admin-meta{font-size:calc(11px * var(--q-fs));color:var(--muted);margin-bottom:8px;}
 .feedback-admin-content{font-size:calc(13px * var(--q-fs));color:#DDE2FF;line-height:1.7;word-break:break-word;}
+.feedback-admin-reply{margin-top:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(107,227,165,.22);background:rgba(107,227,165,.07);font-size:calc(12px * var(--q-fs));color:#BDF3D5;line-height:1.7;word-break:break-word;}
+.feedback-reply-btn{margin-top:10px;padding:7px 12px;border-radius:8px;border:1px solid rgba(124,92,255,.45);background:rgba(124,92,255,.12);color:#C9B8FF;font:inherit;font-size:calc(12px * var(--q-fs));cursor:pointer;}
+.feedback-reply-btn:hover{background:rgba(124,92,255,.24);}
+.feedback-reply-textarea{width:100%;min-height:150px;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:inherit;font-size:calc(13px * var(--q-fs));line-height:1.7;resize:vertical;outline:none;}
+.feedback-reply-textarea:focus{border-color:var(--q-color);}
 .feedback-admin-empty{padding:26px;text-align:center;color:var(--muted);font-size:calc(13px * var(--q-fs));}
 @media(max-width:600px){.feedback-grid{grid-template-columns:1fr;}.feedback-card{padding:18px;}}
 
@@ -478,6 +483,20 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <div class="feedback-admin-list" id="feedbackAdminList"><div class="feedback-admin-empty">加载中…</div></div>
     <div class="modal-actions">
       <button class="btn sm ghost" id="btnCloseFeedback" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="feedbackReplyMask">
+  <div class="modal">
+    <h3>邮件回复反馈</h3>
+    <p class="sub" id="feedbackReplyTo">通过 QBTI 虚拟邮箱发送给用户</p>
+    <div class="field"><label>邮件主题</label><input id="feedbackReplySubject" type="text" maxlength="120" placeholder="关于你的反馈回复"></div>
+    <div class="field"><label>回复内容</label><textarea class="feedback-reply-textarea" id="feedbackReplyBody" maxlength="5000" placeholder="写给用户的回复内容"></textarea></div>
+    <div class="feedback-status" id="feedbackReplyStatus"></div>
+    <div class="modal-actions">
+      <button class="btn sm ghost" id="btnCancelReply" type="button">取消</button>
+      <button class="btn sm primary" id="btnSendReply" type="button">发送邮件</button>
     </div>
   </div>
 </div>
@@ -1636,6 +1655,54 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function feedbackRoleText(role){
     return role === 'student' ? '学生' : role === 'parent' ? '家长' : role === 'admin' ? '管理员' : '访客';
   }
+  let adminFeedbackRows = [];
+  let feedbackReplyId = null;
+  let feedbackReplyTo = '';
+
+  function openFeedbackReply(f){
+    if(!f) return;
+    const to = String(f.email || f.userEmail || '').trim();
+    if(!to){ alert('该反馈没有留下邮箱，无法发送邮件回复。'); return; }
+    feedbackReplyId = f.id;
+    feedbackReplyTo = to;
+    $('feedbackReplyTo').textContent = '收件人：' + to + ' · 通过 QBTI 虚拟邮箱发送';
+    $('feedbackReplySubject').value = f.replySubject || '关于你的反馈回复';
+    $('feedbackReplyBody').value = f.reply || '';
+    $('feedbackReplyStatus').className = 'feedback-status';
+    $('feedbackReplyStatus').textContent = '';
+    $('feedbackReplyMask').classList.add('show');
+  }
+
+  async function sendFeedbackReply(){
+    if(!feedbackReplyId) return;
+    const token = (window.QAuth && window.QAuth.getAdminToken) ? window.QAuth.getAdminToken() : null;
+    if(!token){ $('feedbackReplyStatus').className = 'feedback-status err'; $('feedbackReplyStatus').textContent = '管理员登录已过期'; return; }
+    const subject = $('feedbackReplySubject').value.trim() || '关于你的反馈回复';
+    const body = $('feedbackReplyBody').value.trim();
+    const status = $('feedbackReplyStatus');
+    const btn = $('btnSendReply');
+    if(body.length < 1){ status.className = 'feedback-status err'; status.textContent = '请填写回复内容。'; return; }
+    btn.disabled = true; btn.textContent = '发送中…';
+    status.className = 'feedback-status'; status.textContent = '';
+    try {
+      const res = await fetch('/api/admin/feedback/' + encodeURIComponent(feedbackReplyId) + '/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ subject: subject, body: body })
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.success) throw new Error(data.error || '发送失败');
+      $('feedbackReplyMask').classList.remove('show');
+      alert('回复邮件已发送至 ' + (data.replyTo || feedbackReplyTo));
+      feedbackReplyId = null;
+      openAdminFeedback();
+    } catch(err){
+      status.className = 'feedback-status err'; status.textContent = err.message || '发送失败';
+    } finally {
+      btn.disabled = false; btn.textContent = '发送邮件';
+    }
+  }
+
   async function openAdminFeedback(){
     if(!isAdmin()) return;
     $('modalMask').classList.remove('show');
@@ -1655,6 +1722,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       const data = await res.json().catch(() => ({}));
       if(!res.ok || !data.success) throw new Error(data.error || '读取失败');
       const rows = data.list || [];
+      adminFeedbackRows = rows;
       if(sub) sub.textContent = '共 ' + rows.length + ' 条反馈 · 所有用户提交的投诉与建议';
       if(!list) return;
       if(rows.length === 0){
@@ -1667,13 +1735,24 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         const who = f.name || f.userEmail || f.email || '匿名';
         const contact = [f.email, f.userEmail].filter(Boolean).join(' · ');
         const body = esc(String(f.content || '')).replace(/\n/g, '<br>');
+        const reply = f.reply
+          ? '<div class="feedback-admin-reply"><b>管理员回复 · ' + formatTime(f.replyAt) + '</b><br>' + esc(String(f.reply)).replace(/\n/g, '<br>') + '</div>'
+          : '';
         return '<div class="feedback-admin-item">'
           + '<div class="feedback-admin-head"><span class="feedback-admin-type ' + type + '">' + feedbackTypeText(f.type) + '</span>'
           + '<b>' + esc(who) + '</b><span>' + formatTime(f.createdAt) + '</span></div>'
           + '<div class="feedback-admin-meta">' + feedbackRoleText(f.role) + (contact ? ' · ' + esc(contact) : '') + '</div>'
           + '<div class="feedback-admin-content">' + body + '</div>'
+          + reply
+          + '<button class="feedback-reply-btn" data-fb-reply="' + f.id + '">' + (f.reply ? '再次回复' : '邮件回复') + '</button>'
           + '</div>';
       }).join('');
+      list.querySelectorAll('[data-fb-reply]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const f = adminFeedbackRows.find(x => String(x.id) === String(btn.dataset.fbReply));
+          openFeedbackReply(f);
+        });
+      });
     } catch(err){
       if(list) list.innerHTML = '<div class="feedback-admin-empty" style="color:#FF8FA0;">' + (Q.escapeHTML ? Q.escapeHTML(err.message || '读取失败') : (err.message || '读取失败')) + '</div>';
     }
@@ -1681,6 +1760,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   if($('btnAdminFeedback')) $('btnAdminFeedback').addEventListener('click', openAdminFeedback);
   if($('btnCloseFeedback')) $('btnCloseFeedback').addEventListener('click', () => { if($('feedbackMask')) $('feedbackMask').classList.remove('show'); });
   if($('feedbackMask')) $('feedbackMask').addEventListener('click', e => { if(e.target === $('feedbackMask')) $('feedbackMask').classList.remove('show'); });
+  if($('btnCancelReply')) $('btnCancelReply').addEventListener('click', () => { if($('feedbackReplyMask')) $('feedbackReplyMask').classList.remove('show'); });
+  if($('btnSendReply')) $('btnSendReply').addEventListener('click', sendFeedbackReply);
+  if($('feedbackReplyMask')) $('feedbackReplyMask').addEventListener('click', e => { if(e.target === $('feedbackReplyMask')) $('feedbackReplyMask').classList.remove('show'); });
 
   $('btnSaveCfg').addEventListener('click', () => {
     if(!isAdmin()){ $('modalMask').classList.remove('show'); return; }
