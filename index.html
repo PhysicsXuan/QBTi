@@ -226,6 +226,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .feedback-reply-textarea{width:100%;min-height:150px;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:inherit;font-size:calc(13px * var(--q-fs));line-height:1.7;resize:vertical;outline:none;}
 .feedback-reply-textarea:focus{border-color:var(--q-color);}
 .feedback-admin-empty{padding:26px;text-align:center;color:var(--muted);font-size:calc(13px * var(--q-fs));}
+.feedback-log{margin-top:10px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(0,0,0,.2);padding:8px 10px;}
+.feedback-log summary{cursor:pointer;font-size:calc(11.5px * var(--q-fs));color:var(--muted);}
+.feedback-log pre{white-space:pre-wrap;word-break:break-word;margin-top:8px;font-size:calc(10.5px * var(--q-fs));line-height:1.65;color:#A8AEDA;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
 @media(max-width:600px){.feedback-grid{grid-template-columns:1fr;}.feedback-card{padding:18px;}}
 
 /* 设置面板 */
@@ -423,7 +426,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         <a class="contact-mail" href="mailto:1182332400@qq.com">1182332400@qq.com</a>
         <div class="feedback-card">
           <h3>投诉与反馈</h3>
-          <p class="feedback-sub">遇到问题、想投诉，或对问卷和产品有建议，都可以写在这里。所有反馈会汇总到学生端管理员后台。</p>
+          <p class="feedback-sub">遇到问题、想投诉，或对问卷和产品有建议，都可以写在这里。所有反馈会汇总到学生端管理员后台。<b style="color:#DDE2FF;">我们将通过邮件的方式联系您。</b></p>
           <div class="feedback-grid">
             <div class="feedback-field">
               <label for="fbType">类型</label>
@@ -439,8 +442,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
             </div>
           </div>
           <div class="feedback-field">
-            <label for="fbEmail">联系邮箱（选填）</label>
-            <input class="feedback-input" id="fbEmail" type="email" maxlength="255" placeholder="方便回复的话可以留下邮箱" />
+            <label for="fbEmail">联系邮箱（必填）</label>
+            <input class="feedback-input" id="fbEmail" type="email" maxlength="255" required placeholder="请填写常用邮箱，我们将通过邮件联系你" />
           </div>
           <div class="feedback-field">
             <label for="fbContent">反馈内容</label>
@@ -743,8 +746,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const btn = $('btnSubmitFeedback');
     const contentEl = $('fbContent');
     const content = contentEl ? contentEl.value.trim() : '';
+    const email = $('fbEmail') ? $('fbEmail').value.trim() : '';
     if(content.length < 5){
       if(status){ status.className = 'feedback-status err'; status.textContent = '反馈内容至少 5 个字。'; }
+      return;
+    }
+    if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      if(status){ status.className = 'feedback-status err'; status.textContent = '请填写正确的联系邮箱，我们将通过邮件的方式联系您。'; }
       return;
     }
     const u = (window.QAuth && window.QAuth.getCurrentUser) ? window.QAuth.getCurrentUser() : null;
@@ -752,7 +760,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       type: $('fbType') ? $('fbType').value : 'suggestion',
       content: content,
       name: $('fbName') ? $('fbName').value.trim() : '',
-      email: $('fbEmail') ? $('fbEmail').value.trim() : '',
+      email: email,
       role: u ? (u.role || 'student') : 'guest',
       userEmail: u && u.email ? u.email : '',
       page: 'contact'
@@ -1738,12 +1746,26 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         const reply = f.reply
           ? '<div class="feedback-admin-reply"><b>管理员回复 · ' + formatTime(f.replyAt) + '</b><br>' + esc(String(f.reply)).replace(/\n/g, '<br>') + '</div>'
           : '';
+        const logText = [
+          '反馈 ID: ' + f.id,
+          '应用: ' + (f.app || '—'),
+          '角色: ' + feedbackRoleText(f.role),
+          '登录邮箱: ' + (f.userEmail || '—'),
+          '联系邮箱: ' + (f.email || '—'),
+          '页面: ' + (f.page || '—'),
+          'IP: ' + (f.ip || '—'),
+          'User-Agent: ' + (f.userAgent || '—'),
+          'Referer: ' + (f.referer || '—'),
+          '提交时间: ' + formatTime(f.createdAt)
+        ].join('\n');
+        const log = '<details class="feedback-log"><summary>后台日志</summary><pre>' + esc(logText) + '</pre></details>';
         return '<div class="feedback-admin-item">'
           + '<div class="feedback-admin-head"><span class="feedback-admin-type ' + type + '">' + feedbackTypeText(f.type) + '</span>'
           + '<b>' + esc(who) + '</b><span>' + formatTime(f.createdAt) + '</span></div>'
           + '<div class="feedback-admin-meta">' + feedbackRoleText(f.role) + (contact ? ' · ' + esc(contact) : '') + '</div>'
           + '<div class="feedback-admin-content">' + body + '</div>'
           + reply
+          + log
           + '<button class="feedback-reply-btn" data-fb-reply="' + f.id + '">' + (f.reply ? '再次回复' : '邮件回复') + '</button>'
           + '</div>';
       }).join('');
