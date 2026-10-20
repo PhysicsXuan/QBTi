@@ -1983,16 +1983,28 @@
       purgeWaves(now);
       ctx.clearRect(0, 0, W, H);
 
-      /* 按住大球时的脉冲抖动：蓄力越高，抖动越明显；松手释放后由 screenShake 接管 */
-      const holdShake = (!hasSplit && !soloNebula && charge.active)
-        ? (effectsMode === 'simple' ? 0.55 : 1) * (0.06 + charge.value * 0.40) * (0.55 + 0.45 * Math.sin(t * 13.0))
+      /* 按住大球时的随机剧烈抖动：强度随蓄力圈从轻微到失控 */
+      const holdPower = (!hasSplit && !soloNebula && charge.active) ? Math.pow(charge.value, 1.6) : 0;
+      const holdNoise = 0.35 + Math.random() * 0.65;
+      const holdSpike = (holdPower > 0.35 && Math.random() < 0.16 * holdPower)
+        ? (0.8 + Math.random() * 1.8)
+        : 0;
+      const holdShake = holdPower > 0
+        ? (effectsMode === 'simple' ? 0.55 : 1) * (0.08 + 3.2 * holdPower + holdSpike) * holdNoise
         : 0;
       const globalShake = hasSplit ? 0 : Math.max(screenShake, holdShake);
-      const shakeX = globalShake > 0 ? (Math.random()-0.5)*globalShake*14*DPR : 0;
-      const shakeY = globalShake > 0 ? (Math.random()-0.5)*globalShake*14*DPR : 0;
+      const shakeX = globalShake > 0 ? (Math.random()-0.5)*globalShake*18*DPR : 0;
+      const shakeY = globalShake > 0 ? (Math.random()-0.5)*globalShake*18*DPR : 0;
 
       ctx.save();
       ctx.translate(shakeX, shakeY);
+      /* 接近满蓄力时整幅画面也随机轻微扭转 */
+      if(holdPower > 0.25){
+        const twist = (Math.random()-0.5) * 0.014 * holdPower;
+        ctx.translate(W/2, H/2);
+        ctx.rotate(twist);
+        ctx.translate(-W/2, -H/2);
+      }
 
       const BR = safeBaseR();
       setDrawColor(globalColor);
@@ -2114,21 +2126,26 @@
           setDrawColor(globalColor);
           currentYaw = YAW_BASE + t*0.075 + targetBall.yawPhase + targetBall.yawOffset;
           tiltCur = TILT_BASE + targetBall.tiltOffset + Math.sin(t*0.23 + targetBall.seed)*0.045;
+          const holdEnergy = (charge.active && !hasSplit) ? Math.pow(charge.value, 1.45) : 0;
+          if(holdEnergy > 0){
+            currentYaw += (Math.random()-0.5) * 0.050 * holdEnergy;
+            tiltCur += (Math.random()-0.5) * 0.040 * holdEnergy;
+          }
           const localPulse = getBallPulse(targetBall, now);
           let ambientPulse = 0;
           if(!hasSplit){
             const breathRaw = (Math.sin(t * 0.40 + targetBall.breathSeed) + 1) / 2;
             ambientPulse = Math.pow(breathRaw, 3);
           }
-          const holdEnergy = (charge.active && !hasSplit) ? charge.value : 0;
-          pulse = Math.min(1, ambientPulse + localPulse * 0.92 + targetBall.focusAmount * 0.18 + holdEnergy * 0.38);
+          pulse = Math.min(1, ambientPulse + localPulse * 0.92 + targetBall.focusAmount * 0.18 + holdEnergy * 0.55);
           let breathY = 0, breathS = 1;
           if(!hasSplit){
             breathY = Math.sin(t * 0.40 + targetBall.breathSeed) * 6 * DPR;
             breathS = 1 + Math.sin(t * 0.40 + targetBall.breathSeed) * 0.006 - localPulse*0.034;
-            /* 按住时的脉冲抖动：幅度随蓄力增长 */
+            /* 按住时球体本身也随机抖动、缩放 */
             if(holdEnergy > 0){
-              breathS += Math.sin(t * 14.0) * 0.008 * holdEnergy;
+              breathY += (Math.random()-0.5) * 16 * holdEnergy * DPR;
+              breathS += (Math.random()-0.5) * 0.10 * holdEnergy;
             }
           }
           ctx.save();
