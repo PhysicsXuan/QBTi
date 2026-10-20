@@ -83,6 +83,18 @@ async function initDB() {
       "boundAt" BIGINT NOT NULL,
       UNIQUE("studentEmail", "parentEmail")
     );`,
+    `CREATE OR REPLACE FUNCTION qbti_check_binding_limit() RETURNS trigger AS $$
+     BEGIN
+       PERFORM pg_advisory_xact_lock(hashtext(NEW."studentEmail")::bigint);
+       IF (SELECT COUNT(*) FROM bindings WHERE "studentEmail" = NEW."studentEmail") >= 2 THEN
+         RAISE EXCEPTION 'STUDENT_BIND_LIMIT';
+       END IF;
+       RETURN NEW;
+     END;
+     $$ LANGUAGE plpgsql;`,
+    `DROP TRIGGER IF EXISTS qbti_binding_limit ON bindings;`,
+    `CREATE TRIGGER qbti_binding_limit BEFORE INSERT ON bindings
+       FOR EACH ROW EXECUTE FUNCTION qbti_check_binding_limit();`,
     `CREATE TABLE IF NOT EXISTS invites (
       code VARCHAR(10) PRIMARY KEY,
       "studentEmail" VARCHAR(255) NOT NULL,
@@ -832,6 +844,9 @@ app.post('/api/bind/accept', async (req, res) => {
 
     res.json({ success: true, studentEmail: se, studentUsername: inv.studentUsername || '' });
   } catch (err) {
+    if (err.code === 'STUDENT_BIND_LIMIT' || String(err.message || '').indexOf('STUDENT_BIND_LIMIT') >= 0) {
+      return res.status(409).json({ error: '该学生已达到绑定上限（最多绑定 2 位家长）' });
+    }
     res.status(500).json({ error: '服务器数据库异常' });
   }
 });
@@ -860,7 +875,7 @@ app.get('/api/parent/students', async (req, res) => {
       reportUpdatedAt: row.reportUpdatedAt ? Number(row.reportUpdatedAt) : null
     }));
 
-    res.json({ success: true, list });
+    res.json({ success: true, list, maxStudents: null, unlimited: true });
   } catch (err) {
     res.status(500).json({ error: '服务器数据库异常' });
   }
