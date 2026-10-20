@@ -189,12 +189,39 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 @keyframes quantumHintBreath{0%{opacity:.10}25%{opacity:.95}50%{opacity:.10}75%{opacity:0}100%{opacity:.10}}
 #quantumCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none;-webkit-tap-highlight-color:transparent;}
 .screen:not(#screen-home){padding:112px 22px 90px !important;max-width:1040px !important;min-height:100vh;background:#000;}
-.contact-page{min-height:calc(100vh - 72px);display:grid;place-items:center;text-align:center;}
-.contact-inner{max-width:600px}
+.contact-page{min-height:calc(100vh - 72px);display:block;text-align:center;padding:6px 0 46px;}
+.contact-inner{max-width:700px;margin:0 auto;}
 .contact-kicker{color:rgba(255,255,255,.42);font-size:calc(11px * var(--q-fs));letter-spacing:.28em;text-transform:uppercase;margin-bottom:18px;}
 .contact-title{font-size:clamp(calc(36px * var(--q-fs)),calc(7vw * var(--q-fs)),calc(72px * var(--q-fs)));font-weight:700;letter-spacing:-.04em;color:#fff}
 .contact-text{margin:20px auto 30px;color:rgba(255,255,255,.48);max-width:500px;font-size:calc(15px * var(--q-fs));line-height:1.9;}
 .contact-mail{display:inline-flex;padding:12px 20px;border:1px solid rgba(255,255,255,.14);border-radius:999px;color:#fff;text-decoration:none;font-size:calc(13px * var(--q-fs));}
+.feedback-card{max-width:640px;margin:34px auto 0;padding:24px;border-radius:18px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.025);text-align:left;}
+.feedback-card h3{font-size:calc(18px * var(--q-fs));color:#fff;margin-bottom:6px;}
+.feedback-sub{font-size:calc(12.5px * var(--q-fs));color:var(--muted);line-height:1.7;margin-bottom:16px;}
+.feedback-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.feedback-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.feedback-field label{font-size:calc(11.5px * var(--q-fs));color:var(--muted);letter-spacing:.06em;}
+.feedback-input,.feedback-select,.feedback-textarea{width:100%;padding:11px 13px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:inherit;font-size:calc(13px * var(--q-fs));outline:none;}
+.feedback-input:focus,.feedback-select:focus,.feedback-textarea:focus{border-color:var(--q-color);}
+.feedback-textarea{min-height:120px;resize:vertical;line-height:1.7;}
+.feedback-submit{width:100%;padding:12px;border-radius:11px;border:0;background:var(--q-color);color:#fff;font:inherit;font-size:calc(13.5px * var(--q-fs));font-weight:700;cursor:pointer;transition:.2s;}
+.feedback-submit:disabled{opacity:.55;cursor:wait;}
+.feedback-status{min-height:20px;margin-top:10px;font-size:calc(12.5px * var(--q-fs));line-height:1.6;}
+.feedback-status.ok{color:#6BE3A5;}
+.feedback-status.err{color:#FF8FA0;}
+.feedback-admin-modal{max-width:700px;max-height:86vh;display:flex;flex-direction:column;}
+.feedback-admin-list{overflow-y:auto;margin:14px 0;padding-right:4px;}
+.feedback-admin-item{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025);margin-bottom:10px;}
+.feedback-admin-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+.feedback-admin-head b{font-size:calc(13px * var(--q-fs));color:#fff;}
+.feedback-admin-head span:last-child{margin-left:auto;font-size:calc(11px * var(--q-fs));color:var(--muted);}
+.feedback-admin-type{font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;background:rgba(124,92,255,.18);color:#B9A7FF;}
+.feedback-admin-type.complaint{background:rgba(235,65,75,.16);color:#FF8FA0;}
+.feedback-admin-type.other{background:rgba(255,217,61,.14);color:#FFE58A;}
+.feedback-admin-meta{font-size:calc(11px * var(--q-fs));color:var(--muted);margin-bottom:8px;}
+.feedback-admin-content{font-size:calc(13px * var(--q-fs));color:#DDE2FF;line-height:1.7;word-break:break-word;}
+.feedback-admin-empty{padding:26px;text-align:center;color:var(--muted);font-size:calc(13px * var(--q-fs));}
+@media(max-width:600px){.feedback-grid{grid-template-columns:1fr;}.feedback-card{padding:18px;}}
 
 /* 设置面板 */
 .settings-mask{position:fixed;inset:0;background:rgba(3,4,12,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;display:none;place-items:center;padding:20px;overflow-y:auto;}
@@ -388,7 +415,35 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         <div class="contact-kicker">CONTACT</div>
         <h1 class="contact-title" data-i18n="contact.title">联系我们</h1>
         <p class="contact-text" data-i18n="contact.text">如果你希望了解项目、提出建议，或者参与后续的量子态映射研究，可以通过邮件与我们联系。</p>
-        <a class="contact-mail" href="mailto:contact@example.com">contact@example.com</a>
+        <a class="contact-mail" href="mailto:1182332400@qq.com">1182332400@qq.com</a>
+        <div class="feedback-card">
+          <h3>投诉与反馈</h3>
+          <p class="feedback-sub">遇到问题、想投诉，或对问卷和产品有建议，都可以写在这里。所有反馈会汇总到学生端管理员后台。</p>
+          <div class="feedback-grid">
+            <div class="feedback-field">
+              <label for="fbType">类型</label>
+              <select class="feedback-select" id="fbType">
+                <option value="suggestion">建议</option>
+                <option value="complaint">投诉</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+            <div class="feedback-field">
+              <label for="fbName">称呼（选填）</label>
+              <input class="feedback-input" id="fbName" type="text" maxlength="50" placeholder="怎么称呼你" />
+            </div>
+          </div>
+          <div class="feedback-field">
+            <label for="fbEmail">联系邮箱（选填）</label>
+            <input class="feedback-input" id="fbEmail" type="email" maxlength="255" placeholder="方便回复的话可以留下邮箱" />
+          </div>
+          <div class="feedback-field">
+            <label for="fbContent">反馈内容</label>
+            <textarea class="feedback-textarea" id="fbContent" maxlength="2000" placeholder="请描述你遇到的问题、投诉内容或对问卷的建议（5-2000 字）"></textarea>
+          </div>
+          <button class="feedback-submit" id="btnSubmitFeedback" type="button">提交反馈</button>
+          <div class="feedback-status" id="fbStatus"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -408,9 +463,21 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <div class="field"><label>Max tokens（500–4000）</label><input id="inpMaxTokens" type="number" min="500" max="4000" step="100" placeholder="2400"></div>
     <button class="btn sm" id="btnTestCfg" style="width:100%">测试连接</button>
     <div class="test-result" id="testResult"></div>
+    <button class="btn sm" id="btnAdminFeedback" type="button" style="width:100%;margin-top:10px;">📨 查看投诉与反馈</button>
     <div class="modal-actions">
       <button class="btn sm ghost" id="btnCancelCfg">取消</button>
       <button class="btn sm primary" id="btnSaveCfg">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="feedbackMask">
+  <div class="modal feedback-admin-modal">
+    <h3>投诉与反馈</h3>
+    <p class="sub" id="feedbackAdminSub">所有用户提交的投诉与建议</p>
+    <div class="feedback-admin-list" id="feedbackAdminList"><div class="feedback-admin-empty">加载中…</div></div>
+    <div class="modal-actions">
+      <button class="btn sm ghost" id="btnCloseFeedback" type="button">关闭</button>
     </div>
   </div>
 </div>
@@ -623,6 +690,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const pad = n => n < 10 ? '0'+n : ''+n;
     return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
+
+  function prefillFeedbackForm(){
+    if(!window.QAuth || !window.QAuth.getCurrentUser) return;
+    const u = window.QAuth.getCurrentUser();
+    if(!u) return;
+    const name = $('fbName');
+    const email = $('fbEmail');
+    if(name && !name.value) name.value = u.username || '';
+    if(email && !email.value) email.value = u.email || '';
+  }
   function goToScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(id);
@@ -636,10 +713,49 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       setTimeout(() => window.QuantumSphere.resize(), 200);
       setTimeout(() => window.QuantumSphere.resize(), 500);
     }
+    if(id === 'screen-contact') prefillFeedbackForm();
   }
 
   $('btnBackFromIntro').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromContact').addEventListener('click', () => goToScreen('screen-home'));
+
+  $('btnSubmitFeedback').addEventListener('click', async () => {
+    const status = $('fbStatus');
+    const btn = $('btnSubmitFeedback');
+    const contentEl = $('fbContent');
+    const content = contentEl ? contentEl.value.trim() : '';
+    if(content.length < 5){
+      if(status){ status.className = 'feedback-status err'; status.textContent = '反馈内容至少 5 个字。'; }
+      return;
+    }
+    const u = (window.QAuth && window.QAuth.getCurrentUser) ? window.QAuth.getCurrentUser() : null;
+    const payload = {
+      type: $('fbType') ? $('fbType').value : 'suggestion',
+      content: content,
+      name: $('fbName') ? $('fbName').value.trim() : '',
+      email: $('fbEmail') ? $('fbEmail').value.trim() : '',
+      role: u ? (u.role || 'student') : 'guest',
+      userEmail: u && u.email ? u.email : '',
+      page: 'contact'
+    };
+    if(btn){ btn.disabled = true; btn.textContent = '提交中…'; }
+    if(status){ status.className = 'feedback-status'; status.textContent = ''; }
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.success) throw new Error(data.error || '提交失败，请稍后再试');
+      if(status){ status.className = 'feedback-status ok'; status.textContent = '已收到，感谢你的反馈。'; }
+      if(contentEl) contentEl.value = '';
+    } catch(err){
+      if(status){ status.className = 'feedback-status err'; status.textContent = err.message || '提交失败，请稍后再试'; }
+    } finally {
+      if(btn){ btn.disabled = false; btn.textContent = '提交反馈'; }
+    }
+  });
   $('btnBackFromResult').addEventListener('click', () => goToScreen('screen-intro'));
   $('btnQuitQuiz').addEventListener('click', () => {
     const I18N = window.QBTI_I18N;
@@ -1513,6 +1629,59 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   });
   $('btnCancelCfg').addEventListener('click', () => $('modalMask').classList.remove('show'));
   $('modalMask').addEventListener('click', e => { if(e.target === $('modalMask')) $('modalMask').classList.remove('show'); });
+
+  function feedbackTypeText(type){
+    return type === 'complaint' ? '投诉' : type === 'other' ? '其他' : '建议';
+  }
+  function feedbackRoleText(role){
+    return role === 'student' ? '学生' : role === 'parent' ? '家长' : role === 'admin' ? '管理员' : '访客';
+  }
+  async function openAdminFeedback(){
+    if(!isAdmin()) return;
+    $('modalMask').classList.remove('show');
+    const mask = $('feedbackMask');
+    const list = $('feedbackAdminList');
+    const sub = $('feedbackAdminSub');
+    if(mask) mask.classList.add('show');
+    if(list) list.innerHTML = '<div class="feedback-admin-empty">加载中…</div>';
+    if(sub) sub.textContent = '所有用户提交的投诉与建议';
+    const token = (window.QAuth && window.QAuth.getAdminToken) ? window.QAuth.getAdminToken() : null;
+    if(!token){
+      if(list) list.innerHTML = '<div class="feedback-admin-empty">管理员登录已过期，请重新登录。</div>';
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/feedback', { headers: { 'Authorization': 'Bearer ' + token } });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.success) throw new Error(data.error || '读取失败');
+      const rows = data.list || [];
+      if(sub) sub.textContent = '共 ' + rows.length + ' 条反馈 · 所有用户提交的投诉与建议';
+      if(!list) return;
+      if(rows.length === 0){
+        list.innerHTML = '<div class="feedback-admin-empty">还没有收到反馈。</div>';
+        return;
+      }
+      const esc = Q.escapeHTML || (x => String(x));
+      list.innerHTML = rows.map(f => {
+        const type = f.type === 'complaint' ? 'complaint' : f.type === 'other' ? 'other' : '';
+        const who = f.name || f.userEmail || f.email || '匿名';
+        const contact = [f.email, f.userEmail].filter(Boolean).join(' · ');
+        const body = esc(String(f.content || '')).replace(/\n/g, '<br>');
+        return '<div class="feedback-admin-item">'
+          + '<div class="feedback-admin-head"><span class="feedback-admin-type ' + type + '">' + feedbackTypeText(f.type) + '</span>'
+          + '<b>' + esc(who) + '</b><span>' + formatTime(f.createdAt) + '</span></div>'
+          + '<div class="feedback-admin-meta">' + feedbackRoleText(f.role) + (contact ? ' · ' + esc(contact) : '') + '</div>'
+          + '<div class="feedback-admin-content">' + body + '</div>'
+          + '</div>';
+      }).join('');
+    } catch(err){
+      if(list) list.innerHTML = '<div class="feedback-admin-empty" style="color:#FF8FA0;">' + (Q.escapeHTML ? Q.escapeHTML(err.message || '读取失败') : (err.message || '读取失败')) + '</div>';
+    }
+  }
+  if($('btnAdminFeedback')) $('btnAdminFeedback').addEventListener('click', openAdminFeedback);
+  if($('btnCloseFeedback')) $('btnCloseFeedback').addEventListener('click', () => { if($('feedbackMask')) $('feedbackMask').classList.remove('show'); });
+  if($('feedbackMask')) $('feedbackMask').addEventListener('click', e => { if(e.target === $('feedbackMask')) $('feedbackMask').classList.remove('show'); });
+
   $('btnSaveCfg').addEventListener('click', () => {
     if(!isAdmin()){ $('modalMask').classList.remove('show'); return; }
     const rawTemp = $('inpTemp').value.trim();

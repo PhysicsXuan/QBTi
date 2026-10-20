@@ -109,6 +109,18 @@ async function initDB() {
       payload JSONB,
       "updatedAt" BIGINT NOT NULL
     );`,
+    `CREATE TABLE IF NOT EXISTS feedback (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(100),
+      email VARCHAR(255),
+      role VARCHAR(20),
+      type VARCHAR(20),
+      content TEXT NOT NULL,
+      "userEmail" VARCHAR(255),
+      page VARCHAR(50),
+      "createdAt" BIGINT NOT NULL
+    );`,
+    `CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback ("createdAt" DESC);`,
     `CREATE TABLE IF NOT EXISTS admin_policy (
       id VARCHAR(32) PRIMARY KEY,
       enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -183,10 +195,35 @@ function verifyStudentPassword(password, salt, stored) {
 /* ---------- 学生端管理员 token（受家长端策略控制） ---------- */
 const studentAdminTokens = new Map();
 const STUDENT_ADMIN_TTL = 2 * 60 * 60 * 1000;
+const feedbackCooldowns = new Map();
 function studentAdminTokenFromReq(req){
   const h = String(req.headers.authorization || '');
   if(h.indexOf('Bearer ') === 0) return h.slice(7).trim();
   return String(req.headers['x-admin-token'] || '');
+}
+
+async function requireStudentAdmin(req, res, next){
+  const token = studentAdminTokenFromReq(req);
+  const entry = studentAdminTokens.get(token);
+  if (!entry || entry.expires < Date.now()) {
+    if (token) studentAdminTokens.delete(token);
+    return res.status(401).json({ error: '管理员登录已过期，请重新登录', code: 'ADMIN_AUTH' });
+  }
+  try {
+    const r = await pool.query('SELECT enabled, "updatedAt" FROM admin_policy WHERE id = $1', ['student_admin']);
+    const row = r.rows[0];
+    if (!row || !row.enabled) {
+      studentAdminTokens.delete(token);
+      return res.status(403).json({ error: '学生端管理员已被停用', code: 'ADMIN_DISABLED' });
+    }
+    if ((Number(row.updatedAt) || 0) !== entry.policyUpdatedAt) {
+      studentAdminTokens.delete(token);
+      return res.status(401).json({ error: '管理员策略已变更，请重新登录', code: 'ADMIN_POLICY_CHANGED' });
+    }
+    return next();
+  } catch (err) {
+    return res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
 }
 
 /* ---------- 验证码消费（注册 / 重置密码共用） ---------- */
@@ -658,6 +695,68 @@ app.get('/api/admin/policy', async (req, res) => {
     res.json({ success: true, policy: { enabled: true, updatedAt: Number(row.updatedAt) || null } });
   } catch (err) {
     console.error('[学生端管理员策略] 校验失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.6 投诉与反馈（所有人可提交）
+app.post('/api/feedback', async (req, res) => {
+  const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || 'unknown').trim();
+  const now = Date.now();
+  const last = feedbackCooldowns.get(ip) || 0;
+  if (now - last < 15 * 1000) {
+    return res.status(429).json({ error: '提交太频繁，请稍后再试', code: 'RATE_LIMIT' });
+  }
+
+  const body = req.body || {};
+  const type = ['suggestion', 'complaint', 'other'].includes(body.type) ? body.type : 'suggestion';
+  const content = String(body.content || '').trim();
+  if (content.length < 5 || content.length > 2000) {
+    return res.status(400).json({ error: '反馈内容需要 5-2000 字', code: 'BAD_CONTENT' });
+  }
+  const name = String(body.name || '').trim().slice(0, 50);
+  const email = String(body.email || '').trim().slice(0, 255);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: '邮箱格式不正确', code: 'BAD_EMAIL' });
+  }
+  const role = ['student', 'parent', 'admin', 'guest'].includes(body.role) ? body.role : 'guest';
+  const userEmail = String(body.userEmail || '').trim().toLowerCase().slice(0, 255);
+  const page = String(body.page || 'contact').trim().slice(0, 50);
+
+  try {
+    const r = await pool.query(
+      `INSERT INTO feedback (name, email, role, type, content, "userEmail", page, "createdAt")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, "createdAt"`,
+      [name, email, role, type, content, userEmail, page, now]
+    );
+    feedbackCooldowns.set(ip, now);
+    if (feedbackCooldowns.size > 2000) {
+      const cutoff = now - 5 * 60 * 1000;
+      for (const [k, v] of feedbackCooldowns) {
+        if (v < cutoff) feedbackCooldowns.delete(k);
+      }
+    }
+    res.json({ success: true, id: r.rows[0].id, createdAt: Number(r.rows[0].createdAt) });
+  } catch (err) {
+    console.error('[反馈] 保存失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.7 学生端管理员查看所有投诉与反馈
+app.get('/api/admin/feedback', requireStudentAdmin, async (req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT id, name, email, role, type, content, "userEmail", page, "createdAt"
+      FROM feedback
+      ORDER BY "createdAt" DESC
+      LIMIT 500
+    `);
+    const list = r.rows.map(row => Object.assign({}, row, { createdAt: Number(row.createdAt) || 0 }));
+    res.json({ success: true, list: list, count: list.length });
+  } catch (err) {
+    console.error('[反馈] 管理员读取失败:', err.message);
     res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
   }
 });

@@ -1248,6 +1248,7 @@
     getCurrentUser: function(){ return currentUser ? Object.assign({}, currentUser) : null; },
     isLoggedIn: function(){ return !!currentUser; },
     isAdmin: function(){ return !!(currentUser && currentUser.role === 'admin'); },
+    getAdminToken: function(){ return adminToken; },
     logout: function(){ handleLogout(); },
     onChange: function(fn){
       if(typeof fn !== 'function') return function(){};
