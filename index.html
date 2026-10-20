@@ -223,6 +223,27 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .settings-seg button:hover:not(.active){color:#fff;}
 .settings-note{font-size:calc(11.5px * var(--q-fs));color:var(--muted);line-height:1.7;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);margin-bottom:18px;}
 .settings-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;}
+/* 管理员高级权限 */
+.admin-group{border:1px solid rgba(255,190,80,.28);background:rgba(255,190,80,.045);border-radius:14px;padding:16px;margin-top:6px}
+.admin-title{color:#FFD98A;justify-content:space-between}
+.admin-title::before{background:#FFD98A;box-shadow:0 0 8px #FFD98A}
+.admin-badge{font-size:calc(9.5px * var(--q-fs));letter-spacing:.12em;padding:2px 7px;border-radius:99px;border:1px solid rgba(255,190,80,.4);background:rgba(255,190,80,.1);color:#FFD98A}
+.admin-stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;font-size:calc(11px * var(--q-fs));color:var(--muted)}
+.admin-stats span{padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}
+.admin-stats b{color:#FFD98A;font-weight:700}
+.admin-switch{min-width:58px;padding:5px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:var(--muted);font-size:calc(10.5px * var(--q-fs));font-weight:800;letter-spacing:.08em;cursor:pointer;font-family:inherit}
+.admin-switch.on{border-color:rgba(255,190,80,.55);background:rgba(255,190,80,.16);color:#FFD98A}
+.admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.admin-action{padding:9px 10px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);color:#D9DDF7;font-size:calc(11.5px * var(--q-fs));cursor:pointer;font-family:inherit;text-align:left}
+.admin-action:hover{border-color:rgba(255,190,80,.45);color:#fff}
+.admin-action.danger{grid-column:1/-1;border-color:rgba(235,65,75,.25);color:#FF9BB5}
+.admin-health{font-size:calc(11px * var(--q-fs));color:var(--muted);line-height:1.6;margin-top:10px;min-height:14px;white-space:pre-wrap;word-break:break-word}
+.admin-debug{margin-top:24px;border:1px solid rgba(255,190,80,.28);background:rgba(255,190,80,.04);border-radius:16px;padding:16px 18px;text-align:left}
+.admin-debug summary{cursor:pointer;color:#FFD98A;font-weight:700;font-size:calc(12.5px * var(--q-fs));letter-spacing:.06em}
+.admin-debug pre{white-space:pre-wrap;word-break:break-word;font-size:calc(10.5px * var(--q-fs));line-height:1.6;color:#C9CEEE;max-height:360px;overflow:auto;margin-top:12px}
+.admin-debug-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.admin-debug-actions button{padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#D9DDF7;font-size:calc(11px * var(--q-fs));cursor:pointer;font-family:inherit}
+@media(max-width:560px){.admin-actions{grid-template-columns:1fr}}
 .settings-reset{padding:10px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:transparent;color:var(--muted);font-size:calc(13px * var(--q-fs));cursor:pointer;font-family:inherit;transition:.2s;}
 .settings-reset:hover{color:#fff;border-color:rgba(255,255,255,.28);}
 .settings-done{padding:10px 22px;border-radius:10px;border:0;background:var(--q-color);color:#fff;font-size:calc(13.5px * var(--q-fs));font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;}
@@ -349,6 +370,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       <button class="btn" id="btnRestart" data-i18n="result.restart">重新观测</button>
       <button class="btn" id="btnCopy" data-i18n="result.copy">复制结果</button>
     </div>
+    <div id="adminDebugPanel"></div>
   </section>
 
   <section class="screen" id="screen-contact">
@@ -366,16 +388,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   </section>
 </div>
 
-<button class="gear" id="btnGear" title="API 设置" style="display:none;">⚙</button>
+<button class="gear" id="btnGear" title="管理员 AI 接口" style="display:none;">⚙</button>
 <button class="settings-btn" id="btnSettings" title="设置">🎨</button>
 
 <div class="modal-mask" id="modalMask">
   <div class="modal">
-    <h3>API 设置</h3>
-    <p class="sub">密钥仅保存在本地浏览器（localStorage），不会上传到任何第三方。<br><span style="color:#FFD98A">⚠ 仅管理员可见此面板</span></p>
+    <h3>管理员 · AI 接口参数</h3>
+    <p class="sub">密钥仅保存在本地浏览器（localStorage），不会上传到任何第三方。<br><span style="color:#FFD98A">⚠ 仅管理员可见；Temperature / Max tokens 会直接影响本机 AI 生成</span></p>
     <div class="field"><label>接口地址</label><input id="inpUrl" type="text" placeholder="https://api.deepseek.com/chat/completions"></div>
     <div class="field"><label>API Key</label><input id="inpKey" type="password" placeholder="sk-..."></div>
     <div class="field"><label>模型名称</label><input id="inpModel" type="text" placeholder="deepseek-chat"></div>
+    <div class="field"><label>Temperature（0–1.5）</label><input id="inpTemp" type="number" min="0" max="1.5" step="0.05" placeholder="0.85"></div>
+    <div class="field"><label>Max tokens（500–4000）</label><input id="inpMaxTokens" type="number" min="500" max="4000" step="100" placeholder="2400"></div>
     <button class="btn sm" id="btnTestCfg" style="width:100%">测试连接</button>
     <div class="test-result" id="testResult"></div>
     <div class="modal-actions">
@@ -496,7 +520,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_DAILY_KEY = 'qbti_ai_daily_v1';
   const AI_DAILY_LIMIT = 10;
   const AI_MIN_INTERVAL = 30 * 1000;
-  const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat' };
+  const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
 
   /* 生成按钮文案（8 语言；不对用户展示 API 消耗提示） */
   const AI_TEXT = {
@@ -549,6 +573,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const admin = info && info.isLoggedIn ? (info.user && info.user.role === 'admin') : isAdmin();
     gear.style.display = admin ? '' : 'none';
     if(!admin){ const mask = $('modalMask'); if(mask) mask.classList.remove('show'); }
+    if(window.QBTISettings && window.QBTISettings.refreshAdmin) window.QBTISettings.refreshAdmin();
+    renderAdminDebug();
   }
   function formatTime(ts){
     const d = new Date(ts);
@@ -941,6 +967,57 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     btn.textContent = state.aiLoading ? aiText('loading') : (state.aiReportText ? aiText('regen') : aiText('gen'));
   }
 
+  /* 管理员原始数据面板：只在管理员 + adminDebug 开启时显示 */
+  function renderAdminDebug(){
+    const host = $('adminDebugPanel');
+    if(!host) return;
+    const settings = window.QBTISettings && window.QBTISettings.get ? window.QBTISettings.get() : null;
+    if(!isAdmin() || !settings || !settings.adminDebug || !state.result){
+      host.innerHTML = '';
+      return;
+    }
+    const dump = {
+      code: state.result.letters.join('') + '-' + state.result.suffix.letter,
+      result: state.result,
+      validity: state.validity,
+      answers: state.answers,
+      timings: state.timings,
+      quantumState: state.quantumState,
+      dimStates: state.dimStates,
+      ai: {
+        source: state.aiReportSource,
+        lang: state.aiReportLang,
+        loading: state.aiLoading,
+        error: state.aiError,
+        lastAiAt: state.lastAiAt
+      },
+      timestamps: { resultTs: state.resultTs, restoredTs: state.restoredTs },
+      user: (window.QAuth && window.QAuth.getCurrentUser) ? window.QAuth.getCurrentUser() : null
+    };
+    const json = JSON.stringify(dump, null, 2);
+    host.innerHTML = '<details class="admin-debug" open><summary>ADMIN · 原始数据 / Raw state</summary>'
+      + '<pre>' + Q.escapeHTML(json) + '</pre>'
+      + '<div class="admin-debug-actions"><button type="button" id="adminDebugCopy">复制 JSON</button><button type="button" id="adminDebugDownload">下载 JSON</button></div></details>';
+    const copy = $('adminDebugCopy');
+    if(copy) copy.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(json);
+        copy.textContent = '已复制';
+        setTimeout(() => { copy.textContent = '复制 JSON'; }, 1200);
+      } catch(e){}
+    });
+    const dl = $('adminDebugDownload');
+    if(dl) dl.addEventListener('click', () => {
+      const blob = new Blob([json], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'qbti-debug-' + Date.now() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    });
+  }
+
   function renderResult(res, restoredTs){
     const I18N = window.QBTI_I18N;
     const baseCode = res.letters.join('');
@@ -1011,6 +1088,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
     }
     renderAIPanel();
+    renderAdminDebug();
   }
 
   function getCfg(){
@@ -1022,6 +1100,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         if(s.url && s.url.trim()) cfg.url = s.url.trim();
         if(s.key && s.key.trim()) cfg.key = s.key.trim();
         if(s.model && s.model.trim()) cfg.model = s.model.trim();
+        if(s.temperature != null && !isNaN(Number(s.temperature))) cfg.temperature = Math.max(0, Math.min(1.5, Number(s.temperature)));
+        if(s.maxTokens != null && !isNaN(Number(s.maxTokens))) cfg.maxTokens = Math.max(500, Math.min(4000, Number(s.maxTokens)));
       }
     } catch(e){}
     return cfg;
@@ -1043,7 +1123,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
               : 'You are an educational guidance consultant who uses quantum metaphors to understand teenagers’ learning states. Your tone is warm, specific, and non-judgmental. Always write the report in the language requested by the user.'},
             {role: 'user', content: prompt}
           ],
-          temperature: 0.85, max_tokens: 2400, stream: false
+          temperature: cfg.temperature, max_tokens: cfg.maxTokens, stream: false
         })
       });
     } catch(e){ throw new Error('CORS_OR_NETWORK'); }
@@ -1162,6 +1242,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     $('inpUrl').value = cfg.url;
     $('inpKey').value = cfg.key;
     $('inpModel').value = cfg.model;
+    $('inpTemp').value = cfg.temperature;
+    $('inpMaxTokens').value = cfg.maxTokens;
     $('testResult').className = 'test-result';
     $('modalMask').classList.add('show');
   });
@@ -1169,7 +1251,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('modalMask').addEventListener('click', e => { if(e.target === $('modalMask')) $('modalMask').classList.remove('show'); });
   $('btnSaveCfg').addEventListener('click', () => {
     if(!isAdmin()){ $('modalMask').classList.remove('show'); return; }
-    saveCfg({ url: $('inpUrl').value.trim() || DEFAULT_CFG.url, key: $('inpKey').value.trim(), model: $('inpModel').value.trim() || DEFAULT_CFG.model });
+    const rawTemp = $('inpTemp').value.trim();
+    const rawMax = $('inpMaxTokens').value.trim();
+    const temp = Math.max(0, Math.min(1.5, rawTemp === '' ? DEFAULT_CFG.temperature : Number(rawTemp)));
+    const maxTokens = Math.max(500, Math.min(4000, rawMax === '' ? DEFAULT_CFG.maxTokens : Number(rawMax)));
+    saveCfg({ url: $('inpUrl').value.trim() || DEFAULT_CFG.url, key: $('inpKey').value.trim(), model: $('inpModel').value.trim() || DEFAULT_CFG.model, temperature: temp, maxTokens: maxTokens });
     $('modalMask').classList.remove('show');
     const b = $('btnSaveCfg');
     b.textContent = '✓';
@@ -1206,12 +1292,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           renderQuantumStateBadge(state.quantumState, state.dimStates ? state.dimStates.types : null);
         }
       }
+      if(info.key === 'adminDebug' || info.key === 'adminForceSimple' || info.key === 'adminMuteSound' || info.key === 'adminDisableHaptic' || info.key === 'reset'){
+        renderAdminDebug();
+      }
     });
   }
 
   if(window.QAuth && window.QAuth.onChange){
     window.QAuth.onChange(function(info){
       refreshAdminUI(info);
+      renderAdminDebug();
       if(info.isLoggedIn){ updateRestoreBanner(); }
       else {
         state.result = null; state.quantumState = null; state.dimStates = null;
@@ -1221,6 +1311,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
     });
   }
+
+  window.addEventListener('qbti:admin-data-cleared', function(){
+    updateRestoreBanner();
+    renderAdminDebug();
+  });
 
   renderQuestion();
   updateRestoreBanner();

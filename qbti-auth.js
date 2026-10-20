@@ -840,7 +840,7 @@
     const adminBadge = currentUser.role === 'admin'
       ? '<span class="qauth-admin-badge">ADMIN</span>' : '';
     const bindSection = currentUser.role === 'admin'
-      ? '<div class="qauth-bind-section" style="border-color:rgba(255,180,60,.3);background:rgba(255,180,60,.06);"><div class="qauth-bind-title"><span>🔧 管理员模式</span></div><div class="qauth-bind-empty">作为内置管理员，您可以：<br>• 使用右下角 ⚙ 按钮调试 AI 接口<br>• 使用 🎨 按钮调整全局设置<br>• 不参与家长绑定流程</div></div>'
+      ? '<div class="qauth-bind-section" style="border-color:rgba(255,180,60,.3);background:rgba(255,180,60,.06);"><div class="qauth-bind-title"><span>🔧 管理员模式</span></div><div class="qauth-bind-empty">作为内置管理员，您可以：<br>• 使用右下角 ⚙ 打开 AI 接口参数（地址 / Key / 模型 / Temperature / Max tokens）<br>• 使用 🎨 → 底部「管理员高级权限」：原始数据面板、强制简洁特效、静音/禁用震动、导出本地数据、清除 AI 缓存与额度、清除历史、服务器健康检查<br>• 不参与家长绑定流程</div></div>'
       : `
       <div class="qauth-bind-section" id="qauthBindSection">
         <div class="qauth-bind-title">
