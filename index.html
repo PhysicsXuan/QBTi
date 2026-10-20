@@ -64,14 +64,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .page-back-btn:hover{color:#fff;border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.5);background:rgba(var(--q-r),var(--q-g),var(--q-b),.1);}
 .back-btn-wrap{padding-top:12px;margin-bottom:20px;}
 
-#screen-quiz{position:relative;overflow:hidden}
-.quiz-orb-stage{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;opacity:.78}
-#quizQuantumCanvas{display:block;width:100%;height:100%}
-#screen-quiz > .back-btn-wrap,
-#screen-quiz > .quiz-head,
-#screen-quiz > .group-strip,
-#screen-quiz > .quiz-card,
-#screen-quiz > .quiz-foot{position:relative;z-index:1}
 .quiz-head{display:flex;align-items:center;gap:16px;margin-bottom:22px}
 .progress-track{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
 .progress-fill{height:100%;width:0;border-radius:99px;background:var(--q-color);transition:width .45s}
@@ -93,6 +85,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .opt .num{font-size:calc(11px * var(--q-fs));color:var(--muted);width:14px}
 .quiz-foot{margin-top:26px;display:flex;justify-content:space-between;align-items:center}
 .hint{font-size:calc(12px * var(--q-fs));color:var(--muted);opacity:.65}
+.result-orbs-stage{position:relative;height:190px;max-width:900px;margin:2px auto 4px;pointer-events:none;}
+#resultQuantumCanvas{display:block;width:100%;height:100%;}
+@media(max-width:600px){.result-orbs-stage{height:150px;margin-top:0}}
 .result-hero{text-align:center;padding:22px 0 12px}
 .type-portrait{width:min(280px,72vw);height:210px;margin:0 auto 14px;display:flex;align-items:flex-end;justify-content:center;position:relative}
 .type-portrait::before{content:'';position:absolute;width:190px;height:38px;bottom:4px;border-radius:50%;background:radial-gradient(ellipse,rgba(var(--q-r),var(--q-g),var(--q-b),.30),rgba(var(--q-r),var(--q-g),var(--q-b),0) 70%);filter:blur(8px);}
@@ -325,7 +320,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   </section>
 
   <section class="screen" id="screen-quiz">
-    <div class="quiz-orb-stage"><canvas id="quizQuantumCanvas"></canvas></div>
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnQuitQuiz" data-i18n="quiz.quit">← 放弃答题</button>
     </div>
@@ -348,6 +342,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnBackFromResult" data-i18n="backQbti">← 返回 QBTI 首页</button>
     </div>
+    <div class="result-orbs-stage"><canvas id="resultQuantumCanvas"></canvas></div>
     <div class="result-hero">
       <div class="r-label">Your Quantum Learning Type</div>
       <div class="type-portrait"><img id="rTypeImage" src="" alt="portrait"></div>
@@ -507,7 +502,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 <script src="qbti-i18n.js"></script>
 <script src="qbti-settings.js"></script>
 <script src="quantum-sphere.js"></script>
-<script src="quiz-sphere.js"></script>
+<script src="result-sphere.js"></script>
 <script src="qbti-auth.js"></script>
 
 <script>
@@ -744,6 +739,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   function applyQuantumStateToSphere(qs, ds){
+    if(window.ResultQuantumSphere && window.ResultQuantumSphere.setDimensionStates){
+      window.ResultQuantumSphere.setDimensionStates(ds);
+    }
     if(!window.QuantumSphere) return;
     if(qs && window.QuantumSphere.setQuantumState) window.QuantumSphere.setQuantumState(qs.type);
     if(ds && window.QuantumSphere.setDimensionStates) window.QuantumSphere.setDimensionStates(ds);
