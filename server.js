@@ -104,6 +104,14 @@ async function initDB() {
       "passwordHash" VARCHAR(255) NOT NULL,
       "updatedAt" BIGINT NOT NULL,
       "updatedBy" VARCHAR(255)
+    );`,
+    `CREATE TABLE IF NOT EXISTS admin_quiz_records (
+      id SERIAL PRIMARY KEY,
+      "studentEmail" VARCHAR(255) NOT NULL,
+      "quizTs" BIGINT NOT NULL,
+      payload JSONB,
+      "createdAt" BIGINT NOT NULL,
+      UNIQUE("studentEmail", "quizTs")
     );`
   ];
   try {
@@ -563,6 +571,7 @@ app.post('/api/student/delete-account', async (req, res) => {
       await client.query('DELETE FROM bindings WHERE "studentEmail" = $1', [emailLower]);
       await client.query('DELETE FROM invites WHERE "studentEmail" = $1', [emailLower]);
       await client.query('DELETE FROM reports WHERE "studentEmail" = $1', [emailLower]);
+      await client.query('DELETE FROM admin_quiz_records WHERE "studentEmail" = $1', [emailLower]);
       await client.query('DELETE FROM student_emails WHERE LOWER(email) = $1', [emailLower]);
       await client.query('COMMIT');
     } catch (e) {
@@ -863,8 +872,26 @@ app.post('/api/report/sync', async (req, res) => {
   if (!studentEmail || !payload) return res.status(400).json({ error: '参数不完整' });
   const se = String(studentEmail).trim().toLowerCase();
   const updatedAt = Date.now();
+  const quizTs = Number(payload.quizTs) || updatedAt;
+  payload.quizTs = quizTs;
 
   try {
+    /* 管理员回填历史时，不要把家长端已经生成的 AI 报告覆盖掉 */
+    if (se === 'administrator@qbti.local') {
+      try {
+        const prev = await pool.query(
+          'SELECT payload FROM admin_quiz_records WHERE "studentEmail" = $1 AND "quizTs" = $2',
+          [se, quizTs]
+        );
+        const prevPayload = prev.rows[0] && prev.rows[0].payload;
+        if (prevPayload && prevPayload.aiReport && !payload.aiReport) {
+          payload.aiReport = prevPayload.aiReport;
+          payload.aiReportLang = prevPayload.aiReportLang;
+          payload.aiReportSource = prevPayload.aiReportSource;
+          payload.aiReportAt = prevPayload.aiReportAt;
+        }
+      } catch(e){}
+    }
     await pool.query(
       `INSERT INTO reports ("studentEmail", "studentUsername", payload, "updatedAt")
        VALUES ($1, $2, $3, $4)
@@ -874,7 +901,17 @@ app.post('/api/report/sync', async (req, res) => {
            "updatedAt" = EXCLUDED."updatedAt"`,
       [se, studentUsername || '', JSON.stringify(payload), updatedAt]
     );
-    res.json({ success: true, updatedAt });
+    /* 学生端管理员：每次问卷都留一条快照，供家长端管理员查看全部历史 */
+    if (se === 'administrator@qbti.local') {
+      await pool.query(
+        `INSERT INTO admin_quiz_records ("studentEmail", "quizTs", payload, "createdAt")
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT ("studentEmail", "quizTs") DO UPDATE
+         SET payload = EXCLUDED.payload, "createdAt" = EXCLUDED."createdAt"`,
+        [se, quizTs, JSON.stringify(payload), updatedAt]
+      );
+    }
+    res.json({ success: true, updatedAt, quizTs });
   } catch (err) {
     res.status(500).json({ error: '服务器数据库异常' });
   }

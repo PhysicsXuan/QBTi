@@ -645,12 +645,70 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
   renderDimPreview();
 
+  let adminHistorySyncBusy = false;
+  async function syncAdminHistoryToServer(){
+    if(adminHistorySyncBusy) return;
+    if(!window.QAuth || !window.QAuth.isAdmin || !window.QAuth.isAdmin()) return;
+    const u = window.QAuth.getCurrentUser();
+    if(!u || !u.email) return;
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem(RESULT_KEY_PREFIX + u.email) || '[]'); } catch(e){ return; }
+    if(!Array.isArray(history) || history.length === 0) return;
+    history = history.slice().sort((a, b) => Number(a.ts) - Number(b.ts));
+    adminHistorySyncBusy = true;
+    try {
+      for(const entry of history){
+        if(!entry || !entry.answers) continue;
+        try {
+          const res = Q.computeResult(entry.answers);
+          const validity = Q.analyzeResponseValidity(entry.answers, entry.timings || {});
+          const qs = Q.analyzeQuantumState(res);
+          const raw = Q.analyzeDimensionStates(res);
+          const ds = { PO: raw.PO.type, II: raw.II.type, LA: raw.LA.type, UR: raw.UR.type };
+          const suffixLetter = entry.suffix || res.suffix.letter;
+          const suffixObj = Q.SUFFIXES.find(sf => sf.letter === suffixLetter) || res.suffix;
+          const payload = {
+            quizTs: Number(entry.ts) || Date.now(),
+            code: (entry.code || res.letters.join('')) + '-' + suffixLetter,
+            baseCode: entry.code || res.letters.join(''),
+            suffixLetter: suffixLetter,
+            suffixName: suffixObj.name,
+            typeName: Q.TYPE_NAMES[entry.code || res.letters.join('')] || '',
+            dimGroupRatio: res.dimGroupRatio,
+            dimLeadInfo: res.dimLeadInfo,
+            suffixRatio: res.suffixRatio,
+            suffixGap: res.suffixGap,
+            quantumState: entry.quantumState || qs.type,
+            dimStates: entry.dimStates || ds,
+            validity: validity,
+            aiReport: entry.aiReport || null,
+            aiReportSource: entry.aiReportSource || null,
+            aiReportLang: entry.aiReportLang || null,
+            fullResult: res
+          };
+          await fetch('/api/report/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentEmail: u.email,
+              studentUsername: u.username || 'Administrator',
+              payload: payload
+            })
+          });
+        } catch(e){}
+      }
+    } finally {
+      adminHistorySyncBusy = false;
+    }
+  }
+
   async function syncReportToServer(){
     if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
     const u = window.QAuth.getCurrentUser();
     if(!u || !u.email || !state.result) return;
     const payload = {
       studentEmail: u.email,
+      quizTs: state.resultTs || Date.now(),
       code: state.result.letters.join('') + '-' + state.result.suffix.letter,
       baseCode: state.result.letters.join(''),
       suffixLetter: state.result.suffix.letter,
@@ -687,7 +745,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const ts = Date.now();
     state.resultTs = ts;
     history.push({ ts, answers: Object.assign({}, answers), timings: state.timings ? Object.assign({}, state.timings) : {}, code: result.letters.join(''), suffix: result.suffix.letter, quantumState: qs ? qs.type : null, dimStates: ds, aiReport: state.aiReportText || null, aiReportSource: state.aiReportSource || null, aiReportLang: state.aiReportLang || null });
-    if(history.length > 10) history = history.slice(-10);
+    const historyLimit = (window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin()) ? 200 : 10;
+    if(history.length > historyLimit) history = history.slice(-historyLimit);
     try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
   }
   function getAllResultsFromUser(){
@@ -1367,6 +1426,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       renderAdminDebug();
       applyHomepageTheme();
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
+      if(info.isLoggedIn && info.user && info.user.role === 'admin') syncAdminHistoryToServer();
       if(info.isLoggedIn){ updateRestoreBanner(); }
       else {
         state.result = null; state.quantumState = null; state.dimStates = null;
