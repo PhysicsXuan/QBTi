@@ -224,6 +224,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .settings-seg button{padding:6px 14px;border:0;background:transparent;color:var(--muted);font-size:calc(12.5px * var(--q-fs));font-weight:600;cursor:pointer;font-family:inherit;border-radius:7px;transition:.2s;white-space:nowrap;}
 .settings-seg button.active{background:var(--q-color);color:#fff;box-shadow:0 2px 10px rgba(var(--q-r),var(--q-g),var(--q-b),.32);}
 .settings-seg button:hover:not(.active){color:#fff;}
+.settings-seg button:disabled{opacity:.35;cursor:not-allowed;}
+.settings-seg button:disabled:hover{color:var(--muted);}
 .settings-note{font-size:calc(11.5px * var(--q-fs));color:var(--muted);line-height:1.7;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);margin-bottom:18px;}
 .settings-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;}
 /* 管理员高级权限 */
@@ -435,6 +437,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           <button type="button" data-val="normal" data-i18n="settings.effectsMode.normal">常规</button>
         </div>
       </div>
+      <div class="settings-row">
+        <label>量子球配色</label>
+        <div class="settings-seg" id="setSphereTheme">
+          <button type="button" data-val="last">默认 · 最近</button>
+          <button type="button" data-val="custom">自定义 · 历史</button>
+        </div>
+      </div>
+      <div class="settings-row" id="setSphereCustomRow" style="display:none;">
+        <label for="setSphereCustom">选择问卷</label>
+        <select class="settings-select" id="setSphereCustom"></select>
+      </div>
+      <div class="settings-note" id="setSphereHint" style="display:none;margin-bottom:0;">登录后可选择自己的历史问卷作为主页配色。</div>
     </div>
 
     <div class="settings-group">
@@ -738,13 +752,46 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
   }
 
+  /* 报告页四球：只跟随当前这次结果，不改变主页配色 */
   function applyQuantumStateToSphere(qs, ds){
     if(window.ResultQuantumSphere && window.ResultQuantumSphere.setDimensionStates){
       window.ResultQuantumSphere.setDimensionStates(ds);
     }
+  }
+
+  /* 主页配色：默认 = 最近一次问卷；自定义 = 历史中选择的问卷 */
+  function applyHomepageTheme(){
     if(!window.QuantumSphere) return;
-    if(qs && window.QuantumSphere.setQuantumState) window.QuantumSphere.setQuantumState(qs.type);
-    if(ds && window.QuantumSphere.setDimensionStates) window.QuantumSphere.setDimensionStates(ds);
+    const settings = (window.QBTISettings && window.QBTISettings.get)
+      ? window.QBTISettings.get()
+      : { sphereTheme: 'last', sphereCustomTs: null };
+    const mode = settings.sphereTheme === 'custom' ? 'custom' : 'last';
+    const history = getAllResultsFromUser();
+    let entry = null;
+
+    if(mode === 'custom' && settings.sphereCustomTs != null){
+      entry = history.find(h => Number(h.ts) === Number(settings.sphereCustomTs)) || null;
+    }
+    if(!entry && history.length > 0){
+      entry = history[history.length - 1];
+    }
+    if(!entry && state.result && state.quantumState){
+      entry = {
+        quantumState: state.quantumState.type,
+        dimStates: state.dimStates ? state.dimStates.types : null
+      };
+    }
+    if(!entry) return;
+
+    const qState = entry.quantumState && (entry.quantumState.type || entry.quantumState);
+    if(qState && window.QuantumSphere.setQuantumState){
+      window.QuantumSphere.setQuantumState(qState);
+    }
+    if(entry.dimStates && window.QuantumSphere.setDimensionStates){
+      window.QuantumSphere.setDimensionStates(entry.dimStates);
+    } else if(qState && window.QuantumSphere.setDimensionStates){
+      window.QuantumSphere.setDimensionStates({ PO:qState, II:qState, LA:qState, UR:qState });
+    }
   }
   function restoreFromHistory(entry){
     if(!entry || !entry.answers) return false;
@@ -908,6 +955,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
     applyQuantumStateToSphere(qs, ds);
     saveResultToUser(state.result, qs, ds, state.answers);
+    applyHomepageTheme();
     renderResult(state.result, null);
     renderQuantumStateBadge(qs, ds);
     syncReportToServer();
@@ -1304,6 +1352,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           renderQuantumStateBadge(state.quantumState, state.dimStates ? state.dimStates.types : null);
         }
       }
+      if(info.key === 'sphereTheme' || info.key === 'sphereCustom' || info.key === 'reset'){
+        applyHomepageTheme();
+      }
       if(info.key === 'adminDebug' || info.key === 'adminForceSimple' || info.key === 'adminMuteSound' || info.key === 'adminDisableHaptic' || info.key === 'reset'){
         renderAdminDebug();
       }
@@ -1314,6 +1365,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     window.QAuth.onChange(function(info){
       refreshAdminUI(info);
       renderAdminDebug();
+      applyHomepageTheme();
+      if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
       if(info.isLoggedIn){ updateRestoreBanner(); }
       else {
         state.result = null; state.quantumState = null; state.dimStates = null;
@@ -1327,11 +1380,23 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   window.addEventListener('qbti:admin-data-cleared', function(){
     updateRestoreBanner();
     renderAdminDebug();
+    applyHomepageTheme();
+    if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
   });
 
   renderQuestion();
   updateRestoreBanner();
   refreshAdminUI();
+  applyHomepageTheme();
+  window.addEventListener('load', applyHomepageTheme);
+  let themeTries = 0;
+  const themeWait = setInterval(() => {
+    themeTries++;
+    if(window.QuantumSphere || themeTries > 50){
+      clearInterval(themeWait);
+      applyHomepageTheme();
+    }
+  }, 100);
   console.log('[QBTI] 初始化完成');
 })();
 </script>

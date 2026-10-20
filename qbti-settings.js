@@ -16,6 +16,9 @@
     lang: 'zh-CN',
     fontSize: 100,
     fontWeight: 'normal',
+    /* 主页量子球配色：默认最近一次，或从历史问卷中自定义 */
+    sphereTheme: 'last',
+    sphereCustomTs: null,
     /* 管理员高级设置（仅管理员面板可见，普通用户不会显示） */
     adminDebug: false,
     adminForceSimple: false,
@@ -120,9 +123,14 @@
     const setFontSize = $('setFontSize');
     const setFontSizeVal = $('setFontSizeVal');
     const setLang = $('setLang');
+    const setSphereTheme = $('setSphereTheme');
+    const setSphereCustom = $('setSphereCustom');
+    const setSphereCustomRow = $('setSphereCustomRow');
+    const setSphereHint = $('setSphereHint');
     const groups = {
       effectsMode: $('setEffectsMode'),
-      fontWeight: $('setFontWeight')
+      fontWeight: $('setFontWeight'),
+      sphereTheme: setSphereTheme
     };
 
     function buildLangSelect(){
@@ -140,6 +148,7 @@
       if(setFontSize){ setFontSize.value = cur.fontSize; }
       if(setFontSizeVal){ setFontSizeVal.textContent = cur.fontSize + '%'; }
       if(setLang){ setLang.value = cur.lang; }
+      if(setSphereCustom && cur.sphereCustomTs != null) setSphereCustom.value = String(cur.sphereCustomTs);
       Object.keys(groups).forEach(k => {
         const el = groups[k];
         if(!el) return;
@@ -384,6 +393,78 @@
       });
     }
 
+    function formatHistoryTime(ts){
+      const d = new Date(Number(ts) || Date.now());
+      const p = n => n < 10 ? '0' + n : '' + n;
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+
+    function refreshSphereHistory(){
+      if(!setSphereTheme || !setSphereCustom) return;
+      let user = null;
+      try { user = (window.QAuth && window.QAuth.getCurrentUser) ? window.QAuth.getCurrentUser() : null; } catch(e){}
+      let history = [];
+      if(user && user.email){
+        try {
+          const raw = localStorage.getItem('qbti_results_' + user.email);
+          history = JSON.parse(raw || '[]');
+        } catch(e){}
+        if(!Array.isArray(history)) history = [];
+      }
+      history = history.slice().sort((a, b) => Number(b.ts) - Number(a.ts));
+      setSphereCustom.innerHTML = history.map(h => {
+        const code = (h.code || '') + (h.suffix ? '-' + h.suffix : '');
+        return '<option value="' + h.ts + '">' + esc(code || '未命名') + ' · ' + esc(formatHistoryTime(h.ts)) + '</option>';
+      }).join('');
+
+      const customBtn = setSphereTheme.querySelector('button[data-val="custom"]');
+      const canCustom = history.length > 0;
+      if(customBtn) customBtn.disabled = !canCustom;
+      if(cur.sphereTheme === 'custom' && canCustom && !history.some(h => Number(h.ts) === Number(cur.sphereCustomTs))){
+        cur.sphereCustomTs = Number(history[0].ts);
+        saveSettings(cur);
+      }
+      if(cur.sphereCustomTs != null) setSphereCustom.value = String(cur.sphereCustomTs);
+      if(setSphereHint){
+        if(canCustom){
+          setSphereHint.style.display = 'none';
+        } else {
+          setSphereHint.style.display = '';
+          setSphereHint.textContent = user
+            ? '还没有历史问卷，完成一次测评后即可选择。'
+            : '登录后可选择自己的历史问卷作为主页配色。';
+        }
+      }
+      if(setSphereCustomRow){
+        setSphereCustomRow.style.display = (cur.sphereTheme === 'custom' && canCustom) ? '' : 'none';
+      }
+    }
+
+    if(setSphereTheme){
+      setSphereTheme.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if(btn.disabled) return;
+          cur.sphereTheme = btn.dataset.val === 'custom' ? 'custom' : 'last';
+          if(cur.sphereTheme === 'custom' && cur.sphereCustomTs == null && setSphereCustom && setSphereCustom.value){
+            cur.sphereCustomTs = Number(setSphereCustom.value);
+          }
+          saveSettings(cur);
+          refreshSphereHistory();
+          syncUI();
+          emit('sphereTheme');
+        });
+      });
+    }
+    if(setSphereCustom){
+      setSphereCustom.addEventListener('change', () => {
+        cur.sphereCustomTs = Number(setSphereCustom.value) || null;
+        if(cur.sphereTheme !== 'custom') cur.sphereTheme = 'custom';
+        saveSettings(cur);
+        syncUI();
+        emit('sphereCustom');
+      });
+    }
+
     function bindGroup(name, onChange){
       const el = groups[name];
       if(!el) return;
@@ -415,7 +496,7 @@
       });
     }
 
-    function openMask(){ buildAdminSection(); mask.classList.add('show'); syncUI(); }
+    function openMask(){ buildAdminSection(); refreshSphereHistory(); mask.classList.add('show'); syncUI(); }
     function closeMask(){ mask.classList.remove('show'); }
 
     const btnSettings = $('btnSettings');
@@ -431,10 +512,12 @@
 
     buildLangSelect();
     buildAdminSection();
+    refreshSphereHistory();
     syncUI();
 
     mask._syncUI = syncUI;
     mask._buildAdmin = buildAdminSection;
+    mask._refreshSphere = refreshSphereHistory;
   }
 
   /* ============ 初始化 ============ */
@@ -478,6 +561,7 @@
       const mask = $('settingsMask');
       if(mask){
         if(mask._buildAdmin) mask._buildAdmin();
+        if(mask._refreshSphere) mask._refreshSphere();
         if(mask._syncUI) mask._syncUI();
         mask.classList.add('show');
       }
@@ -494,6 +578,10 @@
       applyLang(cur.lang);
       const mask = $('settingsMask');
       if(mask && mask._syncUI) mask._syncUI();
+    },
+    refreshSphereHistory: () => {
+      const mask = $('settingsMask');
+      if(mask && mask._refreshSphere) mask._refreshSphere();
     },
     refreshAdmin: () => {
       applySpherePrefs(cur);
