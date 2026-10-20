@@ -539,6 +539,45 @@ app.post('/api/student/reset-password', async (req, res) => {
   }
 });
 
+// 4.35 学生注销账户（删除注册信息/报告/绑定/邀请）
+app.post('/api/student/delete-account', async (req, res) => {
+  const { email, password } = req.body || {};
+  const emailLower = String(email || '').toLowerCase().trim();
+  const pw = String(password || '');
+  if (!emailLower || !pw) return res.status(400).json({ error: '参数不完整', code: 'BAD_REQUEST' });
+
+  try {
+    const r = await pool.query('SELECT * FROM student_emails WHERE LOWER(email) = $1', [emailLower]);
+    const user = r.rows[0];
+    if (!user) return res.status(404).json({ error: '账号不存在', code: 'NOT_FOUND' });
+    if (!user.passwordHash) {
+      return res.status(409).json({ error: '该账号尚未设置密码，请先重置密码再注销', code: 'NEED_PASSWORD_SETUP' });
+    }
+    if (!verifyStudentPassword(pw, user.salt, user.passwordHash)) {
+      return res.status(401).json({ error: '密码不正确', code: 'WRONG_PASSWORD' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM bindings WHERE "studentEmail" = $1', [emailLower]);
+      await client.query('DELETE FROM invites WHERE "studentEmail" = $1', [emailLower]);
+      await client.query('DELETE FROM reports WHERE "studentEmail" = $1', [emailLower]);
+      await client.query('DELETE FROM student_emails WHERE LOWER(email) = $1', [emailLower]);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[学生注销账户] 失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
 // 4.4 学生端管理员登录（是否启用/密码由家长端管理员控制）
 app.post('/api/admin/login', async (req, res) => {
   const { username, password } = req.body || {};

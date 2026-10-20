@@ -284,6 +284,21 @@
 .qauth-profile-detail-row .v{color:#fff;font-weight:600}
 .qauth-logout-btn{width:100%;padding:11px;border-radius:11px;border:1px solid rgba(235,65,75,.35);background:rgba(235,65,75,.08);color:#FF8FA0;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s;}
 .qauth-logout-btn:hover{background:rgba(235,65,75,.18);color:#FF6B7A;}
+.qauth-danger-zone{margin-top:18px;padding-top:14px;border-top:1px dashed rgba(235,65,75,.2);}
+.qauth-delete-account-btn{width:100%;padding:11px;border-radius:11px;border:1px solid rgba(235,65,75,.4);background:rgba(235,65,75,.07);color:#FF8FA0;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s;}
+.qauth-delete-account-btn:hover{background:rgba(235,65,75,.16);color:#FF6B7A;}
+.qauth-delete-mask{position:fixed;inset:0;z-index:350;background:rgba(3,4,12,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;}
+.qauth-delete-modal{width:100%;max-width:440px;background:#0B0D1C;border:1px solid rgba(235,65,75,.3);border-radius:18px;padding:26px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+.qauth-delete-modal h3{font-size:19px;color:#fff;font-weight:800;margin-bottom:8px;}
+.qauth-delete-modal p{font-size:12.5px;color:var(--muted,#8B90B8);line-height:1.8;margin-bottom:16px;}
+.qauth-delete-modal .qauth-field{margin-bottom:14px;}
+.qauth-delete-check{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#C9CEEE;line-height:1.6;margin:6px 0 16px;cursor:pointer;}
+.qauth-delete-check input{margin-top:2px;accent-color:#EB414B;}
+.qauth-delete-actions{display:flex;gap:10px;}
+.qauth-delete-actions button{flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#C9CEEE;}
+.qauth-delete-actions .danger{border-color:rgba(235,65,75,.5);background:rgba(235,65,75,.12);color:#FF8FA0;}
+.qauth-delete-actions .danger:disabled{opacity:.4;cursor:not-allowed;}
+.qauth-delete-err{font-size:12px;color:#FF8FA0;min-height:16px;margin-top:10px;line-height:1.6;}
 /* ★ bottom 从 124px → 176px，避让新增的 settings 按钮 */
 .qauth-btn{position:fixed;right:20px;bottom:176px;z-index:150;height:42px;padding:0 16px;border-radius:21px;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted,#8B90B8);cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;font-family:inherit;transition:.25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);white-space:nowrap;}
 .qauth-btn:hover{color:var(--txt,#E9EBFF);border-color:var(--q-color,rgb(255,138,72));transform:translateY(-1px);}
@@ -894,6 +909,83 @@
     updateFloatButton();
   }
 
+  function cleanupDeletedAccount(email){
+    const emailLower = String(email || '').toLowerCase();
+    try {
+      localStorage.removeItem('qbti_results_' + emailLower);
+      localStorage.removeItem('qbti_results_' + email);
+      localStorage.removeItem('qbti_ai_cache_v1');
+      localStorage.removeItem('qbti_ai_daily_v1');
+      localStorage.removeItem('qbti_settings_v1');
+      localStorage.removeItem('qbti_config_v2');
+    } catch(e){}
+    const users = loadUsers().filter(u => !u.email || u.email.toLowerCase() !== emailLower);
+    saveUsers(users);
+    clearSession();
+    adminToken = null;
+    currentUser = null;
+    emitChange();
+    closeModal();
+    updateFloatButton();
+  }
+
+  function showDeleteAccountModal(){
+    if(!currentUser || currentUser.role === 'admin') return;
+    const email = currentUser.email;
+    const old = document.getElementById('qauthDeleteMask');
+    if(old) old.remove();
+    const mask = document.createElement('div');
+    mask.className = 'qauth-delete-mask';
+    mask.id = 'qauthDeleteMask';
+    mask.innerHTML = `
+      <div class="qauth-delete-modal">
+        <h3>注销账户</h3>
+        <p>注销后会永久删除该账户的注册信息、历史问卷记录、绑定关系与 AI 报告；本机相关设置也会清除。该邮箱之后可以重新注册。</p>
+        <div class="qauth-field"><label>输入账户邮箱确认</label><input id="qauthDelEmail" type="text" placeholder="${escapeHTML(email)}" autocomplete="off" /></div>
+        <div class="qauth-field"><label>密码</label><input id="qauthDelPwd" type="password" placeholder="输入当前密码" autocomplete="current-password" /></div>
+        <label class="qauth-delete-check"><input type="checkbox" id="qauthDelCheck" /> 我已知晓：注销后不可恢复</label>
+        <div class="qauth-delete-actions">
+          <button type="button" id="qauthDelCancel">取消</button>
+          <button type="button" class="danger" id="qauthDelConfirm" disabled>永久注销</button>
+        </div>
+        <div class="qauth-delete-err" id="qauthDelErr"></div>
+      </div>`;
+    document.body.appendChild(mask);
+    const check = mask.querySelector('#qauthDelCheck');
+    const confirmBtn = mask.querySelector('#qauthDelConfirm');
+    const errEl = mask.querySelector('#qauthDelErr');
+    check.addEventListener('change', () => { confirmBtn.disabled = !check.checked; });
+    mask.querySelector('#qauthDelCancel').addEventListener('click', () => mask.remove());
+    mask.addEventListener('click', e => { if(e.target === mask) mask.remove(); });
+    confirmBtn.addEventListener('click', async () => {
+      const typedEmail = String(mask.querySelector('#qauthDelEmail').value || '').trim();
+      const pwd = String(mask.querySelector('#qauthDelPwd').value || '');
+      errEl.textContent = '';
+      if(typedEmail.toLowerCase() !== email.toLowerCase()){ errEl.textContent = '邮箱与当前账户不一致'; return; }
+      if(!pwd){ errEl.textContent = '请输入密码'; return; }
+      if(!confirm('最后一次确认：永久注销该账户？此操作不可恢复。')) return;
+      confirmBtn.disabled = true;
+      try {
+        const res = await fetch(API_BASE + '/api/student/delete-account', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: pwd })
+        });
+        const data = await res.json().catch(() => ({}));
+        if(!res.ok || !data.success){
+          errEl.textContent = data.error || '注销失败';
+          confirmBtn.disabled = false;
+          return;
+        }
+        mask.remove();
+        toast('账户已注销', 'ok');
+        cleanupDeletedAccount(email);
+      } catch(e){
+        errEl.textContent = '无法连接服务器';
+        confirmBtn.disabled = false;
+      }
+    });
+  }
+
   function renderProfileContent(){
     const wrap = document.getElementById('qauthProfileContent');
     if(!wrap) return;
@@ -935,11 +1027,13 @@
         <div class="qauth-profile-detail-row"><span class="k">注册时间</span><span class="v">${formatTime(currentUser.createdAt)}</span></div>
       </div>
       ${bindSection}
+      ${currentUser.role !== 'admin' ? '<div class="qauth-danger-zone"><button type="button" class="qauth-delete-account-btn" id="qauthDeleteAccount">注销账户</button></div>' : ''}
     `;
 
     if(currentUser.role !== 'admin'){
       document.getElementById('qauthBindGen').addEventListener('click', handleGenerateInvite);
       document.getElementById('qauthBindRefresh').addEventListener('click', loadBoundParents);
+      document.getElementById('qauthDeleteAccount').addEventListener('click', showDeleteAccountModal);
       loadBoundParents();
     }
   }
