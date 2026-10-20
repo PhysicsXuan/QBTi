@@ -362,14 +362,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       </div>
       <div class="vector-grid" id="vectorGrid"></div>
     </div>
-    <div class="section-title" data-i18n="result.sec3">AI 引导报告 · 面向家长</div>
+    <div class="section-title" data-i18n="result.sec3">AI 引导报告 · 写给你</div>
     <div class="ai-panel">
       <div class="ai-head">
         <h3 data-i18n="result.aiTitle">个性化波函数解读</h3>
         <button class="btn sm" id="btnAI">生成报告</button>
       </div>
       <div class="ai-body" id="aiBody">
-        <div class="ai-empty" data-i18n="result.aiEmpty">点击「生成报告」，AI 将基于孩子的十二维量子态与作答真实性，输出一份面向家长的引导路径。</div>
+        <div class="ai-empty" data-i18n="result.aiEmpty">点击「生成报告」，AI 将基于你的十二维量子态，输出一份只写给你自己的成长路径。</div>
       </div>
     </div>
     <div class="result-actions">
@@ -583,28 +583,29 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const REPORT_LANG = {
     'zh-CN': { name:'简体中文', instr:'' },
     'zh-TW': { name:'繁體中文', instr:'請使用繁體中文撰寫整份報告，不要使用簡體中文。' },
-    'en':    { name:'English', instr:'Write the entire report in English, about 800-1000 words. Do not write in Chinese.', headings:['1. Authenticity Score','2. Your Child’s Quantum Portrait','3. Your Child’s Energy Barriers','4. Quantum Tunneling Paths','5. A Note to Parents'] },
-    'es':    { name:'Español', instr:'Escribe todo el informe en español, unas 800-1000 palabras. No escribas en chino.', headings:['1. Puntuación de autenticidad','2. Retrato cuántico de tu hijo/a','3. Barreras de energía','4. Rutas de efecto túnel cuántico','5. Una nota para las familias'] },
-    'pt':    { name:'Português', instr:'Escreva todo o relatório em português, com cerca de 800-1000 palavras. Não escreva em chinês.', headings:['1. Pontuação de autenticidade','2. Retrato quântico do seu filho','3. Barreiras de energia','4. Caminhos de tunelamento quântico','5. Uma nota aos pais'] },
-    'ko':    { name:'한국어', instr:'전체 보고서를 한국어로 800-1000자 정도로 작성하세요. 중국어로 쓰지 마세요.', headings:['1. 진정성 점수','2. 자녀의 양자 초상','3. 자녀의 에너지 장벽','4. 양자 터널링 경로','5. 부모에게 드리는 말'] },
-    'ja':    { name:'日本語', instr:'レポート全体を日本語で800〜1000字程度に書いてください。中国語では書かないでください。', headings:['1. 回答の信頼度','2. 子どもの量子ポートレート','3. 子どものエネルギーバリア','4. 量子トンネル経路','5. 保護者の方へ'] },
-    'fr':    { name:'Français', instr:'Rédigez tout le rapport en français, environ 800 à 1000 mots. N’écrivez pas en chinois.', headings:['1. Score d’authenticité','2. Portrait quantique de votre enfant','3. Barrières d’énergie','4. Chemins d’effet tunnel quantique','5. Un mot aux parents'] }
+    'en':    { name:'English', instr:'Write the entire report in English, about 600-900 words. Address the student directly as "you". Do not write in Chinese.', headings:['1. Your Quantum Portrait','2. Your Energy Barriers','3. Your Quantum Tunneling Paths','4. A Note to You'] },
+    'es':    { name:'Español', instr:'Escribe todo el informe en español, unas 600-900 palabras. Dirígete directamente al estudiante como "tú". No escribas en chino.', headings:['1. Tu retrato cuántico','2. Tus barreras de energía','3. Tus rutas de efecto túnel cuántico','4. Una nota para ti'] },
+    'pt':    { name:'Português', instr:'Escreva todo o relatório em português, com cerca de 600-900 palavras. Fale diretamente com o estudante como "você". Não escreva em chinês.', headings:['1. Seu retrato quântico','2. Suas barreiras de energia','3. Seus caminhos de tunelamento quântico','4. Uma nota para você'] },
+    'ko':    { name:'한국어', instr:'전체 보고서를 한국어로 600-900자 정도로 작성하세요. 학생에게 "너/당신"이라고 직접 말하세요. 중국어로 쓰지 마세요.', headings:['1. 너의 양자 초상','2. 너의 에너지 장벽','3. 너의 양자 터널링 경로','4. 너에게 드리는 말'] },
+    'ja':    { name:'日本語', instr:'レポート全体を日本語で600〜900字程度に書いてください。生徒本人に「あなた」と呼びかけてください。中国語では書かないでください。', headings:['1. あなたの量子ポートレート','2. あなたのエネルギーバリア','3. あなたの量子トンネル経路','4. あなたへのメッセージ'] },
+    'fr':    { name:'Français', instr:'Rédigez tout le rapport en français, environ 600 à 900 mots. Adressez-vous directement à l’élève en disant « tu ». N’écrivez pas en chinois.', headings:['1. Ton portrait quantique','2. Tes barrières d’énergie','3. Tes chemins d’effet tunnel quantique','4. Un mot pour toi'] }
   };
   function currentLang(){
     return (window.QBTI_I18N && window.QBTI_I18N.current) || 'zh-CN';
   }
   function buildLocalizedPrompt(res, validity){
     const lang = currentLang();
-    const base = Q.buildPrompt(res, validity);
+    /* 学生端报告只使用学生版提示词，绝不包含家长内容 */
+    const base = (Q.buildStudentPrompt ? Q.buildStudentPrompt(res, validity) : Q.buildPrompt(res, validity));
     const meta = REPORT_LANG[lang];
     if(!meta || lang === 'zh-CN') return base;
     if(lang === 'zh-TW') return base + '\n\n【輸出語言】\n' + meta.instr;
     return base
       + '\n\n【OUTPUT LANGUAGE — THIS OVERRIDES THE CHINESE INSTRUCTIONS ABOVE】\n'
       + meta.instr + '\n'
-      + 'Use exactly these five section headings:\n'
+      + 'Use exactly these four section headings:\n'
       + meta.headings.join('\n') + '\n'
-      + 'Translate every part of the report, including headings, advice, and the closing note, into ' + meta.name + '. Do not output Chinese.';
+      + 'This report is for the student only. Translate every part into ' + meta.name + '; never mention parents, guardians, authenticity scores, or parent-facing advice. Do not output Chinese.';
   }
 
   function isAdmin(){ return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin()); }
@@ -703,9 +704,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
             quantumState: entry.quantumState || qs.type,
             dimStates: entry.dimStates || ds,
             validity: validity,
-            aiReport: entry.aiReport || null,
-            aiReportSource: entry.aiReportSource || null,
-            aiReportLang: entry.aiReportLang || null,
+            studentAiReport: entry.aiReport || null,
+            studentAiReportSource: entry.aiReportSource || null,
+            studentAiReportLang: entry.aiReportLang || null,
             fullResult: res
           };
           await fetch('/api/report/sync', {
@@ -743,9 +744,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       quantumState: state.quantumState ? state.quantumState.type : null,
       dimStates: state.dimStates ? state.dimStates.types : null,
       validity: state.validity || null,
-      aiReport: state.aiReportText || null,
-      aiReportSource: state.aiReportSource || null,
-      aiReportLang: state.aiReportLang || null,
+      studentAiReport: state.aiReportText || null,
+      studentAiReportSource: state.aiReportSource || null,
+      studentAiReportLang: state.aiReportLang || null,
       fullResult: state.result
     };
     try {
@@ -1436,7 +1437,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
       state.aiError = msg.split('CORS_OR_NETWORK:').pop().trim();
       if(msg.indexOf('CORS_OR_NETWORK') >= 0) state.aiError += '（CORS/网络受限，已切换本地报告）';
-      state.aiReportText = Q.localReport(state.result, validity);
+      state.aiReportText = (Q.localStudentReport || Q.localReport)(state.result, validity);
       state.aiReportSource = 'local';
       state.aiReportLang = 'zh-CN';
       writeAICache();

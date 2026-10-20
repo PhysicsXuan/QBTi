@@ -322,6 +322,69 @@ window.QBTI = (function(){
   }
 
   /* ==========================================================
+     本地兜底报告（仅面向学生本人，不包含家长内容）
+     ========================================================== */
+  function localStudentReport(res, validity){
+    const sorted = SUBDIMS.slice().sort((a,b)=>res.dominanceScore[a.id]-res.dominanceScore[b.id]);
+    const low3 = sorted.slice(0,3);
+    const high3 = sorted.slice(-3).reverse();
+    const baseCode = res.letters.join('');
+    const typeName = TYPE_NAMES[baseCode] || '';
+    const fullCode = baseCode + '-' + res.suffix.letter;
+
+    return '【一、你的量子态画像】\n'
+      + '你的类型是 **' + fullCode + ' · ' + typeName + '（' + res.suffix.name + '）**。'
+      + res.suffix.desc + '\n'
+      + '你目前比较突出的三个维度是：'
+      + high3.map(s => s.name + '（' + res.dominanceScore[s.id].toFixed(1) + '）').join('、') + '。\n\n'
+      + '【二、你的能量势垒】\n'
+      + '相对较弱的维度是：'
+      + low3.map(s => s.name + '（' + res.dominanceScore[s.id].toFixed(1) + '）').join('、')
+      + '。这些不是缺点，而是你暂时需要更多支持的势垒，也是你未来可以自然生长的方向。\n\n'
+      + '【三、你的量子隧穿路径】\n'
+      + '▸ 把大任务切成 15 分钟的小块，先让自己体验一次"开始"的轻盈。\n'
+      + '▸ 找一个能立刻看到反馈的小项目，用"做成一件事"来喂养自己的内驱力。\n'
+      + '▸ 卡住的时候允许自己先跳过，不必每道题都死磕。\n'
+      + '▸ 用"我今天对什么好奇"代替"我今天学了什么"。\n\n'
+      + '【四、给你的话】\n'
+      + '你不需要被一个类型定义。每一次排名、每一张试卷，都只是一次强观测；'
+      + '而强观测会让叠加态坍缩。这份报告只是你无数可能中的一种投影。'
+      + '与其追问"我是什么类型"，不如继续探索"我还可能是谁"。';
+  }
+
+  /* ==========================================================
+     构建 AI 提示词（面向学生本人，不包含任何家长内容）
+     ========================================================== */
+  function buildStudentPrompt(res, validity){
+    const baseCode = res.letters.join('');
+    const typeName = TYPE_NAMES[baseCode] || '';
+    const fullCode = baseCode + '-' + res.suffix.letter;
+    const dimLines = DIMS.map(d => {
+      const r = res.dimGroupRatio[d.id];
+      const info = res.dimLeadInfo[d.id];
+      return d.name + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → 主导 ' + info.lead + '（差值 ' + info.gap + '%）';
+    }).join('\n');
+    const vecLines = SUFFIXES.map(sf => sf.letter + ' ' + sf.name + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
+
+    return '你是一位擅长用"量子态"隐喻理解青少年学习状态的教育引导顾问。\n'
+      + '以下是这位学生自己的 QBTI 测评结果。请直接写给**学生本人**，始终用"你"称呼，不要写给家长。\n\n'
+      + '【人格代码】' + fullCode + '\n'
+      + '【类型名称】' + typeName + ' · ' + res.suffix.name + '\n'
+      + '【四大维度倾向】\n' + dimLines + '\n'
+      + '【四个发展向量占比】\n' + vecLines + '\n\n'
+      + '请输出约 600-900 字中文报告，严格包含以下四个部分，每部分用【】标题：\n\n'
+      + '【一、你的量子态画像】\n'
+      + '解读你的人格代码与类型，用你能听懂的语言描述你的学习特质；不要给你贴固定标签。\n\n'
+      + '【二、你的能量势垒】\n'
+      + '指出相对较弱的维度，强调这些不是缺点，而是可以被理解和支持的势垒。\n\n'
+      + '【三、你的量子隧穿路径】\n'
+      + '给出 3-4 条你自己明天就能尝试的具体行动建议，不要写成要求家长怎么做。\n\n'
+      + '【四、给你的话】\n'
+      + '用温暖、不评判、不说教的语气写给学生本人。\n\n'
+      + '禁止出现"家长""父母""给家长的话""真实度评分""向家长说明"等任何面向家长的内容；这份报告只给学生本人看。';
+  }
+
+  /* ==========================================================
      构建 AI 提示词（面向家长，含真实性数据）
      ========================================================== */
   function buildPrompt(res, validity){
@@ -663,7 +726,7 @@ window.QBTI = (function(){
     QUESTIONS, OPTIONS,
     DEPTH_MULT, SFX_BASE, SUB_PERTURB, TEMP,
     makeTypeImage, computeResult, answerFingerprint,
-    escapeHTML, renderMD, localReport, buildPrompt,
+    escapeHTML, renderMD, localReport, localStudentReport, buildPrompt, buildStudentPrompt,
     analyzeQuantumState,
     analyzeDimensionState,
     analyzeDimensionStates,

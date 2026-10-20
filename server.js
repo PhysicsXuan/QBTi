@@ -876,6 +876,40 @@ app.post('/api/report/sync', async (req, res) => {
   payload.quizTs = quizTs;
 
   try {
+    /* 双报告隔离：同一次问卷的学生同步不能覆盖家长 AI；新问卷则清掉上一份家长 AI */
+    let prevReportPayload = null;
+    try {
+      const prevReport = await pool.query('SELECT payload FROM reports WHERE "studentEmail" = $1', [se]);
+      prevReportPayload = prevReport.rows[0] && prevReport.rows[0].payload;
+    } catch(e){}
+    const sameQuiz = !!(prevReportPayload && Number(prevReportPayload.quizTs) === quizTs);
+    const isOlderQuiz = !!(prevReportPayload && Number(prevReportPayload.quizTs) > quizTs);
+    if (sameQuiz) {
+      const parentAudience = !!(prevReportPayload && prevReportPayload.aiReportAudience === 'parent');
+      if (prevReportPayload && prevReportPayload.aiReport && !parentAudience) {
+        /* 旧版学生生成的家长向报告没有 audience 标记：清掉，避免串到家长端 */
+        payload.aiReport = null;
+        payload.aiReportLang = null;
+        payload.aiReportSource = null;
+        payload.aiReportAt = null;
+        payload.aiReportAudience = null;
+      } else {
+        /* 家长端已生成的报告：保留数据库中的家长 AI */
+        delete payload.aiReport;
+        delete payload.aiReportLang;
+        delete payload.aiReportSource;
+        delete payload.aiReportAt;
+        delete payload.aiReportAudience;
+      }
+    } else if (prevReportPayload) {
+      /* 新学期/新问卷：上一份家长 AI 不能串到这一次 */
+      payload.aiReport = null;
+      payload.aiReportLang = null;
+      payload.aiReportSource = null;
+      payload.aiReportAt = null;
+      payload.aiReportAudience = null;
+    }
+
     /* 管理员回填历史时，不要把家长端已经生成的 AI 报告覆盖掉 */
     if (se === 'administrator@qbti.local') {
       try {
@@ -884,23 +918,27 @@ app.post('/api/report/sync', async (req, res) => {
           [se, quizTs]
         );
         const prevPayload = prev.rows[0] && prev.rows[0].payload;
-        if (prevPayload && prevPayload.aiReport && !payload.aiReport) {
+        if (prevPayload && prevPayload.aiReport && prevPayload.aiReportAudience === 'parent' && !payload.aiReport) {
           payload.aiReport = prevPayload.aiReport;
           payload.aiReportLang = prevPayload.aiReportLang;
           payload.aiReportSource = prevPayload.aiReportSource;
           payload.aiReportAt = prevPayload.aiReportAt;
+          payload.aiReportAudience = 'parent';
         }
       } catch(e){}
     }
-    await pool.query(
-      `INSERT INTO reports ("studentEmail", "studentUsername", payload, "updatedAt")
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT ("studentEmail") DO UPDATE 
-       SET "studentUsername" = EXCLUDED."studentUsername",
-           payload = EXCLUDED.payload,
-           "updatedAt" = EXCLUDED."updatedAt"`,
-      [se, studentUsername || '', JSON.stringify(payload), updatedAt]
-    );
+    /* 回填旧历史时不能把当前最新的 reports 覆盖回旧问卷 */
+    if (!isOlderQuiz) {
+      await pool.query(
+        `INSERT INTO reports ("studentEmail", "studentUsername", payload, "updatedAt")
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT ("studentEmail") DO UPDATE 
+         SET "studentUsername" = EXCLUDED."studentUsername",
+             payload = COALESCE(reports.payload, '{}'::jsonb) || EXCLUDED.payload,
+             "updatedAt" = EXCLUDED."updatedAt"`,
+        [se, studentUsername || '', JSON.stringify(payload), updatedAt]
+      );
+    }
     /* 学生端管理员：每次问卷都留一条快照，供家长端管理员查看全部历史 */
     if (se === 'administrator@qbti.local') {
       await pool.query(
