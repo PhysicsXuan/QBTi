@@ -1482,6 +1482,15 @@
       ctx.strokeStyle = 'rgba('+CR+','+CG+','+CB+',0.30)';
       ctx.lineWidth = 2.0*DPR;
       ctx.beginPath(); ctx.arc(charge.x, charge.y, r, 0, Math.PI*2); ctx.stroke();
+      /* 蓄力脉冲环：按住时一圈圈向外扩散 */
+      const chargePulse = 0.5 + 0.5 * Math.sin(t * 9.0);
+      if(v > 0.02){
+        ctx.strokeStyle = 'rgba('+PR+','+PG+','+PB+','+(0.08 + 0.20 * v * chargePulse).toFixed(3)+')';
+        ctx.lineWidth = (1.0 + 2.2 * v) * DPR;
+        ctx.beginPath();
+        ctx.arc(charge.x, charge.y, r * (1.18 + 0.30 * chargePulse), 0, Math.PI*2);
+        ctx.stroke();
+      }
       if(isFull){
         ctx.strokeStyle = 'rgba('+PR+','+PG+','+PB+','+(0.35 * fullPulse).toFixed(3)+')';
         ctx.lineWidth = (7 + fullPulse * 4) * DPR;
@@ -1974,7 +1983,11 @@
       purgeWaves(now);
       ctx.clearRect(0, 0, W, H);
 
-      const globalShake = hasSplit ? 0 : screenShake;
+      /* 按住大球时的脉冲抖动：蓄力越高，抖动越明显；松手释放后由 screenShake 接管 */
+      const holdShake = (!hasSplit && !soloNebula && charge.active)
+        ? (effectsMode === 'simple' ? 0.55 : 1) * (0.06 + charge.value * 0.40) * (0.55 + 0.45 * Math.sin(t * 13.0))
+        : 0;
+      const globalShake = hasSplit ? 0 : Math.max(screenShake, holdShake);
       const shakeX = globalShake > 0 ? (Math.random()-0.5)*globalShake*14*DPR : 0;
       const shakeY = globalShake > 0 ? (Math.random()-0.5)*globalShake*14*DPR : 0;
 
@@ -2107,11 +2120,16 @@
             const breathRaw = (Math.sin(t * 0.40 + targetBall.breathSeed) + 1) / 2;
             ambientPulse = Math.pow(breathRaw, 3);
           }
-          pulse = Math.min(1, ambientPulse + localPulse * 0.92 + targetBall.focusAmount * 0.18);
+          const holdEnergy = (charge.active && !hasSplit) ? charge.value : 0;
+          pulse = Math.min(1, ambientPulse + localPulse * 0.92 + targetBall.focusAmount * 0.18 + holdEnergy * 0.38);
           let breathY = 0, breathS = 1;
           if(!hasSplit){
             breathY = Math.sin(t * 0.40 + targetBall.breathSeed) * 6 * DPR;
             breathS = 1 + Math.sin(t * 0.40 + targetBall.breathSeed) * 0.006 - localPulse*0.034;
+            /* 按住时的脉冲抖动：幅度随蓄力增长 */
+            if(holdEnergy > 0){
+              breathS += Math.sin(t * 14.0) * 0.008 * holdEnergy;
+            }
           }
           ctx.save();
           ctx.globalAlpha = vis.visAlpha * extraAlpha;
