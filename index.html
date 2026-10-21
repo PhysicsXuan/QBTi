@@ -1620,7 +1620,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     })).filter(o => o.text).slice(0, max || 4);
   }
 
-  function normalizeDialogue(raw){
+  function normalizeDialogue(raw, dimension){
     let text = String(raw || '').trim();
     text = text.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
     const start = text.indexOf('{');
@@ -1628,9 +1628,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(start >= 0 && end > start) text = text.slice(start, end + 1);
     const o = JSON.parse(text);
     if(!o || typeof o !== 'object') throw new Error('BAD_DIALOGUE');
+    const continuity = {
+      openingDetail: String(o.continuity && o.continuity.openingDetail || '').trim(),
+      causeChain: dialogueLines(o.continuity && o.continuity.causeChain).slice(0, 5),
+      payoff: String(o.continuity && o.continuity.payoff || '').trim()
+    };
     const script = {
+      continuity: continuity,
       intro: dialogueLines(o.intro),
-      act1: { prompt: String(o.act1 && o.act1.prompt || '').trim(), options: dialogueOptions(o.act1 && o.act1.options, 3) },
+      act1: { lines: dialogueLines(o.act1 && o.act1.lines), prompt: String(o.act1 && o.act1.prompt || '').trim(), options: dialogueOptions(o.act1 && o.act1.options, 3) },
       act2: { lines: dialogueLines(o.act2 && o.act2.lines), prompt: String(o.act2 && o.act2.prompt || '').trim(), options: dialogueOptions(o.act2 && o.act2.options, 3) },
       branches: {},
       act3: { lines: dialogueLines(o.act3 && o.act3.lines), prompt: String(o.act3 && o.act3.prompt || '').trim(), options: dialogueOptions(o.act3 && o.act3.options, 3) },
@@ -1639,17 +1645,24 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     ['A', 'B', 'C'].forEach(k => {
       script.branches[k] = dialogueLines(o.branches && o.branches[k]);
     });
-    if(script.intro.length < 3 ||
-       !script.act1.prompt || script.act1.options.length < 2 ||
-       !script.act2.prompt || script.act2.options.length < 2 ||
-       !script.act3.prompt || script.act3.options.length < 2 ||
-       !script.final.prompt || script.final.options.length < 2) {
-      throw new Error('INCOMPLETE_DIALOGUE');
-    }
-    script.act1.options.forEach(o => { if(!o.feedback.length) o.feedback = ['我记下了。']; });
-    script.act2.options.forEach(o => { if(!o.feedback.length) o.feedback = ['我记下了。']; });
-    script.act3.options.forEach(o => { if(!o.feedback.length) o.feedback = ['我记下了。']; });
-    script.final.options.forEach(o => { if(!o.feedback.length) o.feedback = ['我记下了。']; });
+    const incomplete =
+      script.intro.length < 4 ||
+      !continuity.openingDetail || !continuity.payoff || continuity.causeChain.length < 2 ||
+      script.act1.lines.length < 1 || !script.act1.prompt || script.act1.options.length < 3 ||
+      script.act2.lines.length < 2 || !script.act2.prompt || script.act2.options.length < 3 ||
+      script.act3.lines.length < 2 || !script.act3.prompt || script.act3.options.length < 3 ||
+      script.final.lines.length < 2 || !script.final.prompt || script.final.options.length < 3 ||
+      ['A','B','C'].some(k => script.branches[k].length < 1);
+    if(incomplete) throw new Error('INCOMPLETE_DIALOGUE');
+    const allOptions = script.act1.options.concat(script.act2.options, script.act3.options, script.final.options);
+    if(allOptions.some(o => !o.feedback.length)) throw new Error('MISSING_FEEDBACK');
+    const fullText = JSON.stringify(script);
+    const offScene = {
+      II: /避难所|铁门|开门|门口|门后|门外|那扇门|一扇门|天文台|图书馆|灯塔/,
+      LA: /避难所|铁门|开门|门口|门后|门外|那扇门|一扇门|列车|锅炉|天文台|灯塔/,
+      UR: /避难所|铁门|开门|门口|门后|门外|那扇门|一扇门|列车|锅炉|图书馆|地图|天文台/
+    }[dimension];
+    if(offScene && offScene.test(fullText)) throw new Error('DIALOGUE_OFF_SCENE');
     return script;
   }
 
@@ -1690,12 +1703,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         : dim === 'LA'
           ? '禁止出现门、避难所、铁门、开门、列车、锅炉、天文台、灯塔'
           : '禁止出现门、避难所、铁门、开门、列车、锅炉、图书馆、地图、天文台';
+    const causal = {
+      PO: '前兆：屋顶旧铆钉松了很久，风大时会响，接缝一直掉灰；触发：风压让接缝变形、裂缝扩大，星光漏下；回收：那点光一直来自被忽视的裂缝。',
+      II: '前兆：锅炉冷却让油管收缩，压力表卡在红区，车灯接触不良；触发：点火让压力骤升、刹车管路渗漏，列车滑行；回收：隧道旧字是上一任司机留下的。',
+      LA: '前兆：地板下旧轨道松动，潮气让书页粘连，地图边缘有旧铅笔印；触发：窗缝的风让书架沿旧轨道移开，书页自翻；回收：地图上的线是上一位读者画的。',
+      UR: '前兆：潮汐转向，浮标钢索低频摩擦，灯塔油表见底；触发：雾变浓，失控旧渔船被潮水推近；回收：灯只够亮一次，选择决定留给谁。'
+    }[dim] || '';
     const style = [
       '【语气】像真人在说话，可以吐槽、慌、嘴硬、被打脸、说半句话。',
       '允许自然粗口，例如“他妈的”“去你妈的”“不是哥们”“绷不住了”“什么鬼”，不要用星号打码；但不要用脏话攻击用户。',
       '不要每句都升华，不要心理咨询腔，不要三个选项都像正确答案。',
-      '【逻辑】任何异常发生前必须先有前兆和原因：旧支架吱呀、灰尘、煤灰、潮气、旧轨道、潮汐、风向。',
-      '第一幕埋下的东西第二幕要响；第二幕的选择第三幕要承担后果；终幕问题必须从经历里长出来。',
+      '【逻辑】任何异常发生前必须先有前兆和原因；第一幕埋下的东西第二幕要响；第二幕的选择第三幕要承担后果。',
+      '【因果骨架】' + causal,
       '写完后自检：删掉所有“突然”发生的事件。'
     ].join('\n');
     return [
@@ -1710,12 +1729,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       '',
       style,
       '',
-      '写四幕互动剧本，总字数 700-1000 字。只输出合法 JSON，不要 markdown、代码块或解释。',
+      '写四幕互动剧本，总字数 800-1100 字。只输出合法 JSON，不要 markdown、代码块或解释。',
+      '必须完整输出所有字段，不能省略 continuity、branches、act1.lines 或任何 feedback。',
       '{',
+      '  "continuity": { "openingDetail": "开场埋下的细节", "causeChain": ["前兆→触发", "触发→后果", "后果→回收"], "payoff": "终幕如何回收" },',
       '  "intro": ["6-8句开场，第一句可以是——哔…"],',
-      '  "act1": { "prompt": "第一幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
+      '  "act1": { "lines": ["1-3句过渡"], "prompt": "第一幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
       '  "act2": { "lines": ["3-5句过渡"], "prompt": "第二幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
-      '  "branches": { "A": ["3-5句"], "B": ["3-5句"], "C": ["3-5句"] },',
+      '  "branches": { "A": ["2-4句"], "B": ["2-4句"], "C": ["2-4句"] },',
       '  "act3": { "lines": ["3-5句过渡"], "prompt": "第三幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
       '  "final": { "lines": ["3-5句终幕铺垫"], "prompt": "最后一个开放问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] }, { "text": "选项D", "feedback": ["1-2句"] } ] }',
       '}',
@@ -1750,7 +1771,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     let aiErr = null;
     try {
       const raw = await callAPI(prompt, systemPrompt, 0.95, 2600);
-      script = normalizeDialogue(raw);
+      script = normalizeDialogue(raw, dim);
     } catch(e){
       aiErr = e;
       script = null;
@@ -1763,7 +1784,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       try {
         const retryPrompt = buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger) + '\n\n上一次输出不是合法 JSON 或缺少必要段落。请压缩到 600-800 字，只输出合法 JSON，确保所有括号和引号闭合。';
         const raw2 = await callAPI(retryPrompt, systemPrompt, 0.8, 2600);
-        script = normalizeDialogue(raw2);
+        script = normalizeDialogue(raw2, dim);
       } catch(e2){
         aiErr = e2;
       }
@@ -1919,6 +1940,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   async function playNebulaDialogue(script, session){
     await qDialogPlayLines(script.intro, session);
+    await qDialogPlayLines(script.act1.lines, session);
     let pick = await qDialogAskChoice(script.act1.prompt, script.act1.options, session);
     if(pick < 0) return;
     await qDialogPlayLines(qOptionFeedback(script.act1.options[pick]), session);
