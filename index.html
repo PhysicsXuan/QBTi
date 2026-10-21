@@ -1606,16 +1606,20 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     return (name && name !== '你') ? name : '你';
   }
 
+  function stripSentencePeriod(value){
+    return String(value == null ? '' : value).replace(/。+\s*$/, '').trim();
+  }
+
   function dialogueLines(value){
-    if(Array.isArray(value)) return value.map(v => String(v == null ? '' : v).trim()).filter(Boolean).slice(0, 12);
-    if(typeof value === 'string' && value.trim()) return [value.trim()];
+    if(Array.isArray(value)) return value.map(v => stripSentencePeriod(v)).filter(Boolean).slice(0, 12);
+    if(typeof value === 'string' && value.trim()) return [stripSentencePeriod(value)];
     return [];
   }
 
   function dialogueOptions(value, max){
     if(!Array.isArray(value)) return [];
     return value.map(o => ({
-      text: String(o && o.text || '').trim().slice(0, 160),
+      text: stripSentencePeriod(String(o && o.text || '')).slice(0, 160),
       feedback: dialogueLines(o && o.feedback)
     })).filter(o => o.text).slice(0, max || 4);
   }
@@ -1629,22 +1633,26 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const o = JSON.parse(text);
     if(!o || typeof o !== 'object') throw new Error('BAD_DIALOGUE');
     const continuity = {
-      openingDetail: String(o.continuity && o.continuity.openingDetail || '').trim(),
+      openingDetail: stripSentencePeriod(o.continuity && o.continuity.openingDetail),
       causeChain: dialogueLines(o.continuity && o.continuity.causeChain).slice(0, 5),
-      payoff: String(o.continuity && o.continuity.payoff || '').trim()
+      payoff: stripSentencePeriod(o.continuity && o.continuity.payoff)
     };
     const script = {
       continuity: continuity,
       intro: dialogueLines(o.intro),
-      act1: { lines: dialogueLines(o.act1 && o.act1.lines), prompt: String(o.act1 && o.act1.prompt || '').trim(), options: dialogueOptions(o.act1 && o.act1.options, 3) },
-      act2: { lines: dialogueLines(o.act2 && o.act2.lines), prompt: String(o.act2 && o.act2.prompt || '').trim(), options: dialogueOptions(o.act2 && o.act2.options, 3) },
+      act1: { lines: dialogueLines(o.act1 && o.act1.lines), prompt: stripSentencePeriod(o.act1 && o.act1.prompt), options: dialogueOptions(o.act1 && o.act1.options, 3) },
+      act2: { lines: dialogueLines(o.act2 && o.act2.lines), prompt: stripSentencePeriod(o.act2 && o.act2.prompt), options: dialogueOptions(o.act2 && o.act2.options, 3) },
       branches: {},
-      act3: { lines: dialogueLines(o.act3 && o.act3.lines), prompt: String(o.act3 && o.act3.prompt || '').trim(), options: dialogueOptions(o.act3 && o.act3.options, 3) },
-      final: { lines: dialogueLines(o.final && o.final.lines), prompt: String(o.final && o.final.prompt || '').trim(), options: dialogueOptions(o.final && o.final.options, 4) }
+      act3: { lines: dialogueLines(o.act3 && o.act3.lines), prompt: stripSentencePeriod(o.act3 && o.act3.prompt), options: dialogueOptions(o.act3 && o.act3.options, 3) },
+      final: { lines: dialogueLines(o.final && o.final.lines), prompt: stripSentencePeriod(o.final && o.final.prompt), options: dialogueOptions(o.final && o.final.options, 4) }
     };
     ['A', 'B', 'C'].forEach(k => {
       script.branches[k] = dialogueLines(o.branches && o.branches[k]);
     });
+    const openingText = script.intro.slice(0, 5).join(' ');
+    if(!/Error/i.test(openingText) || !/(扫描|探测|雷达)/.test(openingText) || !/我/.test(openingText)){
+      throw new Error('MISSING_RADAR_OPENING');
+    }
     const incomplete =
       script.intro.length < 4 ||
       !continuity.openingDetail || !continuity.payoff || continuity.causeChain.length < 2 ||
@@ -1709,12 +1717,17 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       LA: '前兆：地板下旧轨道松动，潮气让书页粘连，地图边缘有旧铅笔印；触发：窗缝的风让书架沿旧轨道移开，书页自翻；回收：地图上的线是上一位读者画的。',
       UR: '前兆：潮汐转向，浮标钢索低频摩擦，灯塔油表见底；触发：雾变浓，失控旧渔船被潮水推近；回收：灯只够亮一次，选择决定留给谁。'
     }[dim] || '';
+    const errorCodes = ['Error 404 No Found', 'Error 403 Signal Lost', 'Error 500 Radar Overheat', 'Error 0x1F 信号漂移', 'Error 418 雷达不在服务区', 'Error 502 维度回波中断'];
+    const errorCode = errorCodes[Math.floor(Math.random() * errorCodes.length)];
     const style = [
+      '【开场强制】前2-4句必须是“我”在探测用户的该维度雷达，必须出现 Error 字样、本次错误码和“扫描/探测/雷达”中的一个；雷达状态对应维度状态；雷达异常要成为第一幕前兆的原因；每次换个错误码和现象',
+      '本次错误码：' + errorCode,
       '【语气】像真人在说话，可以吐槽、慌、嘴硬、被打脸、说半句话。',
       '允许自然粗口，例如“他妈的”“去你妈的”“不是哥们”“绷不住了”“什么鬼”，不要用星号打码；但不要用脏话攻击用户。',
       '不要每句都升华，不要心理咨询腔，不要三个选项都像正确答案。',
       '【逻辑】任何异常发生前必须先有前兆和原因；第一幕埋下的东西第二幕要响；第二幕的选择第三幕要承担后果。',
       '【因果骨架】' + causal,
+      '【标点】每个数组元素只写一句话，句末不要加“。”；需要停顿用“…”或直接结束',
       '写完后自检：删掉所有“突然”发生的事件。'
     ].join('\n');
     return [
@@ -1729,7 +1742,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       '',
       style,
       '',
-      '写四幕互动剧本，总字数 800-1100 字。只输出合法 JSON，不要 markdown、代码块或解释。',
+      '写四幕互动剧本，总字数 800-1100 字。所有句子末尾不要加句号。只输出合法 JSON，不要 markdown、代码块或解释。',
       '必须完整输出所有字段，不能省略 continuity、branches、act1.lines 或任何 feedback。',
       '{',
       '  "continuity": { "openingDetail": "开场埋下的细节", "causeChain": ["前兆→触发", "触发→后果", "后果→回收"], "payoff": "终幕如何回收" },',

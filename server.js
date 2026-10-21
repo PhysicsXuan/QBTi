@@ -1128,6 +1128,15 @@ function buildDialoguePrompt(dimension, address, context, nonce){
   ];
   const openingAngle = openingAngles[Math.floor(Math.random() * openingAngles.length)];
   const systemMood = systemMoods[Math.floor(Math.random() * systemMoods.length)];
+  const errorCodes = [
+    'Error 404 No Found',
+    'Error 403 Signal Lost',
+    'Error 500 Radar Overheat',
+    'Error 0x1F 信号漂移',
+    'Error 418 雷达不在服务区',
+    'Error 502 维度回波中断'
+  ];
+  const errorCode = errorCodes[Math.floor(Math.random() * errorCodes.length)];
   return [
     '你是 QBTI 的量子态系统，第一人称是“我”，用户是“你”。',
     '你正在和用户进行一场沉浸式维度对话。',
@@ -1145,7 +1154,22 @@ function buildDialoguePrompt(dimension, address, context, nonce){
     '本次生成编号：' + dialogueSafeText(nonce, 48),
     '本次开场角度：' + openingAngle,
     '本次系统状态：' + systemMood,
+    '本次错误码：' + errorCode,
     '这是全新的一次生成：不得复用上一份剧本的开头、句式、选项、反馈或比喻；这次必须换一个开场细节和第一个动作。',
+    '',
+    '【开场强制：每次都要有雷达扫描】',
+    '前 2-4 句必须是系统第一人称“我”在探测用户的该维度雷达，必须满足：',
+    '- 出现 “Error” 字样和本次错误码（可以微调数字/文案，但必须是 Error 开头）',
+    '- 出现“扫描 / 探测 / 雷达”中的至少一个词',
+    '- 用“我”作为探测主体',
+    '- 雷达状态要对应维度状态：危险态偏信号丢失/404，良好态偏信号锁定，叠加态偏双频/漂移',
+    '- 错误码和开场现象每次必须有新意，不能固定写 Error 404',
+    '- 这个雷达异常不能只是装饰：它要成为第一幕第一个前兆的原因或伏笔',
+    '- 开场最后一句要自然过渡到场景，不要突然切镜头',
+    '',
+    '【标点】',
+    '- 每个数组元素只写一句话，句末不要加“。”；需要停顿用“…”或直接结束',
+    '- 选项、反馈、旁白都不要用句号收尾',
     '',
     '【用户信息】',
     '用户选择的主页问卷结果：' + dialogueSafeText(c.code, 40) + (c.typeName ? '（' + dialogueSafeText(c.typeName, 60) + '）' : ''),
