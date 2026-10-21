@@ -873,7 +873,7 @@ app.post('/api/admin/feedback/:id/reply', requireStudentAdmin, async (req, res) 
 });
 
 /* ============================================================
-   四维星云对话：服务端提供用户专属提示词 + 维度专属兜底剧本
+   四维星云对话：服务端提供用户专属提示词，前端每次调用 AI 生成全新剧本
    每个维度使用完全不同的场景，禁止全部写成“开门”
    ============================================================ */
 const DIALOGUE_BLUEPRINTS = {
@@ -882,6 +882,7 @@ const DIALOGUE_BLUEPRINTS = {
     scene: '一座废弃的天文台，观测室尽头有一扇很久没有打开的门，屋顶的星图已经褪色',
     metaphor: '门后可能是新的观测数据，也可能什么都没有',
     forbidden: '可以出现天文台的观测门，但不要出现避难所、末日、怪物、列车、图书馆、灯塔',
+    logic: '星图裂缝不能突然出现：先写屋顶旧支架的吱呀声、灰尘落下、温度变化或风吹动接缝，让用户先感觉到“要出事”。',
     common: ['你站在废弃天文台的观测室里…', '控制台还亮着一点点光…', '观测室尽头…是一扇很久没有打开的门…'],
     states: {
       danger: ['——哔…', '我正在扫描你的潜能状态…', 'Error 404 No Found…', '信号很弱…像一条没有目的地的航线…', '你不是没有能力…', '只是很久没有问过自己…想去哪里了…'],
@@ -906,7 +907,7 @@ const DIALOGUE_BLUEPRINTS = {
         ]
       },
       {
-        prompt: '屋顶的星图突然裂开一道缝…真正的星光落了下来…你会怎么做…？',
+        prompt: '屋顶传来金属疲劳的吱呀声…星图接缝处落下细灰…裂缝在慢慢变宽…真正的星光漏了下来…你会怎么做…？',
         options: [
           { text: '回到控制台后面', feedback: ['你退回了熟悉的光里…', '这不代表你没有看见那片星空…'] },
           { text: '走到望远镜前', feedback: ['你靠近了那台很久没用的望远镜…', '镜筒里…有一点微光…'] },
@@ -935,6 +936,7 @@ const DIALOGUE_BLUEPRINTS = {
     scene: '一列停在环形轨道上的老式列车，锅炉已经冷了，车头还亮着一盏昏黄的小灯',
     metaphor: '要不要重新点燃锅炉，还是继续留在车厢里',
     forbidden: '禁止出现门、避难所、铁门、开门、末日、天文台、图书馆、灯塔等意象',
+    logic: '锅炉、压力表、隧道墙上的字都要有来源：旧煤灰、冷却收缩、前乘客留下的痕迹；不能凭空出现。',
     common: ['你在一列停在环形轨道上的旧列车里…', '锅炉已经冷了…', '车头还亮着一盏昏黄的小灯…', '窗外是没有尽头的轨道…'],
     states: {
       danger: ['——哔…', '我正在扫描你的驱动状态…', 'Error 404 No Found…', '锅炉没有压力…', '不是这列车坏了…', '是你已经很久没有找到…想去的站台了…'],
@@ -959,7 +961,7 @@ const DIALOGUE_BLUEPRINTS = {
         ]
       },
       {
-        prompt: '车头灯照到隧道墙上…那里有一行褪色的字…你会怎么做…？',
+        prompt: '车头灯扫过隧道墙…煤灰下面露出一行旧字…像是很多年前留下的…你会怎么做…？',
         options: [
           { text: '回到座位，不再看', feedback: ['你移开了视线…', '有些字…不看也可以继续开…'] },
           { text: '继续添燃料，让灯更亮', feedback: ['你往锅炉里又添了一点…', '灯亮了一些…墙上的字也更清楚了…'] },
@@ -988,6 +990,7 @@ const DIALOGUE_BLUEPRINTS = {
     scene: '一间会在无人时自动改写书页的图书馆，桌上摊着一张只有你能看见的地图',
     metaphor: '跟着别人写好的路线，还是自己画一条',
     forbidden: '禁止出现门、避难所、铁门、开门、列车、锅炉、天文台、灯塔等意象',
+    logic: '书架移动要有旧轨道、机关或风的原因；书页自动改写要有潮气、风或提前留下的字迹；地图不能凭空出现。',
     common: ['你在一间很安静的图书馆里…', '桌上的书会自己翻页…', '摊开的地图上…只有你能看见的线…', '书架深处…传来很轻的纸页声…'],
     states: {
       danger: ['——哔…', '我正在扫描你的学习自主状态…', 'Error 404 No Found…', '地图上没有主线…', '不是你没有路…', '是每一条路…都像是别人替你画的…'],
@@ -1004,7 +1007,7 @@ const DIALOGUE_BLUEPRINTS = {
         ]
       },
       {
-        prompt: '书架自己移开…露出一条没有标注的走廊…你会怎么做…？',
+        prompt: '地板下传来旧轨道滚动的声音…书架慢慢移开…露出一条没有标注的走廊…你会怎么做…？',
         options: [
           { text: '留在原地，继续看书', feedback: ['你留在了灯下…', '走廊里的风…从书页间穿过去…'] },
           { text: '跟着地图上的线走进去', feedback: ['你沿着那条线…走进书架深处…', '纸页的声音…越来越近…'] },
@@ -1041,6 +1044,7 @@ const DIALOGUE_BLUEPRINTS = {
     scene: '夜里的海面，灯塔的灯已经灭了，雾里传来没有来源的声音',
     metaphor: '要不要点亮灯塔，还是留在岸边等雾散',
     forbidden: '禁止出现门、避难所、铁门、开门、列车、锅炉、图书馆、地图、天文台等意象',
+    logic: '船影、声音、灯油告急都要有潮汐、浮标、旧机械、风向的前兆；不能突然冒出来。',
     common: ['你在夜里的海边…', '灯塔的灯已经灭了…', '雾很厚…', '海面深处…传来一阵没有来源的声音…'],
     states: {
       danger: ['——哔…', '我正在扫描你的未知应对状态…', 'Error 404 No Found…', '雾太厚了…', '看不见岸线…', '也看不见灯塔到底还在不在…'],
@@ -1057,7 +1061,7 @@ const DIALOGUE_BLUEPRINTS = {
         ]
       },
       {
-        prompt: '雾里出现一个模糊的船影…它没有靠近，也没有离开…你会怎么做…？',
+        prompt: '雾里的潮声忽然变了…一个模糊的船影慢慢显出来…它没有靠近，也没有离开…你会怎么做…？',
         options: [
           { text: '回到屋里，拉上窗帘', feedback: ['你回到了屋里…', '海的声音…被隔在窗外…'] },
           { text: '站在原地，继续听', feedback: ['你没有动…', '船影也没有动…', '你们隔着一层雾…互相看着…'] },
@@ -1095,7 +1099,7 @@ function dialogueSafeText(value, max){
   return String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').slice(0, max || 120);
 }
 
-function buildDialoguePrompt(dimension, address, context){
+function buildDialoguePrompt(dimension, address, context, nonce){
   const b = DIALOGUE_BLUEPRINTS[dimension];
   if(!b) return null;
   const c = context || {};
@@ -1104,6 +1108,22 @@ function buildDialoguePrompt(dimension, address, context){
     ? Object.keys(c.ratios).slice(0, 6).map(k => dialogueSafeText(k, 8) + '=' + (Number(c.ratios[k]) || 0) + '%').join(' / ')
     : '';
   const addressText = dialogueSafeText(address, 20) || '你';
+  const openingAngles = [
+    '从一句没头没尾的吐槽切入',
+    '从一个坏掉的提示音切入',
+    '从一股不该出现的气味切入',
+    '从一个很小的、没人在意的动作切入',
+    '从环境里一个不对劲的细节切入'
+  ];
+  const systemMoods = [
+    '系统有点困',
+    '系统有点慌',
+    '系统嘴硬',
+    '系统刚被打脸',
+    '系统在强装镇定'
+  ];
+  const openingAngle = openingAngles[Math.floor(Math.random() * openingAngles.length)];
+  const systemMood = systemMoods[Math.floor(Math.random() * systemMoods.length)];
   return [
     '你是 QBTI 的量子态系统，第一人称是“我”，用户是“你”。',
     '你正在和用户进行一场沉浸式维度对话。',
@@ -1112,7 +1132,12 @@ function buildDialoguePrompt(dimension, address, context){
     '场景：' + b.scene,
     '核心隐喻：' + b.metaphor,
     '禁止：' + b.forbidden,
+    '因果铺垫：' + b.logic,
     '这份剧本只能属于这个维度，不能复用其它维度的场景，不能把所有维度都写成“开门”。',
+    '本次生成编号：' + dialogueSafeText(nonce, 48),
+    '本次开场角度：' + openingAngle,
+    '本次系统状态：' + systemMood,
+    '这是全新的一次生成：不得复用上一份剧本的开头、句式、选项、反馈或比喻；这次必须换一个开场细节和第一个动作。',
     '',
     '【用户信息】',
     '用户选择的主页问卷结果：' + dialogueSafeText(c.code, 40) + (c.typeName ? '（' + dialogueSafeText(c.typeName, 60) + '）' : ''),
@@ -1134,13 +1159,25 @@ function buildDialoguePrompt(dimension, address, context){
     '- 像真的在跟用户说话，可以有情绪、吐槽、沉默、改口、半句话。',
     '- 不要每句都升华、不要每段都共情、不要连续排比，也不要把每句话都写成金句。',
     '- 允许出现粗口、网络黑话、口头禅，不要做脏话审查，不要用星号打码。',
-    '- 可以写“他妈的”“去他妈的”“什么鬼”“兄弟对不住了”这类真实口吻，但不要用脏话攻击、羞辱用户。',
-    '- 选项也要像人会点的，不要三个都写成正确的人生道理。',
+    '- 可以写“他妈的”“去你妈的”“什么鬼”“兄弟我对不住你”“不是哥们”这类真实口吻，但不要用脏话攻击、羞辱用户。',
+    '- 系统可以慌、可以吐槽、可以嘴硬、可以被打脸，不要一直端着。',
+    '- 可以用“不是哥们”“绷不住了”“啊？”“什么阴间剧情”这类网感表达，但不要每句都堆梗。',
+    '- 选项也要像人会点的，可以有一个明显离谱的、一个怂的、一个莽的，不要三个都写成正确的人生道理。',
     '- 例子（只参考语感，不要照抄）：',
     '  “……行吧。你刚是不是在心里骂了一句很脏的？”',
-    '  “兄弟对不住了，先把这破玩意儿关了再说。”',
+    '  “兄弟我对不住你，这破玩意儿好像真有点不对劲。”',
+    '  “去你妈的，门外到底是谁？”',
     '  “说了一些父母含量很高的词汇，然后直接把事情做了。”',
     '- 金句最多一两句，其余部分要留白、要像活人说话。',
+    '',
+    '【逻辑自洽：任何事件发生之前必须有铺垫】',
+    '- 不允许“突然裂开”“突然出现声音”“突然出现船影”“突然多出一行字”。',
+    '- 每个异常现象都要在前文露出原因或前兆：旧支架松动、温度变化、煤灰、潮汐、风、旧轨道、前一个选择造成的后果。',
+    '- 例：先写环境的旧伤、异常声音、气味或温度变化，再让事件发生；读者要知道“这不是凭空来的”。',
+    '- 前因后果要连成一条线：第一幕埋下的东西，第二幕要响；第二幕的选择，第三幕要承担后果。',
+    '- 分支不能跳脱：不同选择必须导致不同的、但都说得通的后续。',
+    '- 终幕问题必须由前面的经历自然长出来，不能突然开始讲人生道理。',
+    '- 输出前自检：删掉所有没有铺垫的突发事件，补上至少一个可回看的前兆。',
     '',
     '【四幕结构】',
     '第一幕：' + b.acts[0].prompt,
@@ -1179,22 +1216,6 @@ function buildDialoguePrompt(dimension, address, context){
   ].filter(Boolean).join('\n');
 }
 
-function buildDialogueFallback(dimension, address, context){
-  const b = DIALOGUE_BLUEPRINTS[dimension];
-  if(!b) return null;
-  const state = b.states[context && context.dimensionState === 'danger' ? 'danger' : context && context.dimensionState === 'good' ? 'good' : 'superposition'];
-  const addressText = dialogueSafeText(address, 20) || '你';
-  const greeting = addressText === '你' ? '我收到你的信号了…' : addressText + '…我收到你的信号了…';
-  return {
-    intro: state.concat([greeting], b.common),
-    act1: { prompt: b.acts[0].prompt, options: b.acts[0].options },
-    act2: { lines: ['你做出了选择…', '过了一会儿…', '周围的声音变了…'], prompt: b.acts[1].prompt, options: b.acts[1].options },
-    branches: b.branches,
-    act3: { lines: ['时间往前走了一点…', '有些东西开始变得清楚…'], prompt: b.acts[2].prompt, options: b.acts[2].options },
-    final: b.final
-  };
-}
-
 app.post('/api/dialogue/prompt', async (req, res) => {
   const body = req.body || {};
   const dimension = String(body.dimension || '').toUpperCase();
@@ -1215,10 +1236,10 @@ app.post('/api/dialogue/prompt', async (req, res) => {
       safeContext.ratios[dialogueSafeText(k, 8)] = Math.max(0, Math.min(100, Number(context.ratios[k]) || 0));
     });
   }
-  const prompt = buildDialoguePrompt(dimension, address, safeContext);
-  const fallback = buildDialogueFallback(dimension, address, safeContext);
+  const nonce = dialogueSafeText(body.nonce, 48) || String(Date.now());
+  const prompt = buildDialoguePrompt(dimension, address, safeContext, nonce);
   if(!prompt || prompt.length > 8500) return res.status(500).json({ error: '提示词生成失败' });
-  res.json({ success: true, dimension: dimension, prompt: prompt, fallback: fallback });
+  res.json({ success: true, dimension: dimension, prompt: prompt });
 });
 
 // 5. 家长注册

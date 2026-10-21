@@ -919,7 +919,6 @@
       localStorage.removeItem('qbti_ai_lock_v1:' + emailLower);
       localStorage.removeItem('qbti_ai_tokens_v1:' + emailLower);
       localStorage.removeItem('qbti_ai_inflight_v1:' + emailLower);
-      localStorage.removeItem('qbti_ai_dialogue_v1:' + emailLower);
       localStorage.removeItem('qbti_settings_v1');
       localStorage.removeItem('qbti_config_v2');
     } catch(e){}
