@@ -244,7 +244,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .q-dialog-choices.show{display:flex;}
 .q-dialog-choice{padding:13px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.30);background:rgba(5,7,18,.78);color:#fff;font:inherit;font-size:clamp(calc(14px * var(--q-fs)),1.7vw,calc(16px * var(--q-fs)));line-height:1.6;text-align:left;cursor:pointer;transition:.18s;text-shadow:none !important;-webkit-text-stroke:0 !important;}
 .q-dialog-choice:hover{border-color:rgba(255,255,255,.75);background:rgba(20,24,48,.92);transform:translateY(-1px);}
-.q-dialog-loading{color:rgba(255,255,255,.55);font-size:calc(14px * var(--q-fs));letter-spacing:.14em;animation:qDialogHint 2s ease-in-out infinite;}
+.q-dialog-loading{display:flex;align-items:center;justify-content:center;gap:2px;color:#fff;font-size:clamp(calc(18px * var(--q-fs)),2.2vw,calc(26px * var(--q-fs)));font-weight:600;letter-spacing:.02em;text-shadow:none !important;-webkit-text-stroke:0 !important;}
+.q-loading-dots{display:inline-flex;min-width:2.2em;}
+.q-loading-dots i{font-style:normal;animation:qLoadingDot 1.2s ease-in-out infinite;}
+.q-loading-dots i:nth-child(2){animation-delay:.2s;}
+.q-loading-dots i:nth-child(3){animation-delay:.4s;}
+@keyframes qLoadingDot{0%,80%,100%{opacity:.15;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
 .q-dialog-close{position:fixed;top:22px;right:26px;z-index:2;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(5,7,18,.55);color:#fff;font-size:22px;line-height:1;cursor:pointer;}
 .q-dialog-close:hover{background:rgba(255,255,255,.12);}
 @media(max-width:600px){.q-dialog-inner{padding:74px 0 118px;min-height:300px}.q-dialog-line{font-size:28px;line-height:1.75}.q-dialog-hint{bottom:5vh}.q-dialog-close{top:14px;right:14px}}
@@ -480,7 +485,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   <div class="q-dialog" id="qDialog" role="dialog" aria-live="polite">
     <button class="q-dialog-close" id="qDialogClose" type="button" aria-label="结束对话">×</button>
     <div class="q-dialog-inner">
-      <div class="q-dialog-loading" id="qDialogLoading">正在接入维度信号…</div>
+      <div class="q-dialog-loading" id="qDialogLoading"><span>Loading</span><span class="q-loading-dots"><i>.</i><i>.</i><i>.</i></span></div>
       <div class="q-dialog-line" id="qDialogLine" style="display:none;"></div>
       <div class="q-dialog-choices" id="qDialogChoices"></div>
       <div class="q-dialog-hint" id="qDialogHint">点击屏幕任意位置以继续</div>
@@ -1671,6 +1676,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       UR: /避难所|铁门|开门|门口|门后|门外|那扇门|一扇门|列车|锅炉|图书馆|地图|天文台/
     }[dimension];
     if(offScene && offScene.test(fullText)) throw new Error('DIALOGUE_OFF_SCENE');
+    const disrespect = /他妈的|去你妈的|妈的|傻逼|操你|滚蛋|滚开|闭嘴|废物|没用的东西|怂货|巨婴|没救|你有病|loser|idiot|stupid|shut up/i;
+    if(disrespect.test(fullText)) throw new Error('DISRESPECTFUL_LANGUAGE');
     return script;
   }
 
@@ -1722,13 +1729,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const style = [
       '【开场强制】前2-4句必须是“我”在探测用户的该维度雷达，必须出现 Error 字样、本次错误码和“扫描/探测/雷达”中的一个；雷达状态对应维度状态；雷达异常要成为第一幕前兆的原因；每次换个错误码和现象',
       '本次错误码：' + errorCode,
-      '【语气】像真人在说话，可以吐槽、慌、嘴硬、被打脸、说半句话。',
-      '允许自然粗口，例如“他妈的”“去你妈的”“不是哥们”“绷不住了”“什么鬼”，不要用星号打码；但不要用脏话攻击用户。',
-      '不要每句都升华，不要心理咨询腔，不要三个选项都像正确答案。',
-      '【逻辑】任何异常发生前必须先有前兆和原因；第一幕埋下的东西第二幕要响；第二幕的选择第三幕要承担后果。',
+      '【核心：尊重用户】不爆粗口、不嘲讽、不贬低、不贴标签、不诊断、不评价用户的选择；幽默来自系统自己和情境，不来自嘲笑用户',
+      '【语气】像真人在说话，可以吐槽设备、吐槽自己、慌、嘴硬、被打脸、说半句话；可以用“不是哥们”“绷不住了”“什么鬼”，但不要每句都堆梗',
+      '不要把选项写成“怂”“莽”“摆烂”这种人格局限标签；描述行为，不评价人格',
+      '【逻辑】任何异常发生前必须先有前兆和原因；第一幕埋下的东西第二幕要响；第二幕的选择第三幕要承担后果',
       '【因果骨架】' + causal,
       '【标点】每个数组元素只写一句话，句末不要加“。”；需要停顿用“…”或直接结束',
-      '写完后自检：删掉所有“突然”发生的事件。'
+      '写完后自检：删掉所有“突然”发生的事件，删掉任何对用户的贬低或粗口'
     ].join('\n');
     return [
       '你是 QBTI 的量子态系统，第一人称“我”，用户是“你”。',
@@ -2025,7 +2032,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       };
       return;
     }
-    if(loading) loading.textContent = '正在生成只属于你的剧本…';
 
     let script = null;
     let scriptErr = null;
