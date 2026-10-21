@@ -670,17 +670,19 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const CFG_KEY = 'qbti_config_v2';
   const RESULT_KEY_PREFIX = 'qbti_results_';
   const AI_CACHE_KEY = 'qbti_ai_cache_v1';
-  const AI_DAILY_KEY = 'qbti_ai_daily_v1';
-  const AI_DAILY_LIMIT = 10;
   const AI_MIN_INTERVAL = 30 * 1000;
   const AI_HARD_MAX_TOKENS = 2600;
   const AI_MAX_PROMPT_CHARS = 9000;
   const AI_MAX_TOTAL_TOKENS = 4500;
-  const AI_TOKEN_BUDGET = 40000;
   const AI_LOCK_MS = 15 * 60 * 1000;
   const AI_LOCK_KEY = 'qbti_ai_lock_v1';
   const AI_TOKEN_USAGE_KEY = 'qbti_ai_tokens_v1';
   const AI_INFLIGHT_KEY = 'qbti_ai_inflight_v1';
+  const AI_BURST_WINDOW_MS = 2 * 60 * 1000;
+  const AI_BURST_TOKEN_LIMIT = 20000;
+  const AI_BURST_REQUEST_LIMIT = 12;
+  const AI_BURST_LOCK_MS = 10 * 60 * 1000;
+  const AI_BURST_KEY = 'qbti_ai_burst_v1';
   const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
   let serverAIConfig = null;
   async function ensureCloudAIConfig(){
@@ -1103,22 +1105,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }));
     } catch(e){}
   }
-  function aiQuota(){
-    const d = new Date();
-    const today = d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
-    let q = null;
-    try { q = JSON.parse(localStorage.getItem(AI_DAILY_KEY) || 'null'); } catch(e){}
-    if(!q || q.date !== today) q = { date: today, count: 0 };
-    return q;
-  }
-  function hasAIQuota(){ return aiQuota().count < AI_DAILY_LIMIT; }
-  function bumpAIQuota(){
-    const q = aiQuota();
-    q.count += 1;
-    try { localStorage.setItem(AI_DAILY_KEY, JSON.stringify(q)); } catch(e){}
-    return q.count;
-  }
-
   /* ---------- 强制 API 锁 / Token 异常保护 ---------- */
   function aiActor(){
     try {
@@ -1127,31 +1113,20 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(e){ return 'guest'; }
   }
   function aiKey(base){ return base + ':' + aiActor(); }
-  function isAdminAIUser(){
-    try { return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin()); } catch(e){ return false; }
-  }
-  function unlockAdminAILocks(){
-    if(!isAdminAIUser()) return;
-    try {
-      const u = window.QAuth.getCurrentUser();
-      if(!u || !u.email) return;
-      const email = String(u.email).toLowerCase();
-      [AI_LOCK_KEY, AI_TOKEN_USAGE_KEY, AI_INFLIGHT_KEY].forEach(base => {
-        try { localStorage.removeItem(base + ':' + email); } catch(e){}
-      });
-    } catch(e){}
-  }
   function aiLocalDay(){
     const d = new Date();
     const p = n => n < 10 ? '0' + n : '' + n;
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
   function getAILock(){
-    if(isAdminAIUser()) return null;
     try {
       const raw = localStorage.getItem(aiKey(AI_LOCK_KEY));
       if(!raw) return null;
       const o = JSON.parse(raw);
+      if(o && o.reason === 'daily-token-budget'){
+        localStorage.removeItem(aiKey(AI_LOCK_KEY));
+        return null;
+      }
       if(o && Number(o.until) > Date.now()) return o;
       localStorage.removeItem(aiKey(AI_LOCK_KEY));
     } catch(e){}
@@ -1205,13 +1180,46 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     return Math.ceil(String(text || '').length / 2);
   }
 
+  function getBurstEvents(){
+    const now = Date.now();
+    try {
+      const arr = JSON.parse(localStorage.getItem(aiKey(AI_BURST_KEY)) || '[]');
+      if(!Array.isArray(arr)) return [];
+      return arr.filter(e => e && Number(e.ts) > now - AI_BURST_WINDOW_MS);
+    } catch(e){ return []; }
+  }
+  function clearLegacyTokenLocksOnce(){
+    try {
+      if(localStorage.getItem('qbti_lock_migration_burst_v1') === '1') return;
+      const keys = [];
+      for(let i = 0; i < localStorage.length; i++){
+        const key = localStorage.key(i);
+        if(key && key.indexOf('qbti_ai_lock_v1:') === 0) keys.push(key);
+      }
+      keys.forEach(key => { try { localStorage.removeItem(key); } catch(e){} });
+      localStorage.setItem('qbti_lock_migration_burst_v1', '1');
+    } catch(e){}
+  }
+
+  function burstLocked(){
+    const events = getBurstEvents();
+    const tokens = events.reduce((sum, e) => sum + (Number(e.tokens) || 0), 0);
+    return { locked: events.length >= AI_BURST_REQUEST_LIMIT || tokens >= AI_BURST_TOKEN_LIMIT, tokens: tokens, count: events.length };
+  }
+  function recordBurst(tokens){
+    const events = getBurstEvents();
+    events.push({ ts: Date.now(), tokens: Math.max(0, Number(tokens) || 0) });
+    try { localStorage.setItem(aiKey(AI_BURST_KEY), JSON.stringify(events.slice(-30))); } catch(e){}
+    return burstLocked();
+  }
+
   /* 维度对话只受全局 Token 锁保护：每日对话次数不限 */
   function dialogueGlobalLock(){
-    if(isAdminAIUser()) return { locked: false };
-    if(getAILock()) return { locked: true, message: 'Token 用量保护已锁定，请稍后再试。' };
-    const u = getAITokenUsage();
-    if(u.tokens >= AI_TOKEN_BUDGET){
-      return { locked: true, message: '今日 Token 用量已达保护上限，请明天再试。' };
+    if(getAILock()) return { locked: true, message: '检测到短时间内大量调用，已临时中断，请稍后再试。' };
+    const burst = burstLocked();
+    if(burst.locked){
+      setAILock('token-burst', AI_BURST_LOCK_MS);
+      return { locked: true, message: '检测到短时间内大量调用，已临时中断，请稍后再试。' };
     }
     return { locked: false };
   }
@@ -1659,18 +1667,17 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const cfg = getCfg();
     const useServer = !!(serverAIConfig && serverAIConfig.enabled && serverAIConfig.hasKey);
     if(!useServer && !cfg.key) throw new Error('未配置 API Key，请点击右下角 ⚙ 配置');
-    const adminAI = isAdminAIUser();
 
-    /* 强制 API 锁：管理员不受 Token 锁限制，但仍保留并发锁 */
-    if(!adminAI && getAILock()) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
+    /* 不再按当日累计 Token 锁定；只检查短时间内的爆发式使用 */
+    if(getAILock()) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
     if(String(prompt || '').length > AI_MAX_PROMPT_CHARS){
-      setAILock('prompt-too-large', AI_LOCK_MS);
+      setAILock('prompt-too-large', AI_BURST_LOCK_MS);
       throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
     }
-    const beforeUsage = getAITokenUsage();
-    if(!adminAI && beforeUsage.tokens >= AI_TOKEN_BUDGET){
-      setAILock('daily-token-budget', AI_LOCK_MS);
-      throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+    const burstBefore = burstLocked();
+    if(burstBefore.locked){
+      setAILock('token-burst', AI_BURST_LOCK_MS);
+      throw new Error('TOKEN_BURST:' + aiTokenErrorText());
     }
     const inflightId = acquireAIInflight();
     if(!inflightId) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
@@ -1732,17 +1739,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const promptTokens = Number(usage.prompt_tokens) || estimateTokens(prompt);
     const completionTokens = Number(usage.completion_tokens) || estimateTokens(content);
     const totalTokens = Number(usage.total_tokens) || (promptTokens + completionTokens);
-    const totalAfter = addAITokens(totalTokens);
+    addAITokens(totalTokens);
+    const burstAfter = recordBurst(totalTokens);
 
-    /* 单次 token 明显异常，或当日累计异常：立刻锁定并终止报告生成 */
+    /* 单次明显异常或短时间内大量调用：强制中断 */
     if(totalTokens > AI_MAX_TOTAL_TOKENS ||
        promptTokens > AI_MAX_PROMPT_CHARS ||
        completionTokens > AI_HARD_MAX_TOKENS ||
-       totalAfter > AI_TOKEN_BUDGET){
-      if(!adminAI){
-        setAILock('token-anomaly', AI_LOCK_MS);
-        throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
-      }
+       burstAfter.locked){
+      setAILock(burstAfter.locked ? 'token-burst' : 'token-anomaly', AI_BURST_LOCK_MS);
+      throw new Error((burstAfter.locked ? 'TOKEN_BURST:' : 'TOKEN_ANOMALY:') + aiTokenErrorText());
     }
     return content;
   }
@@ -2242,7 +2248,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(loading) loading.style.display = 'none';
       if(line){
         line.style.display = 'block';
-        if(msg.indexOf('TOKEN_') === 0) line.textContent = 'Token 用量保护已锁定，请稍后再试。';
+        if(msg.indexOf('TOKEN_BURST') === 0) line.textContent = '检测到短时间内大量调用，已临时中断，请稍后再试。';
+        else if(msg.indexOf('TOKEN_') === 0) line.textContent = 'Token 调用已被临时中断，请稍后再试。';
         else if(msg.indexOf('未配置 API Key') >= 0) line.textContent = '还没有配置 AI Key。请管理员在 ⚙ 里填上再来。';
         else line.textContent = '……行吧，这次剧本卡壳了。再炸一次试试。';
       }
@@ -2307,18 +2314,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
     }
 
-    /* 每日硬上限：防止页面循环或连点无限生成 */
-    if(!hasAIQuota()){
-      alert(aiText('quota').replace('%s', AI_DAILY_LIMIT));
-      return;
-    }
-
     const lang = currentLang();
     state.aiLoading = true;
     state.aiError = null;
     state.lastAiAt = Date.now();
     const reqId = ++state.aiRequestId;
-    bumpAIQuota();
     renderAIPanel();
 
     const validity = state.validity || Q.analyzeResponseValidity(state.answers, state.timings);
@@ -2657,7 +2657,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     window.QAuth.onChange(function(info){
       refreshAdminUI(info);
       renderAdminDebug();
-      unlockAdminAILocks();
       applyHomepageTheme();
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
       if(info.isLoggedIn) syncCrossDevice();
@@ -2682,6 +2681,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
   });
 
+  clearLegacyTokenLocksOnce();
   renderQuestion();
   updateRestoreBanner();
   refreshAdminUI();
