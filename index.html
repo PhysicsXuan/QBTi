@@ -678,9 +678,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_LOCK_KEY = 'qbti_ai_lock_v1';
   const AI_TOKEN_USAGE_KEY = 'qbti_ai_tokens_v1';
   const AI_INFLIGHT_KEY = 'qbti_ai_inflight_v1';
-  const AI_BURST_WINDOW_MS = 2 * 60 * 1000;
-  const AI_BURST_TOKEN_LIMIT = 20000;
-  const AI_BURST_REQUEST_LIMIT = 12;
+  const AI_BURST_WINDOW_MS = 10 * 1000;
+  const AI_BURST_TOKEN_LIMIT = 8000;
+  const AI_BURST_REQUEST_LIMIT = 4;
   const AI_BURST_LOCK_MS = 10 * 60 * 1000;
   const AI_BURST_KEY = 'qbti_ai_burst_v1';
   const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
@@ -1215,11 +1215,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   /* 维度对话只受全局 Token 锁保护：每日对话次数不限 */
   function dialogueGlobalLock(){
-    if(getAILock()) return { locked: true, message: '检测到短时间内大量调用，已临时中断，请稍后再试。' };
+    if(getAILock()) return { locked: true, message: '检测到极短时间内 Token 消耗异常，已临时中断，请稍后再试。' };
     const burst = burstLocked();
     if(burst.locked){
       setAILock('token-burst', AI_BURST_LOCK_MS);
-      return { locked: true, message: '检测到短时间内大量调用，已临时中断，请稍后再试。' };
+      return { locked: true, message: '检测到极短时间内 Token 消耗异常，已临时中断，请稍后再试。' };
     }
     return { locked: false };
   }
@@ -2248,7 +2248,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(loading) loading.style.display = 'none';
       if(line){
         line.style.display = 'block';
-        if(msg.indexOf('TOKEN_BURST') === 0) line.textContent = '检测到短时间内大量调用，已临时中断，请稍后再试。';
+        if(msg.indexOf('TOKEN_BURST') === 0) line.textContent = '检测到极短时间内 Token 消耗异常，已临时中断，请稍后再试。';
         else if(msg.indexOf('TOKEN_') === 0) line.textContent = 'Token 调用已被临时中断，请稍后再试。';
         else if(msg.indexOf('未配置 API Key') >= 0) line.textContent = '还没有配置 AI Key。请管理员在 ⚙ 里填上再来。';
         else line.textContent = '……行吧，这次剧本卡壳了。再炸一次试试。';
