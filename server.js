@@ -174,6 +174,12 @@ async function initDB() {
       "studentEmail" VARCHAR(255) PRIMARY KEY,
       settings JSONB,
       "updatedAt" BIGINT NOT NULL
+    );`,
+    `CREATE TABLE IF NOT EXISTS app_config (
+      id VARCHAR(32) PRIMARY KEY,
+      config JSONB,
+      "updatedAt" BIGINT NOT NULL,
+      "updatedBy" VARCHAR(255)
     );`
   ];
   try {
@@ -1430,7 +1436,124 @@ app.post('/api/dialogue/prompt', async (req, res) => {
   res.json({ success: true, dimension: dimension, prompt: prompt });
 });
 
-// 4.9 跨设备同步：历史问卷
+// 4.8.5 全局 AI 配置（管理员设置一次，所有学生端自动接入）
+const aiProxyHits = new Map();
+
+async function readAIConfig(){
+  try {
+    const r = await pool.query('SELECT config, "updatedAt" FROM app_config WHERE id = $1', ['ai']);
+    const row = r.rows[0];
+    if(!row) return null;
+    const cfg = row.config || {};
+    return Object.assign({}, cfg, { updatedAt: Number(row.updatedAt) || 0 });
+  } catch(e){ return null; }
+}
+
+app.get('/api/ai/config', async (req, res) => {
+  const cfg = await readAIConfig();
+  res.json({
+    success: true,
+    enabled: !!(cfg && cfg.enabled && cfg.key),
+    hasKey: !!(cfg && cfg.key),
+    model: cfg ? (cfg.model || '') : '',
+    temperature: cfg ? (Number(cfg.temperature) || 0.85) : 0.85,
+    maxTokens: cfg ? (Number(cfg.maxTokens) || 2400) : 2400,
+    updatedAt: cfg ? cfg.updatedAt : 0
+  });
+});
+
+app.get('/api/admin/ai-config', requireStudentAdmin, async (req, res) => {
+  const cfg = await readAIConfig();
+  res.json({
+    success: true,
+    enabled: !!(cfg && cfg.enabled),
+    hasKey: !!(cfg && cfg.key),
+    url: cfg ? (cfg.url || '') : '',
+    model: cfg ? (cfg.model || '') : '',
+    temperature: cfg ? (Number(cfg.temperature) || 0.85) : 0.85,
+    maxTokens: cfg ? (Number(cfg.maxTokens) || 2400) : 2400,
+    updatedAt: cfg ? cfg.updatedAt : 0
+  });
+});
+
+app.post('/api/admin/ai-config', requireStudentAdmin, async (req, res) => {
+  const body = req.body || {};
+  const existing = await readAIConfig();
+  const url = String(body.url || (existing && existing.url) || 'https://api.deepseek.com/chat/completions').trim();
+  const key = String(body.key || (existing && existing.key) || '').trim();
+  const model = String(body.model || (existing && existing.model) || 'deepseek-chat').trim().slice(0, 80);
+  const temperature = Math.max(0, Math.min(1.5, Number(body.temperature) || 0.85));
+  const maxTokens = Math.max(500, Math.min(2600, Number(body.maxTokens) || 2400));
+  const enabled = body.enabled !== false;
+  if(!/^https?:\/\//i.test(url)) return res.status(400).json({ error: '接口地址格式不正确' });
+  if(!key) return res.status(400).json({ error: 'API Key 不能为空' });
+  if(!model) return res.status(400).json({ error: '模型名称不能为空' });
+  const cfg = { url, key, model, temperature, maxTokens, enabled };
+  try {
+    await pool.query(
+      `INSERT INTO app_config (id, config, "updatedAt", "updatedBy")
+       VALUES ('ai', $1, $2, 'Administrator')
+       ON CONFLICT (id) DO UPDATE
+       SET config = EXCLUDED.config, "updatedAt" = EXCLUDED."updatedAt", "updatedBy" = EXCLUDED."updatedBy"`,
+      [JSON.stringify(cfg), Date.now()]
+    );
+    res.json({ success: true, hasKey: true, updatedAt: Date.now() });
+  } catch (err) {
+    console.error('[AI配置] 保存失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常' });
+  }
+});
+
+app.post('/api/ai/chat', async (req, res) => {
+  const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || 'unknown').trim();
+  const now = Date.now();
+  const slot = aiProxyHits.get(ip);
+  if(slot && slot.resetAt > now){
+    if(slot.count >= 30) return res.status(429).json({ error: '请求过于频繁，请稍后再试' });
+    slot.count++;
+  } else {
+    aiProxyHits.set(ip, { count: 1, resetAt: now + 60 * 1000 });
+  }
+  if(aiProxyHits.size > 3000){
+    for(const [k, v] of aiProxyHits){ if(v.resetAt < now) aiProxyHits.delete(k); }
+  }
+
+  const body = req.body || {};
+  const prompt = String(body.prompt || '');
+  const system = String(body.system || '');
+  if(!prompt || prompt.length > 9000) return res.status(400).json({ error: '提示词为空或过长' });
+  if(system.length > 3000) return res.status(400).json({ error: '系统提示词过长' });
+  const cfg = await readAIConfig();
+  if(!cfg || !cfg.enabled || !cfg.key) return res.status(503).json({ error: 'AI 接口尚未配置', code: 'NO_API_CONFIG' });
+
+  const temperature = Math.max(0, Math.min(1.5, Number(body.temperature) || Number(cfg.temperature) || 0.85));
+  const maxTokens = Math.max(1, Math.min(Number(cfg.maxTokens) || 2400, Number(body.max_tokens) || 2400, 2600));
+  try {
+    const upstream = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+      body: JSON.stringify({
+        model: cfg.model || 'deepseek-chat',
+        messages: [
+          ...(system ? [{ role: 'system', content: system }] : []),
+          { role: 'user', content: prompt }
+        ],
+        temperature: temperature,
+        max_tokens: maxTokens,
+        stream: false
+      })
+    });
+    const text = await upstream.text();
+    res.status(upstream.status);
+    res.type('application/json');
+    res.send(text);
+  } catch (err) {
+    console.error('[AI代理] 请求失败:', err.message);
+    res.status(502).json({ error: 'AI 接口请求失败' });
+  }
+});
+
+// 4.9 跨设备同步：历史问卷// 4.9 跨设备同步：历史问卷
 app.get('/api/student/history', requireSyncAuth, async (req, res) => {
   try {
     const r = await pool.query(

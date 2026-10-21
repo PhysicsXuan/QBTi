@@ -499,7 +499,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 <div class="modal-mask" id="modalMask">
   <div class="modal">
     <h3>管理员 · AI 接口参数</h3>
-    <p class="sub">密钥仅保存在本地浏览器（localStorage），不会上传到任何第三方。<br><span style="color:#FFD98A">⚠ 仅管理员可见；Temperature / Max tokens 会直接影响本机 AI 生成</span></p>
+    <p class="sub">API 配置由管理员保存到学生端云端，所有学生端会自动接入；密钥只保存在服务器，不会下发给普通用户。<br><span style="color:#FFD98A">⚠ 仅管理员可见；留空 API Key 表示保留云端已有 Key</span></p>
     <div class="field"><label>接口地址</label><input id="inpUrl" type="text" placeholder="https://api.deepseek.com/chat/completions"></div>
     <div class="field"><label>API Key</label><input id="inpKey" type="password" placeholder="sk-..."></div>
     <div class="field"><label>模型名称</label><input id="inpModel" type="text" placeholder="deepseek-chat"></div>
@@ -682,6 +682,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_TOKEN_USAGE_KEY = 'qbti_ai_tokens_v1';
   const AI_INFLIGHT_KEY = 'qbti_ai_inflight_v1';
   const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
+  let serverAIConfig = null;
+  async function loadServerAIConfig(){
+    try {
+      const res = await fetch('/api/ai/config', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if(res.ok && data && data.success) serverAIConfig = data;
+      return serverAIConfig;
+    } catch(e){ return serverAIConfig; }
+  }
 
   /* 生成按钮文案（8 语言；不对用户展示 API 消耗提示） */
   const AI_TEXT = {
@@ -1614,8 +1623,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function saveCfg(cfg){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
 
   async function callAPI(prompt, systemOverride, temperatureOverride, maxTokensOverride){
+    if(!serverAIConfig || !serverAIConfig.enabled) await loadServerAIConfig();
     const cfg = getCfg();
-    if(!cfg.key) throw new Error('未配置 API Key，请点击右下角 ⚙ 配置');
+    const useServer = !!(serverAIConfig && serverAIConfig.enabled && serverAIConfig.hasKey);
+    if(!useServer && !cfg.key) throw new Error('未配置 API Key，请点击右下角 ⚙ 配置');
     const adminAI = isAdminAIUser();
 
     /* 强制 API 锁：管理员不受 Token 锁限制，但仍保留并发锁 */
@@ -1632,28 +1643,42 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const inflightId = acquireAIInflight();
     if(!inflightId) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
 
+    const systemContent = systemOverride || ((currentLang() === 'zh-CN' || currentLang() === 'zh-TW')
+      ? '你是一位擅长用隐喻理解青少年学习状态的教育引导顾问，语气温暖、具体、不评判。请始终使用用户要求的语言撰写报告。'
+      : 'You are an educational guidance consultant who uses quantum metaphors to understand teenagers’ learning states. Your tone is warm, specific, and non-judgmental. Always write the report in the language requested by the user.');
+    const temperature = temperatureOverride != null
+      ? Math.max(0, Math.min(1.5, Number(temperatureOverride)))
+      : (useServer ? Number(serverAIConfig.temperature) : cfg.temperature);
+    const maxTokens = Math.min(
+      Number(maxTokensOverride) || (useServer ? Number(serverAIConfig.maxTokens) : Number(cfg.maxTokens)) || 2400,
+      AI_HARD_MAX_TOKENS
+    );
+    const endpoint = useServer ? '/api/ai/chat' : cfg.url;
+    const headers = useServer
+      ? { 'Content-Type': 'application/json' }
+      : { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key };
+    const requestBody = useServer
+      ? { prompt: prompt, system: systemContent, temperature: temperature, max_tokens: maxTokens }
+      : {
+          model: cfg.model,
+          messages: [
+            { role: 'system', content: systemContent },
+            { role: 'user', content: prompt }
+          ],
+          temperature: temperature,
+          max_tokens: maxTokens,
+          stream: false
+        };
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 60000);
     let res;
     try {
-      res = await fetch(cfg.url, {
+      res = await fetch(endpoint, {
         method: 'POST',
-        headers: {'Content-Type':'application/json','Authorization':'Bearer ' + cfg.key},
+        headers: headers,
         signal: controller.signal,
-        body: JSON.stringify({
-          model: cfg.model,
-          messages: [
-            {role: 'system', content: systemOverride || ((currentLang() === 'zh-CN' || currentLang() === 'zh-TW')
-              ? '你是一位擅长用隐喻理解青少年学习状态的教育引导顾问，语气温暖、具体、不评判。请始终使用用户要求的语言撰写报告。'
-              : 'You are an educational guidance consultant who uses quantum metaphors to understand teenagers’ learning states. Your tone is warm, specific, and non-judgmental. Always write the report in the language requested by the user.')},
-            {role: 'user', content: prompt}
-          ],
-          temperature: temperatureOverride != null
-            ? Math.max(0, Math.min(1.5, Number(temperatureOverride)))
-            : cfg.temperature,
-          max_tokens: Math.min(Number(maxTokensOverride) || Number(cfg.maxTokens) || 2400, AI_HARD_MAX_TOKENS),
-          stream: false
-        })
+        body: JSON.stringify(requestBody)
       });
     } catch(e){
       if(e && e.name === 'AbortError'){
@@ -2352,12 +2377,32 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(!ok) return;
     }
     const cfg = getCfg();
-    $('inpUrl').value = cfg.url;
-    $('inpKey').value = cfg.key;
-    $('inpModel').value = cfg.model;
-    $('inpTemp').value = cfg.temperature;
-    $('inpMaxTokens').value = cfg.maxTokens;
+    let cloud = null;
+    try {
+      const token = (window.QAuth && window.QAuth.getAdminToken) ? window.QAuth.getAdminToken() : null;
+      if(token){
+        const res = await fetch('/api/admin/ai-config', { headers: { 'Authorization': 'Bearer ' + token } });
+        if(res.ok){ cloud = await res.json(); }
+      }
+    } catch(e){}
+    $('inpUrl').value = (cloud && cloud.url) || cfg.url;
+    $('inpKey').value = '';
+    $('inpKey').placeholder = (cloud && cloud.hasKey) ? '云端已保存，留空不修改' : 'sk-...';
+    $('inpModel').value = (cloud && cloud.model) || cfg.model;
+    $('inpTemp').value = (cloud && cloud.temperature != null) ? cloud.temperature : cfg.temperature;
+    $('inpMaxTokens').value = (cloud && cloud.maxTokens != null) ? cloud.maxTokens : cfg.maxTokens;
+    if(cloud){
+      serverAIConfig = Object.assign({}, serverAIConfig, {
+        enabled: !!cloud.hasKey,
+        hasKey: !!cloud.hasKey,
+        model: cloud.model || '',
+        temperature: cloud.temperature,
+        maxTokens: cloud.maxTokens,
+        updatedAt: cloud.updatedAt || 0
+      });
+    }
     $('testResult').className = 'test-result';
+    $('testResult').textContent = cloud && cloud.hasKey ? '云端 API 已配置；留空 Key 表示不修改' : '';
     $('modalMask').classList.add('show');
   });
   $('btnCancelCfg').addEventListener('click', () => $('modalMask').classList.remove('show'));
@@ -2492,36 +2537,64 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   if($('btnSendReply')) $('btnSendReply').addEventListener('click', sendFeedbackReply);
   if($('feedbackReplyMask')) $('feedbackReplyMask').addEventListener('click', e => { if(e.target === $('feedbackReplyMask')) $('feedbackReplyMask').classList.remove('show'); });
 
-  $('btnSaveCfg').addEventListener('click', () => {
+  $('btnSaveCfg').addEventListener('click', async () => {
     if(!isAdmin()){ $('modalMask').classList.remove('show'); return; }
+    const token = (window.QAuth && window.QAuth.getAdminToken) ? window.QAuth.getAdminToken() : null;
+    if(!token){ $('testResult').className = 'test-result show err'; $('testResult').textContent = '管理员登录已过期'; return; }
     const rawTemp = $('inpTemp').value.trim();
     const rawMax = $('inpMaxTokens').value.trim();
     const temp = Math.max(0, Math.min(1.5, rawTemp === '' ? DEFAULT_CFG.temperature : Number(rawTemp)));
-    const maxTokens = Math.max(500, Math.min(4000, rawMax === '' ? DEFAULT_CFG.maxTokens : Number(rawMax)));
-    saveCfg({ url: $('inpUrl').value.trim() || DEFAULT_CFG.url, key: $('inpKey').value.trim(), model: $('inpModel').value.trim() || DEFAULT_CFG.model, temperature: temp, maxTokens: maxTokens });
-    $('modalMask').classList.remove('show');
-    const b = $('btnSaveCfg');
-    b.textContent = '✓';
-    setTimeout(() => b.textContent = '保存', 1500);
+    const maxTokens = Math.max(500, Math.min(2600, rawMax === '' ? DEFAULT_CFG.maxTokens : Number(rawMax)));
+    const key = $('inpKey').value.trim();
+    const body = {
+      url: $('inpUrl').value.trim() || DEFAULT_CFG.url,
+      model: $('inpModel').value.trim() || DEFAULT_CFG.model,
+      temperature: temp,
+      maxTokens: maxTokens
+    };
+    if(key) body.key = key;
+    const btn = $('btnSaveCfg');
+    btn.disabled = true; btn.textContent = '保存中…';
+    try {
+      const res = await fetch('/api/admin/ai-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.success) throw new Error(data.error || '保存失败');
+      saveCfg({ url: body.url, key: key || getCfg().key, model: body.model, temperature: temp, maxTokens: maxTokens });
+      await loadServerAIConfig();
+      $('modalMask').classList.remove('show');
+      btn.textContent = '✓ 已保存到云端';
+      setTimeout(() => { btn.disabled = false; btn.textContent = '保存'; }, 1500);
+    } catch(err){
+      $('testResult').className = 'test-result show err';
+      $('testResult').textContent = err.message || '保存失败';
+      btn.disabled = false; btn.textContent = '保存';
+    }
   });
   $('btnTestCfg').addEventListener('click', async () => {
     if(!isAdmin()) return;
     const tr = $('testResult');
     tr.className = 'test-result show';
-    tr.textContent = '...';
+    tr.textContent = '正在测试云端已保存的配置…';
     tr.style.color = '#A8AEDA';
-    const url = $('inpUrl').value.trim() || DEFAULT_CFG.url;
-    const key = $('inpKey').value.trim() || DEFAULT_CFG.key;
-    const model = $('inpModel').value.trim() || DEFAULT_CFG.model;
     try {
-      const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key}, body: JSON.stringify({model, messages:[{role:'user',content:'ping'}], max_tokens:5, stream:false}) });
-      if(!r.ok){ const t = await r.text().catch(() => ''); throw new Error('HTTP ' + r.status + ' · ' + t.slice(0,120)); }
+      const r = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: 'ping', system: 'Reply with OK only', max_tokens: 5, temperature: 0 })
+      });
+      const data = await r.json().catch(() => ({}));
+      if(!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+      const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if(!content) throw new Error('接口返回为空');
       tr.className = 'test-result show ok';
-      tr.textContent = '✓ OK';
+      tr.textContent = '✓ 云端接口 OK';
     } catch(err){
-      const m = String(err.message || err);
-      if(/Failed to fetch|NetworkError|Load failed/i.test(m)){ tr.className = 'test-result show err'; tr.innerHTML = '✕ CORS/网络受限'; }
-      else { tr.className = 'test-result show err'; tr.textContent = '✕ ' + m; }
+      tr.className = 'test-result show err';
+      tr.textContent = '✕ ' + (err.message || '测试失败');
     }
   });
 
@@ -2573,6 +2646,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   renderQuestion();
   updateRestoreBanner();
   refreshAdminUI();
+  loadServerAIConfig();
+  setInterval(loadServerAIConfig, 60 * 1000);
   applyHomepageTheme();
   window.addEventListener('load', applyHomepageTheme);
   let themeTries = 0;
