@@ -673,7 +673,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_MIN_INTERVAL = 30 * 1000;
   const AI_HARD_MAX_TOKENS = 2600;
   const AI_MAX_PROMPT_CHARS = 9000;
-  const AI_MAX_TOTAL_TOKENS = 4500;
+  const AI_MAX_TOTAL_TOKENS = 9000;
   const AI_LOCK_MS = 15 * 60 * 1000;
   const AI_LOCK_KEY = 'qbti_ai_lock_v1';
   const AI_TOKEN_USAGE_KEY = 'qbti_ai_tokens_v1';
@@ -1200,14 +1200,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
   function clearLegacyTokenLocksOnce(){
     try {
-      if(localStorage.getItem('qbti_burst_migration_v3') === '1') return;
+      if(localStorage.getItem('qbti_burst_migration_v4') === '1') return;
       const keys = [];
       for(let i = 0; i < localStorage.length; i++){
         const key = localStorage.key(i);
         if(key && (key.indexOf('qbti_ai_lock_v1:') === 0 || key.indexOf('qbti_ai_burst_v1:') === 0)) keys.push(key);
       }
       keys.forEach(key => { try { localStorage.removeItem(key); } catch(e){} });
-      localStorage.setItem('qbti_burst_migration_v3', '1');
+      localStorage.setItem('qbti_burst_migration_v4', '1');
     } catch(e){}
   }
 
@@ -1773,6 +1773,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
        promptTokens > AI_MAX_PROMPT_CHARS ||
        completionTokens > AI_HARD_MAX_TOKENS ||
        burstAfter.locked){
+      console.warn('[QBTI AI token check]', {
+        totalTokens: totalTokens,
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
+        burst: burstAfter
+      });
       setAILock(burstAfter.locked ? 'token-burst' : 'token-anomaly', AI_BURST_LOCK_MS);
       throw new Error((burstAfter.locked ? 'TOKEN_BURST:' : 'TOKEN_ANOMALY:') + aiTokenErrorText());
     }
