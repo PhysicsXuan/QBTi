@@ -1659,6 +1659,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(!/Error/i.test(openingText) || !/(扫描|探测|雷达)/.test(openingText) || !/我/.test(openingText)){
       throw new Error('MISSING_RADAR_OPENING');
     }
+    const introAll = script.intro.join(' ');
+    if(!/(放空|清空)/.test(introAll) || !/想象/.test(introAll) || !/(跟随|跟着|文字的指引)/.test(introAll)){
+      throw new Error('MISSING_INTRO_RITUAL');
+    }
     const incomplete =
       script.intro.length < 4 ||
       script.bridge.length < 2 ||
@@ -1755,6 +1759,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const style = [
       '【开场强制】前2-4句必须是“我”在探测用户的该维度雷达，必须出现 Error 字样、本次错误码和“扫描/探测/雷达”中的一个；雷达状态对应维度状态；雷达异常要成为第一幕前兆的原因；每次换个错误码和现象',
       '本次错误码：' + errorCode,
+      '【引入节奏】intro 8-10句，按顺序：——哔…→我正在扫描你的雷达…→Error错误码→状态观察→不过别担心…还能争…→我理解你为何会是这种状态…→现实中每天迎接那么多未知…是个人都会累的…→那么现在…→把中控台关机…放空你的大脑…跟随着文字的指引…→想象一下…；必须出现“放空你的大脑”“跟随着文字的指引”“想象一下”',
       '【雷达→剧本】不要报完 Error 就切场景；先读出用户状态，再让异常信号接入/投影到：' + link + '；用2-4句 bridge 完成过渡，最后让用户进入场景',
       '【核心：尊重用户】不爆粗口、不嘲讽、不贬低、不贴标签、不诊断、不评价用户的选择；幽默来自系统自己和情境，不来自嘲笑用户',
       '【语气】像真人在说话，可以吐槽设备、吐槽自己、慌、嘴硬、被打脸、说半句话；可以用“不是哥们”“绷不住了”“什么鬼”，但不要每句都堆梗',
@@ -1777,11 +1782,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       '',
       style,
       '',
-      '写四幕互动剧本，总字数 800-1100 字。所有句子末尾不要加句号。只输出合法 JSON，不要 markdown、代码块或解释。',
+      '写四幕互动剧本，总字数 1000-1300 字。所有句子末尾不要加句号。只输出合法 JSON，不要 markdown、代码块或解释。',
       '必须完整输出所有字段，不能省略 continuity、branches、act1.lines 或任何 feedback。',
       '{',
       '  "continuity": { "openingDetail": "开场埋下的细节", "causeChain": ["前兆→触发", "触发→后果", "后果→回收"], "payoff": "终幕如何回收" },',
-      '  "intro": ["6-8句开场，第一句可以是——哔…"],',
+      '  "intro": ["8-10句开场：雷达→Error→状态观察→安抚→理解→现实共鸣→那么现在→放空大脑→想象一下"],',
       '  "bridge": ["2-4句：读出雷达状态，把信号接到场景设备，最后让用户进入场景"],',
       '  "act1": { "lines": ["1-3句过渡"], "prompt": "第一幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
       '  "act2": { "lines": ["3-5句过渡"], "prompt": "第二幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
