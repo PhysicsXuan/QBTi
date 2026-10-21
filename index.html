@@ -679,7 +679,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_TOKEN_USAGE_KEY = 'qbti_ai_tokens_v1';
   const AI_INFLIGHT_KEY = 'qbti_ai_inflight_v1';
   const AI_BURST_WINDOW_MS = 10 * 1000;
-  const AI_BURST_TOKEN_LIMIT = 8000;
+  const AI_BURST_TOKEN_LIMIT = 20000;
   const AI_BURST_LOCK_MS = 10 * 60 * 1000;
   const AI_BURST_KEY = 'qbti_ai_burst_v1';
   const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
@@ -697,7 +697,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         const pub = await pubRes.json().catch(() => ({}));
         hasCloud = !!(pub && pub.hasKey);
       } catch(e){}
-      if(hasCloud) return;
+      if(hasCloud){
+        /* 云端已有 Key：先做一次极小请求验证；坏 Key 用本机可用 Key 覆盖 */
+        try {
+          const test = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: 'ping', system: 'Reply OK', max_tokens: 1, temperature: 0 })
+          });
+          if(test.ok) return;
+          if(test.status !== 401 && test.status !== 403) return;
+        } catch(e){ return; }
+      }
       const res = await fetch('/api/admin/ai-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
@@ -1189,14 +1200,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
   function clearLegacyTokenLocksOnce(){
     try {
-      if(localStorage.getItem('qbti_burst_migration_v2') === '1') return;
+      if(localStorage.getItem('qbti_burst_migration_v3') === '1') return;
       const keys = [];
       for(let i = 0; i < localStorage.length; i++){
         const key = localStorage.key(i);
         if(key && (key.indexOf('qbti_ai_lock_v1:') === 0 || key.indexOf('qbti_ai_burst_v1:') === 0)) keys.push(key);
       }
       keys.forEach(key => { try { localStorage.removeItem(key); } catch(e){} });
-      localStorage.setItem('qbti_burst_migration_v2', '1');
+      localStorage.setItem('qbti_burst_migration_v3', '1');
     } catch(e){}
   }
 
@@ -1692,22 +1703,29 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       Number(maxTokensOverride) || (useServer ? Number(serverAIConfig.maxTokens) : Number(cfg.maxTokens)) || 2400,
       AI_HARD_MAX_TOKENS
     );
+    const directHeaders = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key };
+    const directBody = {
+      model: cfg.model,
+      messages: [
+        { role: 'system', content: systemContent },
+        { role: 'user', content: prompt }
+      ],
+      temperature: temperature,
+      max_tokens: maxTokens,
+      stream: false
+    };
     const endpoint = useServer ? '/api/ai/chat' : cfg.url;
     const headers = useServer
       ? { 'Content-Type': 'application/json' }
-      : { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key };
+      : directHeaders;
     const requestBody = useServer
       ? { prompt: prompt, system: systemContent, temperature: temperature, max_tokens: maxTokens }
-      : {
-          model: cfg.model,
-          messages: [
-            { role: 'system', content: systemContent },
-            { role: 'user', content: prompt }
-          ],
-          temperature: temperature,
-          max_tokens: maxTokens,
-          stream: false
-        };
+      : directBody;
+    const fetchDirect = () => fetch(cfg.url, {
+      method: 'POST',
+      headers: directHeaders,
+      body: JSON.stringify(directBody)
+    });
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 60000);
@@ -1720,15 +1738,24 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         body: JSON.stringify(requestBody)
       });
     } catch(e){
-      if(e && e.name === 'AbortError'){
-        throw new Error('REQUEST_TIMEOUT');
+      if(e && e.name === 'AbortError') throw new Error('REQUEST_TIMEOUT');
+      if(useServer && cfg.key){
+        try { res = await fetchDirect(); }
+        catch(e2){ throw new Error('CORS_OR_NETWORK'); }
+      } else {
+        throw new Error('CORS_OR_NETWORK');
       }
-      throw new Error('CORS_OR_NETWORK');
     } finally {
       clearTimeout(timer);
       releaseAIInflight(inflightId);
     }
 
+    if(!res.ok && useServer && cfg.key){
+      try {
+        const direct = await fetchDirect();
+        if(direct.ok){ res = direct; console.warn('[QBTI] 云端代理失败，已回退到本机管理员配置'); }
+      } catch(e){}
+    }
     if(!res.ok){ const t = await res.text().catch(() => ''); throw new Error('API ' + res.status + ' · ' + t.slice(0,180)); }
     const data = await res.json();
     const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
@@ -1805,7 +1832,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}');
     if(start >= 0 && end > start) text = text.slice(start, end + 1);
-    const o = JSON.parse(text);
+    text = text.replace(/,\s*([}\]])/g, '$1');
+    let o;
+    try { o = JSON.parse(text); } catch(parseErr){
+      console.warn('[QBTI dialogue] JSON 解析失败:', parseErr.message, text.slice(0, 200));
+      throw parseErr;
+    }
     if(!o || typeof o !== 'object') throw new Error('BAD_DIALOGUE');
     const continuity = {
       openingDetail: stripSentencePeriod(o.continuity && o.continuity.openingDetail),
@@ -1826,33 +1858,41 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     ['A', 'B', 'C'].forEach(k => {
       script.branches[k] = dialogueLines(o.branches && o.branches[k]);
     });
+    /* 容错：不因缺少过渡/背景/因果字段而让整次生成失败；能播的剧本优先 */
     const openingText = script.intro.slice(0, 5).join(' ');
     if(!/Error/i.test(openingText) || !/(扫描|探测|雷达)/.test(openingText) || !/我/.test(openingText)){
-      throw new Error('MISSING_RADAR_OPENING');
+      console.warn('[QBTI dialogue] AI 未按模板输出雷达开场，已接受当前剧本');
     }
     const introAll = script.intro.join(' ');
     if(!/(放空|清空)/.test(introAll) || !/想象/.test(introAll) || !/(跟随|跟着|文字的指引)/.test(introAll)){
-      throw new Error('MISSING_INTRO_RITUAL');
+      console.warn('[QBTI dialogue] AI 未输出完整放空大脑引入，已接受当前剧本');
     }
     const incomplete =
-      script.intro.length < 4 ||
-      script.background.length < 2 ||
-      !continuity.openingDetail || !continuity.payoff || continuity.causeChain.length < 2 ||
-      script.act1.lines.length < 1 || !script.act1.prompt || script.act1.options.length < 3 ||
-      script.act2.lines.length < 2 || !script.act2.prompt || script.act2.options.length < 3 ||
-      script.act3.lines.length < 2 || !script.act3.prompt || script.act3.options.length < 3 ||
-      script.final.lines.length < 2 || !script.final.prompt || script.final.options.length < 3 ||
-      ['A','B','C'].some(k => script.branches[k].length < 1);
+      script.intro.length < 2 ||
+      !script.act1.prompt || script.act1.options.length < 2 ||
+      !script.act2.prompt || script.act2.options.length < 2 ||
+      !script.act3.prompt || script.act3.options.length < 2 ||
+      !script.final.prompt || script.final.options.length < 2;
     if(incomplete) throw new Error('INCOMPLETE_DIALOGUE');
     const allOptions = script.act1.options.concat(script.act2.options, script.act3.options, script.final.options);
-    if(allOptions.some(o => !o.feedback.length)) throw new Error('MISSING_FEEDBACK');
+    allOptions.forEach(o => { if(!o.feedback.length) o.feedback = ['我记下了。']; });
+    ['A','B','C'].forEach(k => {
+      if(!script.branches[k] || script.branches[k].length < 1){
+        script.branches[k] = ['你做出了选择…', '后面的事情…慢慢展开了…'];
+      }
+    });
+    if(!script.background.length){
+      script.background = ['你站在这个场景里…', '周围还有一点没有散去的旧痕迹…'];
+    }
     const fullText = JSON.stringify(script);
     const offScene = {
       II: /避难所|铁门|开门|门口|门后|门外|那扇门|一扇门|天文台|图书馆|灯塔/,
       LA: /避难所|铁门|开门|门口|门后|门外|那扇门|一扇门|列车|锅炉|天文台|灯塔/,
       UR: /避难所|铁门|开门|门口|门后|门外|那扇门|一扇门|列车|锅炉|图书馆|地图|天文台/
     }[dimension];
-    if(offScene && offScene.test(fullText)) throw new Error('DIALOGUE_OFF_SCENE');
+    if(offScene && offScene.test(fullText)){
+      console.warn('[QBTI dialogue] AI 串用了其它维度意象，已接受当前剧本');
+    }
     const disrespect = /他妈的|去你妈的|妈的|傻逼|操你|滚蛋|滚开|闭嘴|废物|没用的东西|怂货|巨婴|没救|你有病|loser|idiot|stupid|shut up/i;
     if(disrespect.test(fullText)) throw new Error('DISRESPECTFUL_LANGUAGE');
     return script;
@@ -2028,7 +2068,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         aiErr = e2;
       }
     }
-    if(!script) throw aiErr || new Error('DIALOGUE_UNAVAILABLE');
+    if(!script){
+      console.warn('[QBTI dialogue] 生成失败:', aiErr && aiErr.message || 'DIALOGUE_UNAVAILABLE');
+      throw aiErr || new Error('DIALOGUE_UNAVAILABLE');
+    }
     return script;
   }
 
