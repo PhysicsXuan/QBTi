@@ -19,6 +19,7 @@
     /* 主页量子球配色：默认最近一次，或从历史问卷中自定义 */
     sphereTheme: 'last',
     sphereCustomTs: null,
+    userCallName: '',
     /* 管理员高级设置（仅管理员面板可见，普通用户不会显示） */
     adminDebug: false,
     adminForceSimple: false,
@@ -127,6 +128,7 @@
     const setSphereCustom = $('setSphereCustom');
     const setSphereCustomRow = $('setSphereCustomRow');
     const setSphereHint = $('setSphereHint');
+    const setUserCallName = $('setUserCallName');
     const groups = {
       effectsMode: $('setEffectsMode'),
       fontWeight: $('setFontWeight'),
@@ -149,6 +151,7 @@
       if(setFontSizeVal){ setFontSizeVal.textContent = cur.fontSize + '%'; }
       if(setLang){ setLang.value = cur.lang; }
       if(setSphereCustom && cur.sphereCustomTs != null) setSphereCustom.value = String(cur.sphereCustomTs);
+      if(setUserCallName) setUserCallName.value = cur.userCallName || '';
       Object.keys(groups).forEach(k => {
         const el = groups[k];
         if(!el) return;
@@ -463,6 +466,15 @@
         syncUI();
         emit('sphereCustom');
       });
+    }
+    if(setUserCallName){
+      const saveCallName = () => {
+        cur.userCallName = String(setUserCallName.value || '').trim().slice(0, 20);
+        saveSettings(cur);
+        emit('userCallName');
+      };
+      setUserCallName.addEventListener('change', saveCallName);
+      setUserCallName.addEventListener('blur', saveCallName);
     }
 
     function bindGroup(name, onChange){

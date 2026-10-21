@@ -996,6 +996,7 @@
           /* 进入星云（simple 与 normal 都进入，但渲染简化） */
           soloNebula = true;
           explodedBall = activeBall;
+          const explodedDim = activeBall._dim || null;
           soloR = safeBaseR() * activeBall.scale;
           const bColor = colorForBall(activeBall, balls.indexOf(activeBall));
           applyColor(bColor[0], bColor[1], bColor[2]);
@@ -1005,6 +1006,12 @@
           flash = 1;
           screenShake = Math.max(screenShake, 1.5);
           initNebula();
+          /* 通知页面层：星云已展开，进入该维度的 AI 对话 */
+          try {
+            setTimeout(function(){
+              window.dispatchEvent(new CustomEvent('qbti:nebula-open', { detail: { dim: explodedDim } }));
+            }, 650);
+          } catch(e){}
         }
         activeBall = null; return;
       }
@@ -2223,9 +2230,11 @@
     window.QuantumSphere = {
       resize: resize,
       isSplit: function(){ return hasSplit; },
+      isNebula: function(){ return soloNebula; },
       goBack: function(){
         if (transitionType) return;
         if (soloNebula) {
+          try { window.dispatchEvent(new Event('qbti:nebula-close')); } catch(e){}
           transitionType = 'nebula-to-split';
           transitionProgress = 0;
           AudioFX.focus();
