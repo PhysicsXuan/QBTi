@@ -1645,6 +1645,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const script = {
       continuity: continuity,
       intro: dialogueLines(o.intro),
+      bridge: dialogueLines(o.bridge),
       act1: { lines: dialogueLines(o.act1 && o.act1.lines), prompt: stripSentencePeriod(o.act1 && o.act1.prompt), options: dialogueOptions(o.act1 && o.act1.options, 3) },
       act2: { lines: dialogueLines(o.act2 && o.act2.lines), prompt: stripSentencePeriod(o.act2 && o.act2.prompt), options: dialogueOptions(o.act2 && o.act2.options, 3) },
       branches: {},
@@ -1660,6 +1661,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
     const incomplete =
       script.intro.length < 4 ||
+      script.bridge.length < 2 ||
       !continuity.openingDetail || !continuity.payoff || continuity.causeChain.length < 2 ||
       script.act1.lines.length < 1 || !script.act1.prompt || script.act1.options.length < 3 ||
       script.act2.lines.length < 2 || !script.act2.prompt || script.act2.options.length < 3 ||
@@ -1744,9 +1746,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const causal = causalList[Math.floor(Math.random() * causalList.length)];
     const errorCodes = ['Error 404 No Found', 'Error 403 Signal Lost', 'Error 500 Radar Overheat', 'Error 0x1F 信号漂移', 'Error 418 雷达不在服务区', 'Error 502 维度回波中断'];
     const errorCode = errorCodes[Math.floor(Math.random() * errorCodes.length)];
+    const link = {
+      PO: '观测室墙上那台还在闪的旧射电接收器',
+      II: '列车驾驶室里的旧广播和压力表',
+      LA: '图书馆借阅台上的绿色终端和台灯',
+      UR: '灯塔底层的无线电和雾笛'
+    }[dim] || '场景里的旧接收器';
     const style = [
       '【开场强制】前2-4句必须是“我”在探测用户的该维度雷达，必须出现 Error 字样、本次错误码和“扫描/探测/雷达”中的一个；雷达状态对应维度状态；雷达异常要成为第一幕前兆的原因；每次换个错误码和现象',
       '本次错误码：' + errorCode,
+      '【雷达→剧本】不要报完 Error 就切场景；先读出用户状态，再让异常信号接入/投影到：' + link + '；用2-4句 bridge 完成过渡，最后让用户进入场景',
       '【核心：尊重用户】不爆粗口、不嘲讽、不贬低、不贴标签、不诊断、不评价用户的选择；幽默来自系统自己和情境，不来自嘲笑用户',
       '【语气】像真人在说话，可以吐槽设备、吐槽自己、慌、嘴硬、被打脸、说半句话；可以用“不是哥们”“绷不住了”“什么鬼”，但不要每句都堆梗',
       '不要把选项写成“怂”“莽”“摆烂”这种人格局限标签；描述行为，不评价人格',
@@ -1773,6 +1782,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       '{',
       '  "continuity": { "openingDetail": "开场埋下的细节", "causeChain": ["前兆→触发", "触发→后果", "后果→回收"], "payoff": "终幕如何回收" },',
       '  "intro": ["6-8句开场，第一句可以是——哔…"],',
+      '  "bridge": ["2-4句：读出雷达状态，把信号接到场景设备，最后让用户进入场景"],',
       '  "act1": { "lines": ["1-3句过渡"], "prompt": "第一幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
       '  "act2": { "lines": ["3-5句过渡"], "prompt": "第二幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
       '  "branches": { "A": ["2-4句"], "B": ["2-4句"], "C": ["2-4句"] },',
@@ -1979,6 +1989,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   async function playNebulaDialogue(script, session){
     await qDialogPlayLines(script.intro, session);
+    await qDialogPlayLines(script.bridge, session);
     await qDialogPlayLines(script.act1.lines, session);
     let pick = await qDialogAskChoice(script.act1.prompt, script.act1.options, session);
     if(pick < 0) return;
