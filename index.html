@@ -1518,7 +1518,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
   function saveCfg(cfg){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
 
-  async function callAPI(prompt, systemOverride, temperatureOverride){
+  async function callAPI(prompt, systemOverride, temperatureOverride, maxTokensOverride){
     const cfg = getCfg();
     if(!cfg.key) throw new Error('未配置 API Key，请点击右下角 ⚙ 配置');
 
@@ -1555,7 +1555,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           temperature: temperatureOverride != null
             ? Math.max(0, Math.min(1.5, Number(temperatureOverride)))
             : cfg.temperature,
-          max_tokens: Math.min(Number(cfg.maxTokens) || 2400, AI_HARD_MAX_TOKENS),
+          max_tokens: Math.min(Number(maxTokensOverride) || Number(cfg.maxTokens) || 2400, AI_HARD_MAX_TOKENS),
           stream: false
         })
       });
@@ -1596,10 +1596,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
      维度星云对话：AI 场景 + 打字机 + 选择分支
      ============================================================ */
   const DIALOGUE_DIMS = {
-    PO: { name: '潜能开放度', place: '一间昏暗的避难所', object: '一扇锈到发黑的铁门', theme: '门外那些未知的东西' },
-    II: { name: '内在驱动力', place: '一台熄火的旧发动机旁', object: '一个空掉的油箱', theme: '重新点燃自己的动力' },
-    LA: { name: '学习自主性', place: '一张没有标注路线的地图前', object: '三条被雾遮住的小路', theme: '自己选择要走的方向' },
-    UR: { name: '未知应对方式', place: '一场没有预报的风暴里', object: '远处一座忽明忽暗的灯塔', theme: '那些无法提前确定的事' }
+    PO: { name: '潜能开放度', place: '一座废弃的天文台观测室', object: '一扇很久没有打开的观测门', theme: '星图接缝和门后的未知' },
+    II: { name: '内在驱动力', place: '一列停在环形轨道上的旧列车', object: '已经冷却的锅炉', theme: '要不要重新点火' },
+    LA: { name: '学习自主性', place: '一间会自动改写书页的图书馆', object: '一张只有你能看见的地图', theme: '跟着路线还是自己画一条' },
+    UR: { name: '未知应对方式', place: '夜里的海面', object: '一座灯已经灭了的灯塔', theme: '雾里的声音和船影' }
   };
 
   function dialogueAddress(name){
@@ -1677,8 +1677,54 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     return context;
   }
 
+  function buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger){
+    const d = DIALOGUE_DIMS[dim] || DIALOGUE_DIMS.PO;
+    const context = buildDialogueContext(dim, dimState, name, entry, isDanger);
+    const stateText = dimState === 'danger' ? '危险/未坍缩，主线目标不清晰' : dimState === 'good' ? '良好/方向清晰' : '叠加/方向未定';
+    const address = dialogueAddress(name);
+    const ratios = Object.keys(context.ratios || {}).map(k => k + '=' + context.ratios[k] + '%').join(' / ');
+    const forbidden = dim === 'PO'
+      ? '允许天文台观测门，但不要出现避难所、末日、怪物、列车、图书馆、灯塔'
+      : dim === 'II'
+        ? '禁止出现门、避难所、铁门、开门、天文台、图书馆、灯塔'
+        : dim === 'LA'
+          ? '禁止出现门、避难所、铁门、开门、列车、锅炉、天文台、灯塔'
+          : '禁止出现门、避难所、铁门、开门、列车、锅炉、图书馆、地图、天文台';
+    const style = [
+      '【语气】像真人在说话，可以吐槽、慌、嘴硬、被打脸、说半句话。',
+      '允许自然粗口，例如“他妈的”“去你妈的”“不是哥们”“绷不住了”“什么鬼”，不要用星号打码；但不要用脏话攻击用户。',
+      '不要每句都升华，不要心理咨询腔，不要三个选项都像正确答案。',
+      '【逻辑】任何异常发生前必须先有前兆和原因：旧支架吱呀、灰尘、煤灰、潮气、旧轨道、潮汐、风向。',
+      '第一幕埋下的东西第二幕要响；第二幕的选择第三幕要承担后果；终幕问题必须从经历里长出来。',
+      '写完后自检：删掉所有“突然”发生的事件。'
+    ].join('\n');
+    return [
+      '你是 QBTI 的量子态系统，第一人称“我”，用户是“你”。',
+      '维度：' + d.name,
+      '场景：' + d.place + '；核心物件：' + d.object + '；核心隐喻：' + d.theme,
+      '禁止：' + forbidden,
+      '用户称呼：' + address,
+      '用户问卷：' + (context.code || '未记录') + (context.typeName ? '（' + context.typeName + '）' : ''),
+      '维度状态：' + stateText + '；整体状态：' + (isDanger ? '危险量子态' : '非危险态'),
+      ratios ? '维度内部占比：' + ratios + (context.lead ? '；主导 ' + context.lead + '，差值 ' + context.gap + '%' : '') : '',
+      '',
+      style,
+      '',
+      '写四幕互动剧本，总字数 700-1000 字。只输出合法 JSON，不要 markdown、代码块或解释。',
+      '{',
+      '  "intro": ["6-8句开场，第一句可以是——哔…"],',
+      '  "act1": { "prompt": "第一幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
+      '  "act2": { "lines": ["3-5句过渡"], "prompt": "第二幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
+      '  "branches": { "A": ["3-5句"], "B": ["3-5句"], "C": ["3-5句"] },',
+      '  "act3": { "lines": ["3-5句过渡"], "prompt": "第三幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
+      '  "final": { "lines": ["3-5句终幕铺垫"], "prompt": "最后一个开放问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] }, { "text": "选项D", "feedback": ["1-2句"] } ] }',
+      '}',
+      '现在只输出 JSON。'
+    ].filter(Boolean).join('\n');
+  }
+
   async function requestDialogueScript(dim, dimState, name, entry, isDanger){
-    /* 提示词由学生端服务器按维度蓝图 + 该用户问卷数据生成，前端不再拼剧本提示词 */
+    /* 优先使用后端生成的用户专属提示词；后端不可达时使用内置的应急提示词，仍然每次调用 AI */
     const context = buildDialogueContext(dim, dimState, name, entry, isDanger);
     let data = null;
     try {
@@ -1697,18 +1743,31 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(e){
       data = null;
     }
-    if(!data || !data.prompt) throw new Error('DIALOGUE_PROMPT_UNAVAILABLE');
 
+    const prompt = (data && data.prompt) ? data.prompt : buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger);
+    const systemPrompt = '你是 QBTI 的量子态对话系统。你必须只输出合法 JSON，严格遵守用户给出的红线和 JSON 结构；不要输出 markdown、代码块或任何解释。';
     let script = null;
     let aiErr = null;
     try {
-      const raw = await callAPI(data.prompt, '你是 QBTI 的量子态对话系统。你必须只输出合法 JSON，严格遵守用户给出的红线和 JSON 结构；不要输出 markdown、代码块或任何解释。', 0.95);
+      const raw = await callAPI(prompt, systemPrompt, 0.95, 2600);
       script = normalizeDialogue(raw);
     } catch(e){
       aiErr = e;
       script = null;
     }
-    /* 不再使用任何静态/兜底剧本：每次必须由本次 AI 生成 */
+
+    /* 只对格式/网络类失败重试一次；Token 锁和未配置 Key 不重试 */
+    const msg = String((aiErr && aiErr.message) || '');
+    const canRetry = aiErr && msg.indexOf('TOKEN_') !== 0 && msg.indexOf('未配置 API Key') < 0;
+    if(!script && canRetry){
+      try {
+        const retryPrompt = buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger) + '\n\n上一次输出不是合法 JSON 或缺少必要段落。请压缩到 600-800 字，只输出合法 JSON，确保所有括号和引号闭合。';
+        const raw2 = await callAPI(retryPrompt, systemPrompt, 0.8, 2600);
+        script = normalizeDialogue(raw2);
+      } catch(e2){
+        aiErr = e2;
+      }
+    }
     if(!script) throw aiErr || new Error('DIALOGUE_UNAVAILABLE');
     return script;
   }
@@ -1945,7 +2004,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(!script){
       const msg = String((scriptErr && scriptErr.message) || '');
       if(loading) loading.style.display = 'none';
-      if(line){ line.style.display = 'block'; line.textContent = msg.indexOf('TOKEN_') === 0 ? 'Token 用量保护已锁定，请稍后再试。' : '这次剧本没生成出来…再炸一次试试。'; }
+      if(line){
+        line.style.display = 'block';
+        if(msg.indexOf('TOKEN_') === 0) line.textContent = 'Token 用量保护已锁定，请稍后再试。';
+        else if(msg.indexOf('未配置 API Key') >= 0) line.textContent = '还没有配置 AI Key。请管理员在 ⚙ 里填上再来。';
+        else line.textContent = '……行吧，这次剧本卡壳了。再炸一次试试。';
+      }
       if(hint) hint.classList.add('show');
       qDialogContinueResolve = () => {
         qDialogContinueResolve = null;
@@ -1961,7 +2025,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(err){
       if(qDialogAlive(session)){
         const l = qDialogLineEl();
-        if(l){ l.style.display = 'block'; l.textContent = '剧本生成中断了…再炸一次试试。'; }
+        if(l){ l.style.display = 'block'; l.textContent = '……行吧，剧本演到一半卡住了。再炸一次试试。'; }
         const h = qDialogHintEl();
         if(h) h.classList.add('show');
         qDialogContinueResolve = () => {
