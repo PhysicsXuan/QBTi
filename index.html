@@ -680,7 +680,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_INFLIGHT_KEY = 'qbti_ai_inflight_v1';
   const AI_BURST_WINDOW_MS = 10 * 1000;
   const AI_BURST_TOKEN_LIMIT = 8000;
-  const AI_BURST_REQUEST_LIMIT = 4;
   const AI_BURST_LOCK_MS = 10 * 60 * 1000;
   const AI_BURST_KEY = 'qbti_ai_burst_v1';
   const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
@@ -743,14 +742,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   const AI_TOKEN_ERROR_TEXT = {
-    'zh-CN': '报告生成错误，请稍后再试。',
-    'zh-TW': '報告生成錯誤，請稍後再試。',
-    en: 'Report generation failed. Please try again later.',
-    es: 'No se pudo generar el informe. Inténtalo de nuevo más tarde.',
-    pt: 'Falha ao gerar o relatório. Tente novamente mais tarde.',
-    ko: '보고서 생성에 실패했습니다. 잠시 후 다시 시도하세요.',
-    ja: 'レポートの生成に失敗しました。しばらくしてから再度お試しください。',
-    fr: 'Échec de la génération du rapport. Réessayez plus tard.'
+    'zh-CN': '加载失败，请稍后再试',
+    'zh-TW': '載入失敗，請稍後再試',
+    en: 'Loading failed. Please try again later.',
+    es: 'Error de carga. Inténtalo de nuevo más tarde.',
+    pt: 'Falha ao carregar. Tente novamente mais tarde.',
+    ko: '불러오지 못했습니다. 잠시 후 다시 시도하세요.',
+    ja: '読み込みに失敗しました。しばらくしてから再度お試しください。',
+    fr: 'Échec du chargement. Réessayez plus tard.'
   };
   function aiTokenErrorText(){
     return AI_TOKEN_ERROR_TEXT[currentLang()] || AI_TOKEN_ERROR_TEXT['zh-CN'];
@@ -1190,36 +1189,38 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
   function clearLegacyTokenLocksOnce(){
     try {
-      if(localStorage.getItem('qbti_lock_migration_burst_v1') === '1') return;
+      if(localStorage.getItem('qbti_burst_migration_v2') === '1') return;
       const keys = [];
       for(let i = 0; i < localStorage.length; i++){
         const key = localStorage.key(i);
-        if(key && key.indexOf('qbti_ai_lock_v1:') === 0) keys.push(key);
+        if(key && (key.indexOf('qbti_ai_lock_v1:') === 0 || key.indexOf('qbti_ai_burst_v1:') === 0)) keys.push(key);
       }
       keys.forEach(key => { try { localStorage.removeItem(key); } catch(e){} });
-      localStorage.setItem('qbti_lock_migration_burst_v1', '1');
+      localStorage.setItem('qbti_burst_migration_v2', '1');
     } catch(e){}
   }
 
   function burstLocked(){
     const events = getBurstEvents();
     const tokens = events.reduce((sum, e) => sum + (Number(e.tokens) || 0), 0);
-    return { locked: events.length >= AI_BURST_REQUEST_LIMIT || tokens >= AI_BURST_TOKEN_LIMIT, tokens: tokens, count: events.length };
+    return { locked: tokens >= AI_BURST_TOKEN_LIMIT, tokens: tokens, count: events.length };
   }
   function recordBurst(tokens){
+    const n = Math.max(0, Number(tokens) || 0);
+    if(n <= 0) return burstLocked();
     const events = getBurstEvents();
-    events.push({ ts: Date.now(), tokens: Math.max(0, Number(tokens) || 0) });
+    events.push({ ts: Date.now(), tokens: n });
     try { localStorage.setItem(aiKey(AI_BURST_KEY), JSON.stringify(events.slice(-30))); } catch(e){}
     return burstLocked();
   }
 
   /* 维度对话只受全局 Token 锁保护：每日对话次数不限 */
   function dialogueGlobalLock(){
-    if(getAILock()) return { locked: true, message: '检测到极短时间内 Token 消耗异常，已临时中断，请稍后再试。' };
+    if(getAILock()) return { locked: true, message: dialogueUiText('failed') };
     const burst = burstLocked();
     if(burst.locked){
       setAILock('token-burst', AI_BURST_LOCK_MS);
-      return { locked: true, message: '检测到极短时间内 Token 消耗异常，已临时中断，请稍后再试。' };
+      return { locked: true, message: dialogueUiText('failed') };
     }
     return { locked: false };
   }
@@ -1671,8 +1672,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     /* 不再按当日累计 Token 锁定；只检查短时间内的爆发式使用 */
     if(getAILock()) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
     if(String(prompt || '').length > AI_MAX_PROMPT_CHARS){
-      setAILock('prompt-too-large', AI_BURST_LOCK_MS);
-      throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+      throw new Error('PROMPT_TOO_LARGE');
     }
     const burstBefore = burstLocked();
     if(burstBefore.locked){
@@ -1721,8 +1721,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       });
     } catch(e){
       if(e && e.name === 'AbortError'){
-        setAILock('timeout', AI_LOCK_MS);
-        throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+        throw new Error('REQUEST_TIMEOUT');
       }
       throw new Error('CORS_OR_NETWORK');
     } finally {
@@ -1762,6 +1761,21 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     LA: { name: '学习自主性', place: '一间会自动改写书页的图书馆', object: '一张只有你能看见的地图', theme: '跟着路线还是自己画一条' },
     UR: { name: '未知应对方式', place: '夜里的海面', object: '一座灯已经灭了的灯塔', theme: '雾里的声音和船影' }
   };
+
+  const DIALOGUE_UI_TEXT = {
+    'zh-CN': { hint: '点击屏幕任意位置以继续', failed: '加载失败，请稍后再试', close: '结束对话' },
+    'zh-TW': { hint: '點擊螢幕任意位置以繼續', failed: '載入失敗，請稍後再試', close: '結束對話' },
+    en: { hint: 'Click anywhere to continue', failed: 'Loading failed. Please try again later.', close: 'End dialogue' },
+    es: { hint: 'Haz clic en cualquier lugar para continuar', failed: 'Error de carga. Inténtalo de nuevo más tarde.', close: 'Finalizar diálogo' },
+    pt: { hint: 'Clique em qualquer lugar para continuar', failed: 'Falha ao carregar. Tente novamente mais tarde.', close: 'Encerrar diálogo' },
+    ko: { hint: '화면 아무 곳이나 클릭하여 계속', failed: '불러오지 못했습니다. 잠시 후 다시 시도하세요.', close: '대화 종료' },
+    ja: { hint: '画面の任意の場所をクリックして続行', failed: '読み込みに失敗しました。しばらくしてから再度お試しください。', close: '会話を終了' },
+    fr: { hint: 'Cliquez n’importe où pour continuer', failed: 'Échec du chargement. Réessayez plus tard.', close: 'Terminer la conversation' }
+  };
+  function dialogueUiText(key){
+    const pack = DIALOGUE_UI_TEXT[currentLang()] || DIALOGUE_UI_TEXT['zh-CN'];
+    return pack[key] || DIALOGUE_UI_TEXT['zh-CN'][key] || '';
+  }
 
   function dialogueAddress(name){
     return (name && name !== '你') ? name : '你';
@@ -1870,6 +1884,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   function buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger){
     const d = DIALOGUE_DIMS[dim] || DIALOGUE_DIMS.PO;
+    const langName = {
+      'zh-CN': '简体中文', 'zh-TW': '繁體中文', en: 'English', es: 'Español',
+      pt: 'Português', ko: '한국어', ja: '日本語', fr: 'Français'
+    }[currentLang()] || '简体中文';
     const context = buildDialogueContext(dim, dimState, name, entry, isDanger);
     const stateText = dimState === 'danger' ? '危险/未坍缩，主线目标不清晰' : dimState === 'good' ? '良好/方向清晰' : '叠加/方向未定';
     const address = dialogueAddress(name);
@@ -1936,6 +1954,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     ].join('\n');
     return [
       '你是 QBTI 的量子态系统，第一人称“我”，用户是“你”。',
+      '【输出语言】必须全程使用 ' + langName + '。intro、bridge、background、选项、反馈、终幕全部使用该语言；JSON 字段名保持英文。',
       '维度：' + d.name,
       '场景：' + d.place + '；核心物件：' + d.object + '；核心隐喻：' + d.theme,
       '禁止：' + forbidden,
@@ -1975,6 +1994,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           dimension: dim,
           address: name,
           context: context,
+          lang: currentLang(),
           nonce: Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)
         })
       });
@@ -2195,6 +2215,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const choices = qDialogChoicesEl();
     const hint = qDialogHintEl();
     if(dialog) dialog.classList.add('show');
+    if(hint) hint.textContent = dialogueUiText('hint');
+    const closeBtn = $('qDialogClose');
+    if(closeBtn) closeBtn.setAttribute('aria-label', dialogueUiText('close'));
     if(loading) loading.style.display = '';
     if(line){ line.style.display = 'none'; line.textContent = ''; line.classList.remove('fade'); }
     if(choices){ choices.classList.remove('show'); choices.innerHTML = ''; }
@@ -2248,10 +2271,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(loading) loading.style.display = 'none';
       if(line){
         line.style.display = 'block';
-        if(msg.indexOf('TOKEN_BURST') === 0) line.textContent = '检测到极短时间内 Token 消耗异常，已临时中断，请稍后再试。';
-        else if(msg.indexOf('TOKEN_') === 0) line.textContent = 'Token 调用已被临时中断，请稍后再试。';
-        else if(msg.indexOf('未配置 API Key') >= 0) line.textContent = '还没有配置 AI Key。请管理员在 ⚙ 里填上再来。';
-        else line.textContent = '……行吧，这次剧本卡壳了。再炸一次试试。';
+        line.textContent = dialogueUiText('failed');
       }
       if(hint) hint.classList.add('show');
       qDialogContinueResolve = () => {
@@ -2268,7 +2288,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(err){
       if(qDialogAlive(session)){
         const l = qDialogLineEl();
-        if(l){ l.style.display = 'block'; l.textContent = '……行吧，剧本演到一半卡住了。再炸一次试试。'; }
+        if(l){ l.style.display = 'block'; l.textContent = dialogueUiText('failed'); }
         const h = qDialogHintEl();
         if(h) h.classList.add('show');
         qDialogContinueResolve = () => {

@@ -1205,11 +1205,22 @@ const DIALOGUE_VARIANTS = {
   ]
 };
 
+const DIALOGUE_LANG_NAMES = {
+  'zh-CN': '简体中文',
+  'zh-TW': '繁體中文',
+  en: 'English',
+  es: 'Español',
+  pt: 'Português',
+  ko: '한국어',
+  ja: '日本語',
+  fr: 'Français'
+};
+
 function dialogueSafeText(value, max){
   return String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').slice(0, max || 120);
 }
 
-function buildDialoguePrompt(dimension, address, context, nonce){
+function buildDialoguePrompt(dimension, address, context, nonce, lang){
   const b = DIALOGUE_BLUEPRINTS[dimension];
   if(!b) return null;
   const c = context || {};
@@ -1247,6 +1258,7 @@ function buildDialoguePrompt(dimension, address, context, nonce){
   const variant = variantList[Math.floor(Math.random() * variantList.length)];
   return [
     '你是 QBTI 的量子态系统，第一人称是“我”，用户是“你”。',
+    '【输出语言】必须全程使用 ' + (DIALOGUE_LANG_NAMES[lang] || '简体中文') + '。intro、bridge、background、选项、反馈、终幕全部使用该语言；JSON 的字段名保持英文。',
     '你正在和用户进行一场沉浸式维度对话。',
     '【本维度剧本设定】',
     '维度：' + b.name,
@@ -1431,7 +1443,8 @@ app.post('/api/dialogue/prompt', async (req, res) => {
     });
   }
   const nonce = dialogueSafeText(body.nonce, 48) || String(Date.now());
-  const prompt = buildDialoguePrompt(dimension, address, safeContext, nonce);
+  const lang = DIALOGUE_LANG_NAMES[body.lang] ? body.lang : 'zh-CN';
+  const prompt = buildDialoguePrompt(dimension, address, safeContext, nonce, lang);
   if(!prompt || prompt.length > 8500) return res.status(500).json({ error: '提示词生成失败' });
   res.json({ success: true, dimension: dimension, prompt: prompt });
 });
