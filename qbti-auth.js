@@ -18,6 +18,7 @@
 
   let currentUser = null;
   let adminToken = null;
+  let syncToken = null;
   let codeTimer = null;
   let listeners = [];
   let injected = false;
@@ -790,7 +791,8 @@
 
       const user = cacheServerUser(result.user);
       if(!user) throw new Error('返回用户数据异常');
-      saveSession(user.email);
+      saveSession(user.email, { syncToken: result.syncToken || null });
+      syncToken = result.syncToken || null;
       currentUser = publicUser(user);
       submitBtn.disabled = false;
       submitBtn.textContent = '创建账户';
@@ -837,7 +839,8 @@
         const admin = Object.assign({}, result.user, { adminToken: result.token });
         cacheAdminUser(admin);
         adminToken = result.token;
-        saveSession(admin.email, { adminToken: result.token });
+        syncToken = result.syncToken || result.token;
+        saveSession(admin.email, { adminToken: result.token, syncToken: syncToken });
         currentUser = publicUser(admin);
         submitBtn.disabled = false;
         submitBtn.textContent = '登录';
@@ -883,7 +886,8 @@
 
       const user = cacheServerUser(result.user);
       if(!user) throw new Error('返回用户数据异常');
-      saveSession(user.email);
+      saveSession(user.email, { syncToken: result.syncToken || null });
+      syncToken = result.syncToken || null;
       currentUser = publicUser(user);
       submitBtn.disabled = false;
       submitBtn.textContent = '登录';
@@ -902,6 +906,7 @@
 
     clearSession();
     adminToken = null;
+    syncToken = null;
     currentUser = null;
     toast('已退出登录', 'info');
     emitChange();
@@ -926,6 +931,7 @@
     saveUsers(users);
     clearSession();
     adminToken = null;
+    syncToken = null;
     currentUser = null;
     emitChange();
     closeModal();
@@ -1218,6 +1224,7 @@
     const session = loadSession();
     if(session){
       adminToken = session.adminToken || null;
+      syncToken = session.syncToken || adminToken || null;
       const user = findUserByEmail(session.email);
       if(user) currentUser = publicUser(user);
       else clearSession();
@@ -1249,6 +1256,7 @@
     isLoggedIn: function(){ return !!currentUser; },
     isAdmin: function(){ return !!(currentUser && currentUser.role === 'admin'); },
     getAdminToken: function(){ return adminToken; },
+    getSyncToken: function(){ return adminToken || syncToken; },
     logout: function(){ handleLogout(); },
     onChange: function(fn){
       if(typeof fn !== 'function') return function(){};

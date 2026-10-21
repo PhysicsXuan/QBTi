@@ -956,7 +956,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const ts = Date.now();
     state.resultTs = ts;
     history.push({ ts, answers: Object.assign({}, answers), timings: state.timings ? Object.assign({}, state.timings) : {}, code: result.letters.join(''), suffix: result.suffix.letter, quantumState: qs ? qs.type : null, dimStates: ds, aiReport: state.aiReportText || null, aiReportSource: state.aiReportSource || null, aiReportLang: state.aiReportLang || null });
-    const historyLimit = (window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin()) ? 200 : 10;
+    const historyLimit = 500;
     if(history.length > historyLimit) history = history.slice(-historyLimit);
     try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
   }
@@ -966,6 +966,78 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(!u || !u.email) return [];
     const key = RESULT_KEY_PREFIX + u.email;
     try { const h = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(h) ? h : []; } catch(e){ return []; }
+  }
+
+  let crossDeviceSyncBusy = false;
+  function syncAuthHeaders(){
+    const token = (window.QAuth && window.QAuth.getSyncToken) ? window.QAuth.getSyncToken() : null;
+    return token ? { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } : null;
+  }
+
+  async function syncCrossDevice(){
+    if(crossDeviceSyncBusy) return;
+    if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
+    const headers = syncAuthHeaders();
+    if(!headers) return;
+    const u = window.QAuth.getCurrentUser();
+    if(!u || !u.email) return;
+    crossDeviceSyncBusy = true;
+    try {
+      if(window.QBTISettings && window.QBTISettings.syncFromServer){
+        try { await window.QBTISettings.syncFromServer(); } catch(e){}
+      }
+
+      const local = getAllResultsFromUser();
+      if(local.length){
+        try {
+          await fetch('/api/student/history/sync', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ records: local.slice(-500) })
+          });
+        } catch(e){}
+      }
+
+      let serverRecords = [];
+      try {
+        const res = await fetch('/api/student/history', { headers: headers });
+        if(res.ok){
+          const data = await res.json();
+          if(data && Array.isArray(data.records)) serverRecords = data.records;
+        }
+      } catch(e){}
+
+      const map = new Map();
+      local.forEach(r => { const ts = Number(r && r.ts); if(ts) map.set(ts, r); });
+      serverRecords.forEach(r => {
+        const ts = Number(r && (r.ts || r.quizTs));
+        if(!ts) return;
+        map.set(ts, Object.assign({}, map.get(ts) || {}, r, { ts: ts }));
+      });
+      const merged = Array.from(map.values()).sort((a, b) => Number(a.ts) - Number(b.ts)).slice(-500);
+      try { localStorage.setItem(RESULT_KEY_PREFIX + u.email, JSON.stringify(merged)); } catch(e){}
+      renderHistory();
+      applyHomepageTheme();
+      if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
+    } finally {
+      crossDeviceSyncBusy = false;
+    }
+  }
+
+  async function syncLatestHistoryToServer(){
+    if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
+    const headers = syncAuthHeaders();
+    if(!headers) return;
+    const history = getAllResultsFromUser();
+    if(!history.length) return;
+    const latest = history[history.length - 1];
+    try {
+      await fetch('/api/student/history/sync', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ records: [latest] })
+      });
+    } catch(e){}
   }
 
   /* ---------- AI 报告缓存 / 每日额度 / 历史更新 ---------- */
@@ -1118,6 +1190,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     entry.aiReportSource = state.aiReportSource || null;
     entry.aiReportLang = state.aiReportLang || null;
     try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
+    syncLatestHistoryToServer();
   }
 
   /* 报告页四球：只跟随当前这次结果，不改变主页配色 */
@@ -1330,6 +1403,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
     applyQuantumStateToSphere(qs, ds);
     saveResultToUser(state.result, qs, ds, state.answers);
+    syncLatestHistoryToServer();
     applyHomepageTheme();
     renderResult(state.result, null);
     renderQuantumStateBadge(qs, ds);
@@ -2461,7 +2535,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           renderQuantumStateBadge(state.quantumState, state.dimStates ? state.dimStates.types : null);
         }
       }
-      if(info.key === 'sphereTheme' || info.key === 'sphereCustom' || info.key === 'reset'){
+      if(info.key === 'sphereTheme' || info.key === 'sphereCustom' || info.key === 'reset' || info.key === 'sync'){
         applyHomepageTheme();
       }
       if(info.key === 'adminDebug' || info.key === 'adminForceSimple' || info.key === 'adminMuteSound' || info.key === 'adminDisableHaptic' || info.key === 'reset'){
@@ -2477,6 +2551,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       unlockAdminAILocks();
       applyHomepageTheme();
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
+      if(info.isLoggedIn) syncCrossDevice();
       if(info.isLoggedIn && info.user && info.user.role === 'admin') syncAdminHistoryToServer();
       if(info.isLoggedIn){ updateRestoreBanner(); }
       else {

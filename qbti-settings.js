@@ -24,7 +24,8 @@
     adminDebug: false,
     adminForceSimple: false,
     adminMuteSound: false,
-    adminDisableHaptic: false
+    adminDisableHaptic: false,
+    updatedAt: 0
   };
 
   const $ = id => document.getElementById(id);
@@ -53,8 +54,61 @@
       return merged;
     } catch(e){ return Object.assign({}, DEFAULT_SETTINGS); }
   }
+  let suppressServerPush = false;
+  let serverPushTimer = null;
+
   function saveSettings(s){
+    if(!suppressServerPush) s.updatedAt = Date.now();
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch(e){}
+    if(!suppressServerPush) scheduleServerPush();
+  }
+
+  function syncToken(){
+    try { return (window.QAuth && window.QAuth.getSyncToken) ? window.QAuth.getSyncToken() : null; } catch(e){ return null; }
+  }
+  function scheduleServerPush(){
+    if(!syncToken()) return;
+    clearTimeout(serverPushTimer);
+    serverPushTimer = setTimeout(() => { pushToServer(); }, 600);
+  }
+  async function pushToServer(){
+    const token = syncToken();
+    if(!token) return false;
+    try {
+      const res = await fetch('/api/student/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ settings: cur })
+      });
+      return res.ok;
+    } catch(e){ return false; }
+  }
+  function applyServerSettings(settings, updatedAt){
+    const merged = Object.assign({}, DEFAULT_SETTINGS, settings || {});
+    merged.updatedAt = Number(updatedAt) || Date.now();
+    suppressServerPush = true;
+    cur = merged;
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(cur)); } catch(e){}
+    applyAll(cur);
+    suppressServerPush = false;
+    const mask = $('settingsMask');
+    if(mask && mask._syncUI) mask._syncUI();
+    emit('sync');
+  }
+  async function syncFromServer(){
+    const token = syncToken();
+    if(!token) return false;
+    try {
+      const res = await fetch('/api/student/settings', { headers: { 'Authorization': 'Bearer ' + token } });
+      if(!res.ok) return false;
+      const data = await res.json();
+      if(data && data.settings && Number(data.updatedAt) > (Number(cur.updatedAt) || 0)){
+        applyServerSettings(data.settings, data.updatedAt);
+        return true;
+      }
+      await pushToServer();
+      return true;
+    } catch(e){ return false; }
   }
   function emit(key){
     listeners.forEach(fn => { try { fn({ key: key, settings: Object.assign({}, cur) }); } catch(e){} });
@@ -595,6 +649,8 @@
       const mask = $('settingsMask');
       if(mask && mask._refreshSphere) mask._refreshSphere();
     },
+    syncFromServer: syncFromServer,
+    pushToServer: pushToServer,
     refreshAdmin: () => {
       applySpherePrefs(cur);
       const mask = $('settingsMask');

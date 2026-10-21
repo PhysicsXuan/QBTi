@@ -154,6 +154,26 @@ async function initDB() {
       payload JSONB,
       "createdAt" BIGINT NOT NULL,
       UNIQUE("studentEmail", "quizTs")
+    );`,
+    `CREATE TABLE IF NOT EXISTS quiz_records (
+      id SERIAL PRIMARY KEY,
+      "studentEmail" VARCHAR(255) NOT NULL,
+      "quizTs" BIGINT NOT NULL,
+      payload JSONB,
+      "createdAt" BIGINT NOT NULL,
+      UNIQUE("studentEmail", "quizTs")
+    );`,
+    `CREATE TABLE IF NOT EXISTS student_sessions (
+      token VARCHAR(128) PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      "createdAt" BIGINT NOT NULL,
+      "expiresAt" BIGINT NOT NULL
+    );`,
+    `CREATE INDEX IF NOT EXISTS idx_student_sessions_email ON student_sessions(email);`,
+    `CREATE TABLE IF NOT EXISTS account_settings (
+      "studentEmail" VARCHAR(255) PRIMARY KEY,
+      settings JSONB,
+      "updatedAt" BIGINT NOT NULL
     );`
   ];
   try {
@@ -218,6 +238,47 @@ function studentAdminTokenFromReq(req){
   const h = String(req.headers.authorization || '');
   if(h.indexOf('Bearer ') === 0) return h.slice(7).trim();
   return String(req.headers['x-admin-token'] || '');
+}
+
+const SYNC_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000;
+
+async function issueStudentSession(email){
+  const token = crypto.randomBytes(32).toString('hex');
+  const now = Date.now();
+  await pool.query(
+    `INSERT INTO student_sessions (token, email, "createdAt", "expiresAt")
+     VALUES ($1, $2, $3, $4)`,
+    [token, String(email).toLowerCase(), now, now + SYNC_TOKEN_TTL]
+  );
+  try {
+    await pool.query('DELETE FROM student_sessions WHERE "expiresAt" < $1', [now]);
+  } catch(e){}
+  return token;
+}
+
+async function resolveSyncEmail(req){
+  const token = studentAdminTokenFromReq(req);
+  if(!token) return null;
+  const admin = studentAdminTokens.get(token);
+  if(admin && admin.expires > Date.now()){
+    return 'administrator@qbti.local';
+  }
+  try {
+    const r = await pool.query(
+      'SELECT email FROM student_sessions WHERE token = $1 AND "expiresAt" > $2',
+      [token, Date.now()]
+    );
+    return r.rows[0] ? String(r.rows[0].email).toLowerCase() : null;
+  } catch(e){
+    return null;
+  }
+}
+
+async function requireSyncAuth(req, res, next){
+  const email = await resolveSyncEmail(req);
+  if(!email) return res.status(401).json({ error: '登录已过期，请重新登录', code: 'SYNC_AUTH' });
+  req.syncEmail = email;
+  return next();
 }
 
 async function requireStudentAdmin(req, res, next){
@@ -577,8 +638,10 @@ app.post('/api/student/register', async (req, res) => {
       );
     }
 
+    const syncToken = await issueStudentSession(emailLower);
     res.json({
       success: true,
+      syncToken: syncToken,
       user: { email: emailLower, phone: tel, username: uname, createdAt, role: 'student' }
     });
   } catch (err) {
@@ -614,8 +677,10 @@ app.post('/api/student/login', async (req, res) => {
       return res.status(401).json({ error: '密码不正确', code: 'WRONG_PASSWORD' });
     }
 
+    const syncToken = await issueStudentSession(user.email);
     res.json({
       success: true,
+      syncToken: syncToken,
       user: {
         email: user.email,
         phone: user.phone || '',
@@ -692,6 +757,9 @@ app.post('/api/student/delete-account', async (req, res) => {
       await client.query('DELETE FROM invites WHERE "studentEmail" = $1', [emailLower]);
       await client.query('DELETE FROM reports WHERE "studentEmail" = $1', [emailLower]);
       await client.query('DELETE FROM admin_quiz_records WHERE "studentEmail" = $1', [emailLower]);
+      await client.query('DELETE FROM quiz_records WHERE "studentEmail" = $1', [emailLower]);
+      await client.query('DELETE FROM account_settings WHERE "studentEmail" = $1', [emailLower]);
+      await client.query('DELETE FROM student_sessions WHERE LOWER(email) = $1', [emailLower]);
       await client.query('DELETE FROM student_emails WHERE LOWER(email) = $1', [emailLower]);
       await client.query('COMMIT');
     } catch (e) {
@@ -735,6 +803,7 @@ app.post('/api/admin/login', async (req, res) => {
     res.json({
       success: true,
       token,
+      syncToken: token,
       user: { email: 'administrator@qbti.local', username: 'Administrator', phone: '', role: 'admin' },
       policy: { enabled: true, updatedAt: Number(row.updatedAt) || null }
     });
@@ -1359,6 +1428,85 @@ app.post('/api/dialogue/prompt', async (req, res) => {
   const prompt = buildDialoguePrompt(dimension, address, safeContext, nonce);
   if(!prompt || prompt.length > 8500) return res.status(500).json({ error: '提示词生成失败' });
   res.json({ success: true, dimension: dimension, prompt: prompt });
+});
+
+// 4.9 跨设备同步：历史问卷
+app.get('/api/student/history', requireSyncAuth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT payload FROM quiz_records WHERE "studentEmail" = $1 ORDER BY "quizTs" DESC LIMIT 500`,
+      [req.syncEmail]
+    );
+    res.json({ success: true, records: r.rows.map(row => row.payload).filter(Boolean) });
+  } catch (err) {
+    console.error('[历史同步] 读取失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+app.post('/api/student/history/sync', requireSyncAuth, async (req, res) => {
+  const records = Array.isArray(req.body && req.body.records) ? req.body.records : null;
+  if(!records) return res.status(400).json({ error: '参数不完整' });
+  if(records.length > 500) return res.status(400).json({ error: '一次最多同步 500 条' });
+  try {
+    let saved = 0;
+    for(const record of records){
+      if(!record || typeof record !== 'object') continue;
+      const ts = Number(record.ts);
+      if(!ts || !record.answers) continue;
+      const raw = JSON.stringify(record);
+      if(raw.length > 200 * 1024) continue;
+      await pool.query(
+        `INSERT INTO quiz_records ("studentEmail", "quizTs", payload, "createdAt")
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT ("studentEmail", "quizTs") DO UPDATE
+         SET payload = EXCLUDED.payload, "createdAt" = EXCLUDED."createdAt"`,
+        [req.syncEmail, ts, raw, Date.now()]
+      );
+      saved++;
+    }
+    res.json({ success: true, saved });
+  } catch (err) {
+    console.error('[历史同步] 保存失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.10 跨设备同步：设置与主页量子球配色
+app.get('/api/student/settings', requireSyncAuth, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT settings, "updatedAt" FROM account_settings WHERE "studentEmail" = $1',
+      [req.syncEmail]
+    );
+    const row = r.rows[0];
+    res.json({ success: true, settings: row ? row.settings : null, updatedAt: row ? Number(row.updatedAt) : 0 });
+  } catch (err) {
+    console.error('[设置同步] 读取失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+app.put('/api/student/settings', requireSyncAuth, async (req, res) => {
+  const settings = req.body && req.body.settings;
+  if(!settings || typeof settings !== 'object') return res.status(400).json({ error: '参数不完整' });
+  let raw;
+  try { raw = JSON.stringify(settings); } catch(e){ return res.status(400).json({ error: '设置格式不正确' }); }
+  if(raw.length > 50 * 1024) return res.status(400).json({ error: '设置内容过大' });
+  const updatedAt = Date.now();
+  try {
+    await pool.query(
+      `INSERT INTO account_settings ("studentEmail", settings, "updatedAt")
+       VALUES ($1, $2, $3)
+       ON CONFLICT ("studentEmail") DO UPDATE
+       SET settings = EXCLUDED.settings, "updatedAt" = EXCLUDED."updatedAt"`,
+      [req.syncEmail, raw, updatedAt]
+    );
+    res.json({ success: true, updatedAt });
+  } catch (err) {
+    console.error('[设置同步] 保存失败:', err.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
 });
 
 // 5. 家长注册
