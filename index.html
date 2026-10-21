@@ -676,6 +676,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_LOCK_KEY = 'qbti_ai_lock_v1';
   const AI_TOKEN_USAGE_KEY = 'qbti_ai_tokens_v1';
   const AI_INFLIGHT_KEY = 'qbti_ai_inflight_v1';
+  const AI_DIALOGUE_DAILY_LIMIT = 8;
+  const AI_DIALOGUE_COOLDOWN = 10 * 1000;
+  const AI_DIALOGUE_USAGE_KEY = 'qbti_ai_dialogue_v1';
   const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
 
   /* 生成按钮文案（8 语言；不对用户展示 API 消耗提示） */
@@ -1070,6 +1073,37 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
   function estimateTokens(text){
     return Math.ceil(String(text || '').length / 2);
+  }
+
+  /* 维度对话专用 API 锁：每次进入只允许一次生成，冷却 10 秒，每日 8 次 */
+  function getDialogueUsage(){
+    const day = aiLocalDay();
+    try {
+      const o = JSON.parse(localStorage.getItem(aiKey(AI_DIALOGUE_USAGE_KEY)) || 'null');
+      if(o && o.day === day) return { day: day, count: Number(o.count) || 0, lastAt: Number(o.lastAt) || 0 };
+    } catch(e){}
+    return { day: day, count: 0, lastAt: 0 };
+  }
+  function saveDialogueUsage(u){
+    try { localStorage.setItem(aiKey(AI_DIALOGUE_USAGE_KEY), JSON.stringify(u)); } catch(e){}
+  }
+  function dialogueLockStatus(){
+    if(getAILock()) return { locked: true, message: 'API 已锁定，请稍后再试。' };
+    const u = getDialogueUsage();
+    if(u.count >= AI_DIALOGUE_DAILY_LIMIT){
+      return { locked: true, message: '今天的维度对话次数已达上限（' + AI_DIALOGUE_DAILY_LIMIT + ' 次），明天再来。' };
+    }
+    const wait = AI_DIALOGUE_COOLDOWN - (Date.now() - u.lastAt);
+    if(wait > 0){
+      return { locked: true, message: '信号还在冷却…' + Math.ceil(wait / 1000) + ' 秒后再试。' };
+    }
+    return { locked: false };
+  }
+  function bumpDialogueUsage(){
+    const u = getDialogueUsage();
+    u.count += 1;
+    u.lastAt = Date.now();
+    saveDialogueUsage(u);
   }
   function updateHistoryAIReport(){
     if(!state.resultTs) return;
@@ -1682,16 +1716,20 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(!data || !data.prompt) throw new Error('DIALOGUE_PROMPT_UNAVAILABLE');
 
     let script = null;
+    let aiErr = null;
     try {
       const raw = await callAPI(data.prompt, '你是 QBTI 的量子态对话系统。你必须只输出合法 JSON，严格遵守用户给出的红线和 JSON 结构；不要输出 markdown、代码块或任何解释。');
       script = normalizeDialogue(raw);
     } catch(e){
+      aiErr = e;
       script = null;
     }
-    if(!script && data.fallback){
+    const tokenBlocked = aiErr && String(aiErr.message || '').indexOf('TOKEN_') === 0;
+    /* API 被锁定时不再拿兜底剧本冒充生成结果，直接报锁定 */
+    if(!script && data.fallback && !tokenBlocked){
       try { script = normalizeDialogue(JSON.stringify(data.fallback)); } catch(e){}
     }
-    if(!script) throw new Error('DIALOGUE_UNAVAILABLE');
+    if(!script) throw aiErr || new Error('DIALOGUE_UNAVAILABLE');
     return script;
   }
 
@@ -1899,18 +1937,36 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const isDanger = globalState === 'danger' || dimState === 'danger';
     const settings = (window.QBTISettings && window.QBTISettings.get) ? window.QBTISettings.get() : {};
     const name = String(settings.userCallName || '').trim().slice(0, 20) || '你';
-    if(loading) loading.textContent = '正在接入 · ' + info.name + ' 维度…';
+
+    /* 维度对话专用 API 锁：冷却 / 每日上限 / 全局 Token 锁 */
+    const preLock = dialogueLockStatus();
+    if(preLock.locked){
+      if(loading) loading.style.display = 'none';
+      if(line){ line.style.display = 'block'; line.textContent = preLock.message; }
+      if(hint) hint.classList.add('show');
+      qDialogContinueResolve = () => {
+        qDialogContinueResolve = null;
+        if(hint) hint.classList.remove('show');
+        closeNebulaDialogue(true);
+      };
+      return;
+    }
+    bumpDialogueUsage();
+    if(loading) loading.textContent = '正在生成只属于你的剧本…';
 
     let script = null;
+    let scriptErr = null;
     try {
       script = await requestDialogueScript(dim, dimState, name, entry, isDanger);
     } catch(err){
+      scriptErr = err;
       script = null;
     }
     if(!qDialogAlive(session)) return;
     if(!script){
+      const msg = String((scriptErr && scriptErr.message) || '');
       if(loading) loading.style.display = 'none';
-      if(line){ line.style.display = 'block'; line.textContent = '信号中断了…'; }
+      if(line){ line.style.display = 'block'; line.textContent = msg.indexOf('TOKEN_') === 0 ? 'API 已锁定，请稍后再试。' : '信号中断了…'; }
       if(hint) hint.classList.add('show');
       qDialogContinueResolve = () => {
         qDialogContinueResolve = null;
