@@ -683,6 +683,38 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_INFLIGHT_KEY = 'qbti_ai_inflight_v1';
   const DEFAULT_CFG = { url: 'https://api.deepseek.com/chat/completions', key: '', model: 'deepseek-chat', temperature: 0.85, maxTokens: 2400 };
   let serverAIConfig = null;
+  async function ensureCloudAIConfig(){
+    if(!isAdmin()) return;
+    const token = (window.QAuth && window.QAuth.getAdminToken) ? window.QAuth.getAdminToken() : null;
+    if(!token) return;
+    const local = getCfg();
+    if(!local.key) return;
+    try {
+      let hasCloud = false;
+      try {
+        const pubRes = await fetch('/api/ai/config', { cache: 'no-store' });
+        const pub = await pubRes.json().catch(() => ({}));
+        hasCloud = !!(pub && pub.hasKey);
+      } catch(e){}
+      if(hasCloud) return;
+      const res = await fetch('/api/admin/ai-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({
+          url: local.url,
+          key: local.key,
+          model: local.model,
+          temperature: local.temperature,
+          maxTokens: local.maxTokens
+        })
+      });
+      if(res.ok){
+        await loadServerAIConfig();
+        console.log('[QBTI] 已把本机管理员 API 配置同步到云端');
+      }
+    } catch(e){}
+  }
+
   async function loadServerAIConfig(){
     try {
       const res = await fetch('/api/ai/config', { cache: 'no-store' });
@@ -2370,6 +2402,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(e){ alert('Copy failed'); }
   });
 
+  let adminCloudHasKey = false;
   $('btnGear').addEventListener('click', async () => {
     if(!isAdmin()){ const mask = $('modalMask'); if(mask) mask.classList.remove('show'); return; }
     if(window.QAuth && window.QAuth.checkAdminPolicy){
@@ -2385,9 +2418,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         if(res.ok){ cloud = await res.json(); }
       }
     } catch(e){}
+    adminCloudHasKey = !!(cloud && cloud.hasKey);
     $('inpUrl').value = (cloud && cloud.url) || cfg.url;
-    $('inpKey').value = '';
-    $('inpKey').placeholder = (cloud && cloud.hasKey) ? '云端已保存，留空不修改' : 'sk-...';
+    $('inpKey').value = adminCloudHasKey ? '' : (cfg.key || '');
+    $('inpKey').placeholder = adminCloudHasKey ? '云端已保存，留空不修改' : 'sk-...';
     $('inpModel').value = (cloud && cloud.model) || cfg.model;
     $('inpTemp').value = (cloud && cloud.temperature != null) ? cloud.temperature : cfg.temperature;
     $('inpMaxTokens').value = (cloud && cloud.maxTokens != null) ? cloud.maxTokens : cfg.maxTokens;
@@ -2545,7 +2579,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const rawMax = $('inpMaxTokens').value.trim();
     const temp = Math.max(0, Math.min(1.5, rawTemp === '' ? DEFAULT_CFG.temperature : Number(rawTemp)));
     const maxTokens = Math.max(500, Math.min(2600, rawMax === '' ? DEFAULT_CFG.maxTokens : Number(rawMax)));
-    const key = $('inpKey').value.trim();
+    const localCfg = getCfg();
+    const key = $('inpKey').value.trim() || (!adminCloudHasKey ? (localCfg.key || '') : '');
     const body = {
       url: $('inpUrl').value.trim() || DEFAULT_CFG.url,
       model: $('inpModel').value.trim() || DEFAULT_CFG.model,
@@ -2564,6 +2599,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       const data = await res.json().catch(() => ({}));
       if(!res.ok || !data.success) throw new Error(data.error || '保存失败');
       saveCfg({ url: body.url, key: key || getCfg().key, model: body.model, temperature: temp, maxTokens: maxTokens });
+      adminCloudHasKey = true;
       await loadServerAIConfig();
       $('modalMask').classList.remove('show');
       btn.textContent = '✓ 已保存到云端';
@@ -2625,7 +2661,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       applyHomepageTheme();
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
       if(info.isLoggedIn) syncCrossDevice();
-      if(info.isLoggedIn && info.user && info.user.role === 'admin') syncAdminHistoryToServer();
+      if(info.isLoggedIn && info.user && info.user.role === 'admin'){
+        ensureCloudAIConfig();
+        syncAdminHistoryToServer();
+      }
       if(info.isLoggedIn){ updateRestoreBanner(); }
       else {
         state.result = null; state.quantumState = null; state.dimStates = null;
@@ -2647,6 +2686,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   updateRestoreBanner();
   refreshAdminUI();
   loadServerAIConfig();
+  ensureCloudAIConfig();
   setInterval(loadServerAIConfig, 60 * 1000);
   applyHomepageTheme();
   window.addEventListener('load', applyHomepageTheme);
