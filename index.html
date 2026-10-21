@@ -231,22 +231,23 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .feedback-log pre{white-space:pre-wrap;word-break:break-word;margin-top:8px;font-size:calc(10.5px * var(--q-fs));line-height:1.65;color:#A8AEDA;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
 @media(max-width:600px){.feedback-grid{grid-template-columns:1fr;}.feedback-card{padding:18px;}}
 
-.q-dialog{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(0,0,0,.18) 0%,rgba(0,0,0,.48) 70%,rgba(0,0,0,.72) 100%);cursor:pointer;overflow:hidden;}
+.q-dialog{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at center,rgba(0,0,0,.36) 0%,rgba(0,0,0,.56) 62%,rgba(0,0,0,.78) 100%);cursor:pointer;overflow:hidden;}
 .q-dialog.show{display:flex;}
-.q-dialog-inner{position:relative;width:min(940px,calc(100% - 48px));min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 0 120px;}
-.q-dialog-line{max-width:900px;font-size:clamp(calc(20px * var(--q-fs)),3.2vw,calc(36px * var(--q-fs)));font-weight:650;color:#fff;line-height:1.85;letter-spacing:.02em;text-shadow:0 0 2px #000,0 0 2px #000,0 2px 4px #000,0 0 18px rgba(0,0,0,.8);-webkit-text-stroke:1px #000;transition:opacity .24s ease;min-height:1.85em;}
+.q-dialog-inner{position:relative;width:min(1080px,calc(100% - 48px));min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 0 130px;}
+.q-dialog-line{max-width:1020px;font-size:clamp(calc(28px * var(--q-fs)),4.2vw,calc(52px * var(--q-fs)));font-weight:650;color:#fff;line-height:1.72;letter-spacing:.015em;text-shadow:none !important;-webkit-text-stroke:0 !important;transition:opacity .24s ease;min-height:1.72em;}
 .q-dialog-line.fade{opacity:0;}
 .q-dialog-hint{position:absolute;left:50%;bottom:7vh;transform:translateX(-50%);color:rgba(255,255,255,.46);font-size:clamp(calc(11px * var(--q-fs)),1.4vw,calc(13px * var(--q-fs)));letter-spacing:.16em;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;}
 .q-dialog-hint.show{opacity:1;animation:qDialogHint 2.4s ease-in-out infinite;}
+.q-dialog-hint,.q-dialog-loading,.q-dialog-choice{text-shadow:none !important;-webkit-text-stroke:0 !important;}
 @keyframes qDialogHint{0%,100%{opacity:.28}50%{opacity:.72}}
 .q-dialog-choices{display:none;flex-direction:column;gap:10px;width:min(620px,100%);margin-top:22px;}
 .q-dialog-choices.show{display:flex;}
-.q-dialog-choice{padding:12px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.30);background:rgba(5,7,18,.78);color:#fff;font:inherit;font-size:clamp(calc(13px * var(--q-fs)),1.6vw,calc(15px * var(--q-fs)));line-height:1.6;text-align:left;cursor:pointer;transition:.18s;text-shadow:0 1px 2px #000;}
+.q-dialog-choice{padding:13px 20px;border-radius:12px;border:1px solid rgba(255,255,255,.30);background:rgba(5,7,18,.78);color:#fff;font:inherit;font-size:clamp(calc(14px * var(--q-fs)),1.7vw,calc(16px * var(--q-fs)));line-height:1.6;text-align:left;cursor:pointer;transition:.18s;text-shadow:none !important;-webkit-text-stroke:0 !important;}
 .q-dialog-choice:hover{border-color:rgba(255,255,255,.75);background:rgba(20,24,48,.92);transform:translateY(-1px);}
 .q-dialog-loading{color:rgba(255,255,255,.55);font-size:calc(14px * var(--q-fs));letter-spacing:.14em;animation:qDialogHint 2s ease-in-out infinite;}
 .q-dialog-close{position:fixed;top:22px;right:26px;z-index:2;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(5,7,18,.55);color:#fff;font-size:22px;line-height:1;cursor:pointer;}
 .q-dialog-close:hover{background:rgba(255,255,255,.12);}
-@media(max-width:600px){.q-dialog-inner{padding:70px 0 110px;min-height:260px}.q-dialog-line{font-size:22px;line-height:1.8}.q-dialog-hint{bottom:5vh}.q-dialog-close{top:14px;right:14px}}
+@media(max-width:600px){.q-dialog-inner{padding:74px 0 118px;min-height:300px}.q-dialog-line{font-size:28px;line-height:1.75}.q-dialog-hint{bottom:5vh}.q-dialog-close{top:14px;right:14px}}
 
 /* 设置面板 */
 .settings-mask{position:fixed;inset:0;background:rgba(3,4,12,.82);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:200;display:none;place-items:center;padding:20px;overflow-y:auto;}
@@ -1592,81 +1593,6 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     return (name && name !== '你') ? name : '你';
   }
 
-  function buildDialoguePrompt(dim, dimState, name, entry, isDanger){
-    const d = DIALOGUE_DIMS[dim] || DIALOGUE_DIMS.PO;
-    const code = (entry && (entry.code || entry.baseCode)) || '未记录';
-    const typeName = (entry && entry.typeName) || '';
-    const stateText = dimState === 'danger' ? '危险/未坍缩' : dimState === 'good' ? '良好/方向清晰' : '叠加/方向未定';
-    const address = dialogueAddress(name);
-    let profileText = '';
-    if(entry && entry.answers){
-      try {
-        const r = Q.computeResult(entry.answers);
-        const ratios = r.dimGroupRatio && r.dimGroupRatio[dim];
-        const lead = r.dimLeadInfo && r.dimLeadInfo[dim];
-        if(ratios){
-          profileText = '该维度内部占比：' + Object.keys(ratios).map(k => k + '=' + ratios[k] + '%').join(' / ') +
-            (lead ? '；当前主导：' + lead.lead + '，差值 ' + lead.gap + '%' : '') + '。';
-        }
-      } catch(e){}
-    }
-    return [
-      '你是 QBTI 的量子态系统，第一人称是“我”，用户是“你”。',
-      '你正在和用户进行一场沉浸式维度对话，当前维度是：' + d.name + '。',
-      '用户选择的问卷结果是：' + code + (typeName ? '（' + typeName + '）' : '') + '；当前维度状态：' + stateText + '；整体状态：' + (isDanger ? '危险量子态，主线目标与方向不清晰' : '非危险态') + '。',
-      profileText,
-      '系统对用户的称呼是：“' + address + '”。如果称呼是“你”，就直接用“你”。',
-      '',
-      '这是一条不可违反的红线：',
-      '- 不要定义用户是什么样的人，不要贴人格标签，不要下诊断。',
-      '- 不要说“你应该”“你必须”“你需要”“建议你”“你要相信自己”这类话。',
-      '- 不要给答案、不要替用户做决定、不要评价选择的好坏。',
-      '- 只描述场景、呈现选择、用开放问题让用户自己看见。',
-      '- 如果用户处于危险量子态，多问引导性问题，少下结论。',
-      '- 每句话短，口语化，可以停顿；使用“…”制造呼吸感。',
-      '- 不要出现家长、父母、老师、AI、模型、分数、评估、报告等字眼。',
-      '',
-      '请参照下面的语气（只参考语气，不要照抄内容）：',
-      '——哔…',
-      '我正在扫描你的状态…',
-      'Error 404 No Found…',
-      '不过别担心…还能争…',
-      '那么现在…跟随着文字的指引…',
-      '',
-      '请围绕当前维度写一个完整的四幕选择对话，总字数控制在 900-1300 字。',
-      '只输出一个合法 JSON，不要输出 markdown、代码块、解释或任何 JSON 以外的文字。',
-      'JSON 结构必须严格如下：',
-      '{',
-      '  "intro": ["6-8 句开场，第一句可以是——哔…"],',
-      '  "act1": { "prompt": "第一幕的场景问题，最后带问号或省略号", "options": [',
-      '    { "text": "选项A，短句", "feedback": ["用户选A后系统说1-2句"] },',
-      '    { "text": "选项B，短句", "feedback": ["用户选B后系统说1-2句"] },',
-      '    { "text": "选项C，短句", "feedback": ["用户选C后系统说1-2句"] }',
-      '  ] },',
-      '  "act2": { "lines": ["3-5 句过渡"], "prompt": "第二幕问题", "options": [',
-      '    { "text": "选项A", "feedback": ["1-2句"] },',
-      '    { "text": "选项B", "feedback": ["1-2句"] },',
-      '    { "text": "选项C", "feedback": ["1-2句"] }',
-      '  ] },',
-      '  "branches": { "A": ["选A后的3-5句分支"], "B": ["选B后的3-5句分支"], "C": ["选C后的3-5句分支"] },',
-      '  "act3": { "lines": ["3-5 句过渡"], "prompt": "第三幕问题", "options": [',
-      '    { "text": "选项A", "feedback": ["1-2句"] },',
-      '    { "text": "选项B", "feedback": ["1-2句"] },',
-      '    { "text": "选项C", "feedback": ["1-2句"] }',
-      '  ] },',
-      '  "final": { "lines": ["3-5 句终幕铺垫"], "prompt": "最后一个开放问题", "options": [',
-      '    { "text": "选项A", "feedback": ["最后1-2句，不评判"] },',
-      '    { "text": "选项B", "feedback": ["最后1-2句，不评判"] },',
-      '    { "text": "选项C", "feedback": ["最后1-2句，不评判"] },',
-      '    { "text": "选项D", "feedback": ["最后1-2句，不评判"] }',
-      '  ] }',
-      '}',
-      '',
-      '场景参考：' + d.place + '，面前是' + d.object + '，核心隐喻是' + d.theme + '。',
-      '每一句都必须是系统“我”对用户说的话，不要写旁白格式。现在只输出 JSON。'
-    ].join('\n');
-  }
-
   function dialogueLines(value){
     if(Array.isArray(value)) return value.map(v => String(v == null ? '' : v).trim()).filter(Boolean).slice(0, 12);
     if(typeof value === 'string' && value.trim()) return [value.trim()];
@@ -1714,112 +1640,59 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     return script;
   }
 
-  async function requestDialogueScript(dim, dimState, name, entry, isDanger){
-    const prompt = buildDialoguePrompt(dim, dimState, name, entry, isDanger);
-    const raw = await callAPI(prompt, '你是 QBTI 的量子态对话系统。你必须只输出合法 JSON，严格遵守用户给出的红线和 JSON 结构；不要输出 markdown、代码块或任何解释。');
-    return normalizeDialogue(raw);
+  function buildDialogueContext(dim, dimState, name, entry, isDanger){
+    const context = {
+      code: (entry && (entry.code || entry.baseCode)) || '',
+      typeName: (entry && entry.typeName) || '',
+      quantumState: (entry && entry.quantumState && (entry.quantumState.type || entry.quantumState)) ||
+        (state.quantumState && state.quantumState.type) || 'superposition',
+      dimensionState: dimState || 'superposition',
+      ratios: {},
+      lead: '',
+      gap: 0
+    };
+    if(entry && entry.answers){
+      try {
+        const r = Q.computeResult(entry.answers);
+        if(r.dimGroupRatio && r.dimGroupRatio[dim]) context.ratios = r.dimGroupRatio[dim];
+        if(r.dimLeadInfo && r.dimLeadInfo[dim]){
+          context.lead = r.dimLeadInfo[dim].lead;
+          context.gap = r.dimLeadInfo[dim].gap;
+        }
+      } catch(e){}
+    }
+    return context;
   }
 
-  function buildLocalDialogue(dim, dimState, name, entry){
-    const d = DIALOGUE_DIMS[dim] || DIALOGUE_DIMS.PO;
-    const address = dialogueAddress(name);
-    const danger = dimState === 'danger';
-    const good = dimState === 'good';
-    const intro = [
-      '——哔…',
-      '我正在扫描你的' + d.name + '状态…',
-      danger ? 'Error 404 No Found…' : good ? '信号已锁定…' : '信号在两个频段之间…',
-      danger ? '信号很弱…像一条没有目的地的航线…' : good ? '有一束清晰的光…正从你的方向亮起来…' : '有一点方向…但还在轻轻晃动…',
-      danger ? (address === '你' ? '我理解…' : address + '…我理解…') : '我收到了…',
-      danger ? '每天迎接那么多未知…是个人都会累的…' : good ? '你没有急着证明什么…只是继续往前…' : '你没有停在原地…也没有完全出发…',
-      '那么现在…',
-      '把中控台关机…放空你的大脑…跟随着文字的指引…',
-      '想象一下…',
-      '你站在' + d.place + '…',
-      '面前是' + d.object + '…',
-      '这时…你会怎么做…？'
-    ];
-    const baseFeedback = {
-      A: ['我理解…退回安全的地方，不是失败…', '人不需要时刻勇敢…这一点我听见了…'],
-      B: ['你在用自己的节奏…试探风险的大小…', '你在小心地控制着…自己和风险之间的距离…'],
-      C: ['你不太能忍受…只能被动地等着…', '所以你选择直接面对…哪怕手在发抖…']
-    };
-    const act2Feedback = {
-      A: ['你把自己关回了熟悉的位置…', '安全是真的…空落落的也是真的…'],
-      B: ['手停在半空…没有前进，也没有后退…', '这种悬着的感觉…其实最消耗人…'],
-      C: ['你受不了自己被关在屋里…', '于是你用最直接的方式…劈开了那点恐惧…']
-    };
-    const act3Feedback = {
-      A: ['退回去也是一种选择…', '外面的风确实很冷…你已经体验过冒险了…'],
-      B: ['你终于愿意迈出那一步了…', '那点光也许很远…但你的雷达已经重启了…'],
-      C: ['靠在门框上…既不完全进去，也不完全出来…', '游离…有时也是一种很舒服的姿态…']
-    };
-    const finalFeedback = [
-      ['安全很重要…这一点很清楚…', '门可以一直关着…也可以明天再开…'],
-      ['能看见这层害怕…已经很不容易了…', '能力不是今天就要全部拥有…'],
-      ['没想过也没关系…', '有些答案…本来就要在生活里慢慢长出来…'],
-      ['你记住了开门时的那一下感觉…', '那一秒…你是自由的…']
-    ];
-    return {
-      intro: intro,
-      act1: {
-        prompt: '你站在门前…手边是冰冷的门把…这时你选择…？',
-        options: [
-          { text: '先退回安全的地方，暂时不动', feedback: baseFeedback.A },
-          { text: '靠近一点，先试探一下', feedback: baseFeedback.B },
-          { text: '直接面对它，不再等', feedback: baseFeedback.C }
-        ]
-      },
-      act2: {
-        lines: [
-          '你做出了选择…',
-          '过了一会儿…周围的声音变了…',
-          '深处传来一点微弱的响动…',
-          '像是求救…又像是风…'
-        ],
-        prompt: '这时你选择…？',
-        options: [
-          { text: '关掉所有声音，回到熟悉的位置', feedback: act2Feedback.A },
-          { text: '停在原地，观察接下来会发生什么', feedback: act2Feedback.B },
-          { text: '迎着它走过去，不再等', feedback: act2Feedback.C }
-        ]
-      },
-      branches: {
-        A: ['你最终没有完全走出去…', '声音渐渐弱了下去…最后消失在死寂里…', '房间恢复了安全…你心里却空了一块…'],
-        B: ['你最终没有完全走出去…', '声音渐渐弱了下去…最后消失在死寂里…', '房间恢复了安全…你心里却空了一块…'],
-        C: ['你推开门的瞬间…外面没有怪物…', '只有一阵夹杂着沙尘的冷风…', '远处…有一点微弱的光…']
-      },
-      act3: {
-        lines: [
-          '风从门缝里灌进来…',
-          '那点光还在远处…忽明忽暗…',
-          '你站在门槛上…'
-        ],
-        prompt: '这时你选择…？',
-        options: [
-          { text: '关上门，退回到安全区', feedback: act3Feedback.A },
-          { text: '走出去，去看看那点光', feedback: act3Feedback.B },
-          { text: '靠在门框上，吹一会儿风', feedback: act3Feedback.C }
-        ]
-      },
-      final: {
-        lines: [
-          '我记下了…',
-          '其实门背后的怪物…',
-          '也许就是现实里那些让你觉得麻烦的新机会…',
-          '最后一个问题…',
-          '你觉得…是因为门外真的有怪物…',
-          '还是因为…你怕推开门之后…发现自己其实对付不了它…？'
-        ],
-        prompt: '你更接近哪一种…？',
-        options: [
-          { text: '可能是怪物吧，安全第一', feedback: finalFeedback[0] },
-          { text: '其实是怕自己能力不够', feedback: finalFeedback[1] },
-          { text: '没想过，我关着门挺好的', feedback: finalFeedback[2] },
-          { text: '但刚刚开门的时候，感觉还不赖', feedback: finalFeedback[3] }
-        ]
-      }
-    };
+  async function requestDialogueScript(dim, dimState, name, entry, isDanger){
+    /* 提示词由学生端服务器按维度蓝图 + 该用户问卷数据生成，前端不再拼剧本提示词 */
+    const context = buildDialogueContext(dim, dimState, name, entry, isDanger);
+    let data = null;
+    try {
+      const res = await fetch('/api/dialogue/prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dimension: dim, address: name, context: context })
+      });
+      data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.success || !data.prompt) data = null;
+    } catch(e){
+      data = null;
+    }
+    if(!data || !data.prompt) throw new Error('DIALOGUE_PROMPT_UNAVAILABLE');
+
+    let script = null;
+    try {
+      const raw = await callAPI(data.prompt, '你是 QBTI 的量子态对话系统。你必须只输出合法 JSON，严格遵守用户给出的红线和 JSON 结构；不要输出 markdown、代码块或任何解释。');
+      script = normalizeDialogue(raw);
+    } catch(e){
+      script = null;
+    }
+    if(!script && data.fallback){
+      try { script = normalizeDialogue(JSON.stringify(data.fallback)); } catch(e){}
+    }
+    if(!script) throw new Error('DIALOGUE_UNAVAILABLE');
+    return script;
   }
 
   let qDialogSession = 0;
@@ -1889,11 +1762,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
       output += chars[i];
       line.textContent = output;
-      let delay = 24;
+      let delay = 36;
       const ch = chars[i];
-      if(ch === '…') delay = 390;
-      else if(ch === '—') delay = 55;
-      else if('，。！？；：'.includes(ch)) delay = 110;
+      if(ch === '…') delay = 600;
+      else if(ch === '—') delay = 80;
+      else if('，。！？；：'.includes(ch)) delay = 160;
       await qSleep(delay);
     }
     line.textContent = String(text || '');
@@ -2035,7 +1908,17 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       script = null;
     }
     if(!qDialogAlive(session)) return;
-    if(!script) script = buildLocalDialogue(dim, dimState, name, entry);
+    if(!script){
+      if(loading) loading.style.display = 'none';
+      if(line){ line.style.display = 'block'; line.textContent = '信号中断了…'; }
+      if(hint) hint.classList.add('show');
+      qDialogContinueResolve = () => {
+        qDialogContinueResolve = null;
+        if(hint) hint.classList.remove('show');
+        closeNebulaDialogue(true);
+      };
+      return;
+    }
     if(loading) loading.style.display = 'none';
     if(line) line.style.display = 'block';
     try {

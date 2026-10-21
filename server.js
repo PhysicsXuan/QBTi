@@ -872,6 +872,344 @@ app.post('/api/admin/feedback/:id/reply', requireStudentAdmin, async (req, res) 
   }
 });
 
+/* ============================================================
+   四维星云对话：服务端提供用户专属提示词 + 维度专属兜底剧本
+   每个维度使用完全不同的场景，禁止全部写成“开门”
+   ============================================================ */
+const DIALOGUE_BLUEPRINTS = {
+  PO: {
+    name: '潜能开放度',
+    scene: '一座废弃的天文台，观测室尽头有一扇很久没有打开的门，屋顶的星图已经褪色',
+    metaphor: '门后可能是新的观测数据，也可能什么都没有',
+    forbidden: '可以出现天文台的观测门，但不要出现避难所、末日、怪物、列车、图书馆、灯塔',
+    common: ['你站在废弃天文台的观测室里…', '控制台还亮着一点点光…', '观测室尽头…是一扇很久没有打开的门…'],
+    states: {
+      danger: ['——哔…', '我正在扫描你的潜能状态…', 'Error 404 No Found…', '信号很弱…像一条没有目的地的航线…', '你不是没有能力…', '只是很久没有问过自己…想去哪里了…'],
+      good: ['——哔…', '我正在扫描你的潜能状态…', '信号已锁定…', '有一束很细的光…从你的方向穿过来…', '它不吵…也没有急着证明什么…'],
+      superposition: ['——哔…', '我正在扫描你的潜能状态…', '信号在两个频段之间…', '一边是熟悉的控制台…', '一边是那扇没有打开的门…']
+    },
+    acts: [
+      {
+        prompt: '观测室的门就在前面…门后可能是新的星图，也可能什么都没有…你会怎么做…？',
+        options: [
+          { text: '留在控制台，先检查旧数据', feedback: ['你更愿意先握住已经有的东西…', '这让你感到安全…'] },
+          { text: '把门打开一条缝，先听一听', feedback: ['你在用自己的速度…试探门外…', '这条缝…不大，也不小…'] },
+          { text: '直接推开门，走进去', feedback: ['你不想再隔着门猜了…', '哪怕里面什么都没有…'] }
+        ]
+      },
+      {
+        prompt: '门后传来一阵很轻的电流声…像旧设备重新启动…你会怎么做…？',
+        options: [
+          { text: '关掉控制台，让声音停下', feedback: ['你让房间重新安静下来…', '安静…有时比答案更容易让人呼吸…'] },
+          { text: '停在门边，继续听', feedback: ['你没有进去，也没有离开…', '你把自己放在一个可以随时后退的位置…'] },
+          { text: '循着声音走进去', feedback: ['你选择让身体先于答案行动…', '脚步…比想象中轻…'] }
+        ]
+      },
+      {
+        prompt: '屋顶的星图突然裂开一道缝…真正的星光落了下来…你会怎么做…？',
+        options: [
+          { text: '回到控制台后面', feedback: ['你退回了熟悉的光里…', '这不代表你没有看见那片星空…'] },
+          { text: '走到望远镜前', feedback: ['你靠近了那台很久没用的望远镜…', '镜筒里…有一点微光…'] },
+          { text: '站在门口，抬头看', feedback: ['你站在门与星光之间…', '没有急着选择…'] }
+        ]
+      }
+    ],
+    branches: {
+      A: ['你留在了控制台前…', '电流声慢慢低了下去…', '房间恢复了原来的安静…', '可你总觉得自己听见了什么…'],
+      B: ['你没有走远…', '门缝里的风停了…', '那道声音也消失了…', '你站在原地…很久没有动…'],
+      C: ['你走进观测室深处…', '里面没有怪物…', '只有一台还在缓慢转动的旧望远镜…', '镜筒对着的地方…有一颗很暗的星…']
+    },
+    final: {
+      lines: ['我记下了…', '其实那扇门后面的东西…', '也许就是那些让你觉得麻烦的新可能…', '最后一个问题…', '你怕的是门后什么都没有…', '还是怕自己看不懂…？'],
+      prompt: '你更接近哪一种…？',
+      options: [
+        { text: '怕门后什么都没有', feedback: ['空…确实很容易让人退回去…', '但空也意味着…还没有被写死…'] },
+        { text: '怕自己看不懂', feedback: ['能看见这一层…已经很不容易了…', '看不懂…不等于永远看不懂…'] },
+        { text: '没想过，留在控制台挺好', feedback: ['没想过也没关系…', '控制台的光…也是真实的…'] },
+        { text: '但推开门的时候，感觉还不赖', feedback: ['你记住了推开门的那一下…', '那一秒…你是自由的…'] }
+      ]
+    }
+  },
+  II: {
+    name: '内在驱动力',
+    scene: '一列停在环形轨道上的老式列车，锅炉已经冷了，车头还亮着一盏昏黄的小灯',
+    metaphor: '要不要重新点燃锅炉，还是继续留在车厢里',
+    forbidden: '禁止出现门、避难所、铁门、开门、末日、天文台、图书馆、灯塔等意象',
+    common: ['你在一列停在环形轨道上的旧列车里…', '锅炉已经冷了…', '车头还亮着一盏昏黄的小灯…', '窗外是没有尽头的轨道…'],
+    states: {
+      danger: ['——哔…', '我正在扫描你的驱动状态…', 'Error 404 No Found…', '锅炉没有压力…', '不是这列车坏了…', '是你已经很久没有找到…想去的站台了…'],
+      good: ['——哔…', '我正在扫描你的驱动状态…', '压力表在缓慢上升…', '车头的小灯…一直亮着…'],
+      superposition: ['——哔…', '我正在扫描你的驱动状态…', '仪表在两个刻度之间…', '一会儿靠近“出发”…', '一会儿靠近“再等等”…']
+    },
+    acts: [
+      {
+        prompt: '锅炉里还剩一点燃料…车头的小灯在闪…你会怎么做…？',
+        options: [
+          { text: '留在车厢里，等它自己热起来', feedback: ['你选择先不碰锅炉…', '等待…也是一种动作…'] },
+          { text: '试着点火，看看能不能启动', feedback: ['你把手伸向点火器…', '没有把握…但也没有完全放弃…'] },
+          { text: '把剩下的燃料全部倒进去', feedback: ['你不想再一点点试了…', '你要么不走…要么就走得彻底…'] }
+        ]
+      },
+      {
+        prompt: '轨道在前方分成两条…一条回环，一条通向隧道…你会怎么选…？',
+        options: [
+          { text: '拉下手刹，停在分岔口', feedback: ['你让列车停了下来…', '分岔口的风…从两边吹过来…'] },
+          { text: '下车，先看看轨道通向哪里', feedback: ['你离开了车厢…', '脚踩在碎石上…声音很轻…'] },
+          { text: '把速度推到底，冲进隧道', feedback: ['你没有给自己留太多犹豫…', '隧道的黑暗…一下子吞掉了车灯…'] }
+        ]
+      },
+      {
+        prompt: '车头灯照到隧道墙上…那里有一行褪色的字…你会怎么做…？',
+        options: [
+          { text: '回到座位，不再看', feedback: ['你移开了视线…', '有些字…不看也可以继续开…'] },
+          { text: '继续添燃料，让灯更亮', feedback: ['你往锅炉里又添了一点…', '灯亮了一些…墙上的字也更清楚了…'] },
+          { text: '站到车头，迎着风', feedback: ['你站到了最前面…', '风很大…但你看得很远…'] }
+        ]
+      }
+    ],
+    branches: {
+      A: ['你留在了车厢里…', '锅炉慢慢冷却…', '小灯还在闪…', '轨道一直延伸到看不见的地方…'],
+      B: ['你走下轨道…', '发现前面并没有终点站…', '只有一段又一段…需要自己接上的铁轨…'],
+      C: ['列车冲出隧道…', '外面不是站台…', '是一片没有名字的旷野…', '小灯照着前方…路要自己铺…']
+    },
+    final: {
+      lines: ['我记下了…', '这列车…', '也许一直在等你决定去哪里…', '最后一个问题…', '你是一直在等车修好…', '还是害怕下车之后…发现自己其实没有目的地…？'],
+      prompt: '你更接近哪一种…？',
+      options: [
+        { text: '等车修好再说', feedback: ['等…也是一种真实的状态…', '车可以慢慢修…'] },
+        { text: '怕自己没有目的地', feedback: ['能承认这一点…已经很难了…', '目的地…有时是走着走着才出现的…'] },
+        { text: '没想过，坐着也挺好', feedback: ['没想过也没关系…', '车厢里的灯…也曾经照亮过你…'] },
+        { text: '但刚刚冲进隧道的时候，感觉还不赖', feedback: ['你记住了那阵风…', '有一瞬间…你是往前走的…'] }
+      ]
+    }
+  },
+  LA: {
+    name: '学习自主性',
+    scene: '一间会在无人时自动改写书页的图书馆，桌上摊着一张只有你能看见的地图',
+    metaphor: '跟着别人写好的路线，还是自己画一条',
+    forbidden: '禁止出现门、避难所、铁门、开门、列车、锅炉、天文台、灯塔等意象',
+    common: ['你在一间很安静的图书馆里…', '桌上的书会自己翻页…', '摊开的地图上…只有你能看见的线…', '书架深处…传来很轻的纸页声…'],
+    states: {
+      danger: ['——哔…', '我正在扫描你的学习自主状态…', 'Error 404 No Found…', '地图上没有主线…', '不是你没有路…', '是每一条路…都像是别人替你画的…'],
+      good: ['——哔…', '我正在扫描你的学习自主状态…', '地图上有一条很细的线…', '它不宽…但一直连向前面…'],
+      superposition: ['——哔…', '我正在扫描你的学习自主状态…', '地图上的线…一会儿出现…', '一会儿又隐进纸里…']
+    },
+    acts: [
+      {
+        prompt: '书页上出现了你的名字…旁边是一条被标好的路线…你会怎么做…？',
+        options: [
+          { text: '合上书，先不看', feedback: ['你把手从书页上移开…', '有些答案…不一定要现在读…'] },
+          { text: '用铅笔在旁边改一条路', feedback: ['你在那条线旁边…画了一道很轻的痕…', '它不大…但确实是你画的…'] },
+          { text: '把地图撕下来带走', feedback: ['你把地图折好…放进口袋…', '纸很薄…却有一点重量…'] }
+        ]
+      },
+      {
+        prompt: '书架自己移开…露出一条没有标注的走廊…你会怎么做…？',
+        options: [
+          { text: '留在原地，继续看书', feedback: ['你留在了灯下…', '走廊里的风…从书页间穿过去…'] },
+          { text: '跟着地图上的线走进去', feedback: ['你沿着那条线…走进书架深处…', '纸页的声音…越来越近…'] },
+          { text: '自己画一条新的线', feedback: ['你没有跟着现成的路…', '笔尖在纸上…停了一下…'] }
+        ]
+      },
+      {
+        prompt: '闭馆的灯开始一盏盏熄灭…桌上只剩一张空白书页…你会怎么做…？',
+        options: [
+          { text: '把书放回原位', feedback: ['你把书合上…放回书架…', '有些东西…留在原处也很好…'] },
+          { text: '借着最后一盏灯，继续读', feedback: ['你没有走…', '灯光很小…但足够照亮一行字…'] },
+          { text: '把空白书页带走', feedback: ['你把那页空白…夹进了自己的书里…', '它还没有被写…'] }
+        ]
+      }
+    ],
+    branches: {
+      A: ['你留在了灯下…', '书页慢慢停了…', '地图上的线…也淡了下去…', '可你记住了那一行字…'],
+      B: ['你沿着地图走进深处…', '走廊尽头不是出口…', '是一张更大的桌子…', '桌上放着另一张空白地图…'],
+      C: ['你带走了空白书页…', '图书馆的灯在身后熄灭…', '纸页很轻…', '但你知道…它还没有写完…']
+    },
+    final: {
+      lines: ['我记下了…', '地图上的线…', '也许不是答案…', '最后一个问题…', '你是在找一条自己的路…', '还是在等一本书…替你写答案…？'],
+      prompt: '你更接近哪一种…？',
+      options: [
+        { text: '想找一条自己的路', feedback: ['你没有把地图当成终点…', '路…还在你脚下…'] },
+        { text: '希望有人告诉我答案', feedback: ['想有人告诉…也很正常…', '但答案…有时会以问题的样子出现…'] },
+        { text: '没想过，先看书就好', feedback: ['先看书也很好…', '不是每一页…都要立刻翻过去…'] },
+        { text: '但自己画线的时候，感觉还不赖', feedback: ['你记住了下笔的那一下…', '那一笔…是你的…'] }
+      ]
+    }
+  },
+  UR: {
+    name: '未知应对方式',
+    scene: '夜里的海面，灯塔的灯已经灭了，雾里传来没有来源的声音',
+    metaphor: '要不要点亮灯塔，还是留在岸边等雾散',
+    forbidden: '禁止出现门、避难所、铁门、开门、列车、锅炉、图书馆、地图、天文台等意象',
+    common: ['你在夜里的海边…', '灯塔的灯已经灭了…', '雾很厚…', '海面深处…传来一阵没有来源的声音…'],
+    states: {
+      danger: ['——哔…', '我正在扫描你的未知应对状态…', 'Error 404 No Found…', '雾太厚了…', '看不见岸线…', '也看不见灯塔到底还在不在…'],
+      good: ['——哔…', '我正在扫描你的未知应对状态…', '雾里有一点光…', '很弱…但没有灭…'],
+      superposition: ['——哔…', '我正在扫描你的未知应对状态…', '灯塔一会儿亮…', '一会儿又暗下去…', '像在两个答案之间…']
+    },
+    acts: [
+      {
+        prompt: '灯塔的开关就在手边…海里的声音又响了一下…你会怎么做…？',
+        options: [
+          { text: '守在岸边，等雾散', feedback: ['你选择先留在岸上…', '雾没有散…但也没有更浓…'] },
+          { text: '摸着墙，慢慢靠近灯塔', feedback: ['你沿着潮湿的墙…一步一步走…', '声音…越来越近…'] },
+          { text: '点亮灯塔', feedback: ['你按下了开关…', '整片雾…突然有了形状…'] }
+        ]
+      },
+      {
+        prompt: '雾里出现一个模糊的船影…它没有靠近，也没有离开…你会怎么做…？',
+        options: [
+          { text: '回到屋里，拉上窗帘', feedback: ['你回到了屋里…', '海的声音…被隔在窗外…'] },
+          { text: '站在原地，继续听', feedback: ['你没有动…', '船影也没有动…', '你们隔着一层雾…互相看着…'] },
+          { text: '向船影走去', feedback: ['你朝海面走了几步…', '水没过脚踝…很冷…'] }
+        ]
+      },
+      {
+        prompt: '灯油快尽了…天亮之前，灯塔只能再亮一次…你会怎么做…？',
+        options: [
+          { text: '把灯留给后来的人', feedback: ['你把最后一点灯油…留在了灯里…', '也许有人…会看见…'] },
+          { text: '熄灯，保存最后一点油', feedback: ['你熄灭了灯…', '黑暗重新合拢…', '但你还在…'] },
+          { text: '把灯转向海面', feedback: ['你把灯转向了最黑的地方…', '光柱切开雾…'] }
+        ]
+      }
+    ],
+    branches: {
+      A: ['你留在了岸边…', '雾一直没有散…', '海的声音也一直没停…', '但你没有再往后退…'],
+      B: ['你停在了水边…', '船影慢慢淡了…', '天亮的时候…海面只剩下你的脚印…'],
+      C: ['你走进了雾里…', '没有怪物…', '只有一座没有人看守的灯塔…', '灯还亮着…']
+    },
+    final: {
+      lines: ['我记下了…', '海里的声音…', '也许只是风…', '最后一个问题…', '你怕的是海里的东西…', '还是怕灯亮之后…看见自己站在哪里…？'],
+      prompt: '你更接近哪一种…？',
+      options: [
+        { text: '怕海里的东西', feedback: ['怕…并不丢人…', '海本来就不小…'] },
+        { text: '怕灯亮之后，看见自己', feedback: ['看见自己…有时比看见怪物更难…', '但你已经站在这里了…'] },
+        { text: '没想过，留在岸上挺好', feedback: ['留在岸上…也是一种位置…', '不是每个人都要出海…'] },
+        { text: '但灯亮起来的时候，感觉还不赖', feedback: ['你记住了灯亮的那一下…', '那一秒…雾退开了一点…'] }
+      ]
+    }
+  }
+};
+
+function dialogueSafeText(value, max){
+  return String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').slice(0, max || 120);
+}
+
+function buildDialoguePrompt(dimension, address, context){
+  const b = DIALOGUE_BLUEPRINTS[dimension];
+  if(!b) return null;
+  const c = context || {};
+  const stateText = c.dimensionState === 'danger' ? '危险/未坍缩' : c.dimensionState === 'good' ? '良好/方向清晰' : '叠加/方向未定';
+  const ratios = c.ratios && typeof c.ratios === 'object'
+    ? Object.keys(c.ratios).slice(0, 6).map(k => dialogueSafeText(k, 8) + '=' + (Number(c.ratios[k]) || 0) + '%').join(' / ')
+    : '';
+  const addressText = dialogueSafeText(address, 20) || '你';
+  return [
+    '你是 QBTI 的量子态系统，第一人称是“我”，用户是“你”。',
+    '你正在和用户进行一场沉浸式维度对话。',
+    '【本维度剧本设定】',
+    '维度：' + b.name,
+    '场景：' + b.scene,
+    '核心隐喻：' + b.metaphor,
+    '禁止：' + b.forbidden,
+    '这份剧本只能属于这个维度，不能复用其它维度的场景，不能把所有维度都写成“开门”。',
+    '',
+    '【用户信息】',
+    '用户选择的主页问卷结果：' + dialogueSafeText(c.code, 40) + (c.typeName ? '（' + dialogueSafeText(c.typeName, 60) + '）' : ''),
+    '当前维度状态：' + stateText,
+    '整体状态：' + (c.quantumState === 'danger' ? '危险量子态，主线目标与方向不清晰' : '非危险态'),
+    ratios ? '该维度内部占比：' + ratios : '',
+    c.lead ? '当前主导子维度：' + dialogueSafeText(c.lead, 8) + (c.gap != null ? '，差值 ' + (Number(c.gap) || 0) + '%' : '') : '',
+    '系统对用户的称呼：“' + addressText + '”。若称呼是“你”，直接使用“你”。',
+    '',
+    '【不可违反的红线】',
+    '- 不要定义用户是什么样的人，不要贴人格标签，不要下诊断。',
+    '- 不要说“你应该”“你必须”“你需要”“建议你”“你要相信自己”这类话。',
+    '- 不要给答案、不要替用户做决定、不要评价选择的好坏。',
+    '- 只描述场景、呈现选择、用开放问题让用户自己看见。',
+    '- 危险量子态多写引导性问题，少下结论。',
+    '- 每句话短、口语化，可以用“…”制造呼吸感。',
+    '- 不要出现家长、父母、老师、AI、模型、分数、评估、报告。',
+    '',
+    '【四幕结构】',
+    '第一幕：' + b.acts[0].prompt,
+    '第二幕：' + b.acts[1].prompt,
+    '第三幕：' + b.acts[2].prompt,
+    '终幕：一个不评判的灵魂反问，让用户自己回答。',
+    '',
+    '请写一个完整的四幕选择剧本，总字数 900-1300 字。',
+    '只输出合法 JSON，不要 markdown、代码块或解释。结构：',
+    '{',
+    '  "intro": ["6-8句开场，第一句可以是——哔…"],',
+    '  "act1": { "prompt": "第一幕问题", "options": [',
+    '    { "text": "选项A", "feedback": ["1-2句"] },',
+    '    { "text": "选项B", "feedback": ["1-2句"] },',
+    '    { "text": "选项C", "feedback": ["1-2句"] }',
+    '  ] },',
+    '  "act2": { "lines": ["3-5句过渡"], "prompt": "第二幕问题", "options": [',
+    '    { "text": "选项A", "feedback": ["1-2句"] },',
+    '    { "text": "选项B", "feedback": ["1-2句"] },',
+    '    { "text": "选项C", "feedback": ["1-2句"] }',
+    '  ] },',
+    '  "branches": { "A": ["3-5句"], "B": ["3-5句"], "C": ["3-5句"] },',
+    '  "act3": { "lines": ["3-5句过渡"], "prompt": "第三幕问题", "options": [',
+    '    { "text": "选项A", "feedback": ["1-2句"] },',
+    '    { "text": "选项B", "feedback": ["1-2句"] },',
+    '    { "text": "选项C", "feedback": ["1-2句"] }',
+    '  ] },',
+    '  "final": { "lines": ["3-5句终幕铺垫"], "prompt": "最后一个开放问题", "options": [',
+    '    { "text": "选项A", "feedback": ["1-2句，不评判"] },',
+    '    { "text": "选项B", "feedback": ["1-2句，不评判"] },',
+    '    { "text": "选项C", "feedback": ["1-2句，不评判"] },',
+    '    { "text": "选项D", "feedback": ["1-2句，不评判"] }',
+    '  ] }',
+    '}',
+    '现在只输出 JSON。'
+  ].filter(Boolean).join('\n');
+}
+
+function buildDialogueFallback(dimension, address, context){
+  const b = DIALOGUE_BLUEPRINTS[dimension];
+  if(!b) return null;
+  const state = b.states[context && context.dimensionState === 'danger' ? 'danger' : context && context.dimensionState === 'good' ? 'good' : 'superposition'];
+  const addressText = dialogueSafeText(address, 20) || '你';
+  const greeting = addressText === '你' ? '我收到你的信号了…' : addressText + '…我收到你的信号了…';
+  return {
+    intro: state.concat([greeting], b.common),
+    act1: { prompt: b.acts[0].prompt, options: b.acts[0].options },
+    act2: { lines: ['你做出了选择…', '过了一会儿…', '周围的声音变了…'], prompt: b.acts[1].prompt, options: b.acts[1].options },
+    branches: b.branches,
+    act3: { lines: ['时间往前走了一点…', '有些东西开始变得清楚…'], prompt: b.acts[2].prompt, options: b.acts[2].options },
+    final: b.final
+  };
+}
+
+app.post('/api/dialogue/prompt', async (req, res) => {
+  const body = req.body || {};
+  const dimension = String(body.dimension || '').toUpperCase();
+  if(!DIALOGUE_BLUEPRINTS[dimension]) return res.status(400).json({ error: '维度不正确' });
+  const address = dialogueSafeText(body.address, 20) || '你';
+  const context = body.context && typeof body.context === 'object' ? body.context : {};
+  const safeContext = {
+    code: dialogueSafeText(context.code, 40),
+    typeName: dialogueSafeText(context.typeName, 60),
+    quantumState: ['good', 'danger', 'superposition'].includes(context.quantumState) ? context.quantumState : 'superposition',
+    dimensionState: ['good', 'danger', 'superposition'].includes(context.dimensionState) ? context.dimensionState : 'superposition',
+    ratios: {},
+    lead: dialogueSafeText(context.lead, 8),
+    gap: Number(context.gap) || 0
+  };
+  if(context.ratios && typeof context.ratios === 'object'){
+    Object.keys(context.ratios).slice(0, 6).forEach(k => {
+      safeContext.ratios[dialogueSafeText(k, 8)] = Math.max(0, Math.min(100, Number(context.ratios[k]) || 0));
+    });
+  }
+  const prompt = buildDialoguePrompt(dimension, address, safeContext);
+  const fallback = buildDialogueFallback(dimension, address, safeContext);
+  if(!prompt || prompt.length > 8500) return res.status(500).json({ error: '提示词生成失败' });
+  res.json({ success: true, dimension: dimension, prompt: prompt, fallback: fallback });
+});
+
 // 5. 家长注册
 app.post('/api/parent/register', async (req, res) => {
   const { email, phone, code, username, password } = req.body || {};
