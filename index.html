@@ -1014,12 +1014,27 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(e){ return 'guest'; }
   }
   function aiKey(base){ return base + ':' + aiActor(); }
+  function isAdminAIUser(){
+    try { return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin()); } catch(e){ return false; }
+  }
+  function unlockAdminAILocks(){
+    if(!isAdminAIUser()) return;
+    try {
+      const u = window.QAuth.getCurrentUser();
+      if(!u || !u.email) return;
+      const email = String(u.email).toLowerCase();
+      [AI_LOCK_KEY, AI_TOKEN_USAGE_KEY, AI_INFLIGHT_KEY].forEach(base => {
+        try { localStorage.removeItem(base + ':' + email); } catch(e){}
+      });
+    } catch(e){}
+  }
   function aiLocalDay(){
     const d = new Date();
     const p = n => n < 10 ? '0' + n : '' + n;
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
   function getAILock(){
+    if(isAdminAIUser()) return null;
     try {
       const raw = localStorage.getItem(aiKey(AI_LOCK_KEY));
       if(!raw) return null;
@@ -1079,6 +1094,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   /* 维度对话只受全局 Token 锁保护：每日对话次数不限 */
   function dialogueGlobalLock(){
+    if(isAdminAIUser()) return { locked: false };
     if(getAILock()) return { locked: true, message: 'Token 用量保护已锁定，请稍后再试。' };
     const u = getAITokenUsage();
     if(u.tokens >= AI_TOKEN_BUDGET){
@@ -1526,15 +1542,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   async function callAPI(prompt, systemOverride, temperatureOverride, maxTokensOverride){
     const cfg = getCfg();
     if(!cfg.key) throw new Error('未配置 API Key，请点击右下角 ⚙ 配置');
+    const adminAI = isAdminAIUser();
 
-    /* 强制 API 锁：同用户同一时间只允许一个生成请求 */
-    if(getAILock()) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
+    /* 强制 API 锁：管理员不受 Token 锁限制，但仍保留并发锁 */
+    if(!adminAI && getAILock()) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
     if(String(prompt || '').length > AI_MAX_PROMPT_CHARS){
       setAILock('prompt-too-large', AI_LOCK_MS);
       throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
     }
     const beforeUsage = getAITokenUsage();
-    if(beforeUsage.tokens >= AI_TOKEN_BUDGET){
+    if(!adminAI && beforeUsage.tokens >= AI_TOKEN_BUDGET){
       setAILock('daily-token-budget', AI_LOCK_MS);
       throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
     }
@@ -1591,8 +1608,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
        promptTokens > AI_MAX_PROMPT_CHARS ||
        completionTokens > AI_HARD_MAX_TOKENS ||
        totalAfter > AI_TOKEN_BUDGET){
-      setAILock('token-anomaly', AI_LOCK_MS);
-      throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+      if(!adminAI){
+        setAILock('token-anomaly', AI_LOCK_MS);
+        throw new Error('TOKEN_ANOMALY:' + aiTokenErrorText());
+      }
     }
     return content;
   }
@@ -2455,6 +2474,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     window.QAuth.onChange(function(info){
       refreshAdminUI(info);
       renderAdminDebug();
+      unlockAdminAILocks();
       applyHomepageTheme();
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
       if(info.isLoggedIn && info.user && info.user.role === 'admin') syncAdminHistoryToServer();
