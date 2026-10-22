@@ -1205,6 +1205,8 @@ const DIALOGUE_VARIANTS = {
   ]
 };
 
+const DIALOGUE_SUB_NAMES_ZH = { X:'探索欲', C:'创造', A:'适应', U:'好奇', P:'热情', M:'意义', I:'主动', D:'独立', E:'坚持', T:'容忍', H:'挑战', R:'韧性' };
+const DIALOGUE_SUB_NAMES_EN = { X:'Exploration', C:'Creativity', A:'Adaptation', U:'Curiosity', P:'Passion', M:'Meaning', I:'Initiative', D:'Independence', E:'Endurance', T:'Tolerance', H:'Challenge', R:'Resilience' };
 const DIALOGUE_LANG_NAMES = {
   'zh-CN': '简体中文',
   'zh-TW': '繁體中文',
@@ -1271,6 +1273,54 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     ? Object.keys(c.ratios).slice(0, 6).map(k => dialogueSafeText(k, 8) + '=' + (Number(c.ratios[k]) || 0) + '%').join(' / ')
     : '';
   const addressText = dialogueSafeText(address, 20) || 'you';
+  const stateMode = c.dimensionState === 'danger' ? 'danger' : c.dimensionState === 'good' ? 'good' : 'superposition';
+  const ratioEntries = Object.keys(c.ratios || {}).map(k => [dialogueSafeText(k, 8), Number(c.ratios[k]) || 0]).sort((a, b) => b[1] - a[1]);
+  const leadCode = dialogueSafeText(c.lead, 8) || (ratioEntries[0] ? ratioEntries[0][0] : '');
+  const leadRatio = (ratioEntries.find(x => x[0] === leadCode) || ratioEntries[0] || [leadCode, 0])[1];
+  const leadText = leadCode ? ((DIALOGUE_SUB_NAMES_EN[leadCode] || leadCode) + (leadRatio ? ' (' + leadRatio + '%)' : '')) : 'the brightest current signal';
+  const stateContract = stateMode === 'danger'
+    ? [
+        'STATE-SPECIFIC CONTRACT — DANGER / NOT YET COLLAPSED: HELP THE USER FIND A DIRECTION',
+        '- The ball is unstable and its direction is not locked. The script is not therapy and not a pep talk; it must let the user feel which of several concrete directions carries more energy.',
+        '- Each act must test a different direction, not rephrase the same choice. Options must point to concrete directions, concrete costs and concrete next moves.',
+        '- The user may choose uncertainty or observation first, but each choice must make one direction slightly clearer.',
+        '- The final question only helps the user name “which direction I am willing to test first”; do not demand a long-term commitment or decide for them.'
+      ].join('\n')
+    : stateMode === 'good'
+      ? [
+          'STATE-SPECIFIC CONTRACT — GOOD / DIRECTION IS CLEAR: AMPLIFY THE STRONGEST DIRECTION',
+          '- The ball already has a clear direction. Its strongest subdimension is ' + leadText + '. The script must recognize and amplify this strength rather than reopening every direction.',
+          '- Each act raises the challenge: first use the strength on a small problem → let it meet real resistance → migrate it to a larger scene.',
+          '- Options should show different uses of the same strength; do not write “you are already fine, so do nothing.” The good state needs an extension, not stagnation.',
+          '- The final question invites one concrete next step in the strongest direction, without commanding or deciding for the user.'
+        ].join('\n')
+      : [
+          'STATE-SPECIFIC CONTRACT — SUPERPOSITION / DIRECTION NOT FIXED: TEST INSIDE THE SUPERPOSITION',
+          '- The ball is sitting between several possibilities. Let at least two real impulses appear and interfere; do not force a collapse in Act 1.',
+          '- Structure: two possibilities coexist → the choice creates interference or a cost → a small measurement that does not kill the other side.',
+          '- Options must include different strategies such as “hold both”, “test a little”, “step back and observe”; let the user experience the tension of superposition.',
+          '- Branches should retain traces of both possibilities; the final question helps the user notice which side is more coherent, not choose for them.'
+        ].join('\n');
+  const stateActs = stateMode === 'danger'
+    ? [
+        'Act 1: the radar breaks up; the scene offers three different direction clues. The user chooses which one to approach first, revealing what they want to protect or fight for.',
+        'Act 2: the choice has a concrete consequence; another direction appears as interference. The user decides whether to continue, switch or pause.',
+        'Act 3: a small experiment lets the user test a direction through action; the cost or clue pays off the first precursor.',
+        'Final: if they could carry only one direction forward, which step would they try first? Options point to different directions without demanding a long commitment.'
+      ]
+    : stateMode === 'good'
+      ? [
+          'Act 1: the signal locks; the scene offers a concrete challenge where ' + leadText + ' can be used. The user chooses how to use the strength.',
+          'Act 2: the strength meets real resistance or a cost and must level up rather than retreat; the user chooses the upgrade.',
+          'Act 3: migrate the strength to a larger scene and pay off the first precursor; the user chooses how far to extend.',
+          'Final: an invitation to push the strongest direction one step forward; options are different forms of the next step, not generic life advice.'
+        ]
+      : [
+          'Act 1: two real impulses appear together; the user chooses which one to hold or observe first, without being forced into an either/or.',
+          'Act 2: the two directions interfere and produce a third pattern or a cost; the user chooses how to continue without killing the other side.',
+          'Act 3: a small measurement lets the superposition show itself without fully collapsing; the first precursor pays off.',
+          'Final: which side feels more coherent or more ready to be seen? Options keep room for both possibilities and do not choose for the user.'
+        ];
   const errorCodes = ['Error 404 No Found', 'Error 403 Signal Lost', 'Error 500 Radar Overheat', 'Error 502 Dimension Echo Lost', 'Error 418 Radar Out of Range'];
   const errorCode = errorCodes[Math.floor(Math.random() * errorCodes.length)];
   const openingAngles = ['a half-finished complaint from the system', 'a broken notification tone', 'a smell that should not be there', 'a very small action nobody noticed', 'one wrong detail in the environment'];
@@ -1319,6 +1369,8 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     c.lead ? 'Leading subdimension: ' + dialogueSafeText(c.lead, 8) + (c.gap != null ? ', gap ' + (Number(c.gap) || 0) + '%' : '') : '',
     'Address the user as: "' + addressText + '". If the name is "you", use "you".',
     '',
+    stateContract,
+    '',
     'NON-NEGOTIABLE RULES:',
     '- Do not define, label, diagnose or judge the user.',
     '- Do not say "you should", "you must", "you need to", "I suggest you", or "believe in yourself".',
@@ -1333,11 +1385,9 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     '- Each choice must change at least one concrete thing: light, dust, sound, position, temperature or pressure.',
     '- The final question must grow naturally from the experience. Do not start preaching.',
     '',
-    'STRUCTURE:',
-    '- Act 1: radar anomaly → concrete precursor → choice (3 options).',
-    '- Act 2: consequence of the choice → escalation → choice (3 options).',
-    '- Act 3: cost or clue → payoff of the precursor → choice (3 options).',
-    '- Final: one open, non-judgmental question (4 options).',
+    'STRUCTURE — FOLLOW THE STATE-SPECIFIC ACT PLAN:',
+    ...stateActs,
+    '- Every act has 3 options; the final has 4 options.',
     '- Every option needs 1-2 feedback lines. Do not leave feedback empty.',
     '- Include branches A, B and C, each 2-4 lines.',
     '- Keep the whole script around 600-850 words. Be vivid and specific, not long-winded.',
@@ -1388,6 +1438,54 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     ? Object.keys(c.ratios).slice(0, 6).map(k => dialogueSafeText(k, 8) + '=' + (Number(c.ratios[k]) || 0) + '%').join(' / ')
     : '';
   const addressText = dialogueSafeText(address, 20) || '你';
+  const stateMode = c.dimensionState === 'danger' ? 'danger' : c.dimensionState === 'good' ? 'good' : 'superposition';
+  const ratioEntries = Object.keys(c.ratios || {}).map(k => [dialogueSafeText(k, 8), Number(c.ratios[k]) || 0]).sort((a, b) => b[1] - a[1]);
+  const leadCode = dialogueSafeText(c.lead, 8) || (ratioEntries[0] ? ratioEntries[0][0] : '');
+  const leadRatio = (ratioEntries.find(x => x[0] === leadCode) || ratioEntries[0] || [leadCode, 0])[1];
+  const leadText = leadCode ? ((DIALOGUE_SUB_NAMES_ZH[leadCode] || leadCode) + (leadRatio ? '（' + leadRatio + '%）' : '')) : '当前最亮的那一束';
+  const stateContract = stateMode === 'danger'
+    ? [
+        '【本维度核心任务：危险/未坍缩态 → 先帮助用户确定方向，不急着给答案】',
+        '- 这一颗球信号不稳，方向还没有锁定；剧本的任务不是治疗，也不是劝他振作，而是让他在几个具体方向里感受到哪一条更有能量。',
+        '- 三幕必须分别测试不同的方向，而不是把同一句话换个说法；选项要指向具体方向、具体代价、具体下一步。',
+        '- 允许用户先选“不确定/先观察”，但每次选择都要让某个方向变得更清楚一点。',
+        '- 终幕只帮他命名“我愿意先往哪边试一步”，不要求长期承诺，不替他做决定。'
+      ].join('\n')
+    : stateMode === 'good'
+      ? [
+          '【本维度核心任务：良好/方向清晰态 → 往最强方向推进】',
+          '- 这一颗球已经有明确方向；当前最强子维度是 ' + leadText + '。剧本要识别并放大这个优势，而不是重新把所有方向都铺开。',
+          '- 三幕逐级增加挑战：先用优势解决一个小问题 → 让优势遇到真实阻力 → 把优势迁移到更大的场景。',
+          '- 选项要体现同一优势的不同用法；不是“你已经很好所以不用动”，而是让优势再往前伸展一格。',
+          '- 终幕邀请用户把最强方向变成一个可执行的下一步，但不命令、不替用户决定。'
+        ].join('\n')
+      : [
+          '【本维度核心任务：叠加/方向未定态 → 在叠加里测试，不提前坍缩】',
+          '- 这一颗球同时停在多个可能之间；剧本要让两个或多个真实冲动都上场，制造干涉，而不是第一幕就逼他选死。',
+          '- 三幕结构：两个可能同时成立 → 选择产生干涉/代价 → 一次不杀死另一边的小测量。',
+          '- 选项必须包含“同时保留 / 先试一点 / 退一步观察”等不同策略，让用户经验到叠加本身的张力。',
+          '- 分支要保留两种可能留下的痕迹；终幕帮助他观察哪一边更相干，而不是替他选边。'
+        ].join('\n');
+  const stateActs = stateMode === 'danger'
+    ? [
+        '第一幕：雷达断续，场景里出现三条不同的方向线索；用户选择先靠近哪一条，选择暴露他真正想保护/想争取的东西',
+        '第二幕：选择带来具体后果，另一条方向以干扰的形式出现；用户决定继续、换线还是停一下',
+        '第三幕：一个小实验，让用户用行动测试方向；代价/线索回收第一幕的前兆',
+        '终幕：如果只能带走一个方向，他愿意先试哪一步；选项指向不同方向，不逼长期承诺'
+      ]
+    : stateMode === 'good'
+      ? [
+          '第一幕：信号锁定，场景给出一个能发挥 ' + leadText + ' 的具体挑战；用户选择怎么用优势',
+          '第二幕：优势遇到真实阻力或代价，要求升级而不是退回；用户选择升级方式',
+          '第三幕：把优势迁移到更大的场景，回收第一幕的前兆；用户选择伸展边界',
+          '终幕：把最强方向往前推一步的邀请；选项是不同形态的下一步，不是泛泛的人生道理'
+        ]
+      : [
+          '第一幕：两个真实冲动同时出现在场景里；用户选择先容纳/观察哪一个，不要求立刻二选一',
+          '第二幕：两个方向发生干涉，出现第三种图案或代价；用户选择如何在不杀死另一边的情况下继续',
+          '第三幕：一次小测量，让叠加态显影但不彻底坍缩；回收第一幕的前兆',
+          '终幕：哪一边的相干更强、更想被看见；选项保留两种可能的余地，不替用户选边'
+        ];
   const openingAngles = [
     '从一句没头没尾的吐槽切入',
     '从一个坏掉的提示音切入',
@@ -1483,6 +1581,8 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     c.lead ? '当前主导子维度：' + dialogueSafeText(c.lead, 8) + (c.gap != null ? '，差值 ' + (Number(c.gap) || 0) + '%' : '') : '',
     '系统对用户的称呼：“' + addressText + '”。若称呼是“你”，直接使用“你”。',
     '',
+    stateContract,
+    '',
     '【不可违反的红线】',
     '- 不要定义用户是什么样的人，不要贴人格标签，不要下诊断。',
     '- 不要说“你应该”“你必须”“你需要”“建议你”“你要相信自己”这类话。',
@@ -1528,11 +1628,9 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     '- 每个选择都要改变至少一个具体细节或后续结果，不能只是换皮。',
     '- 最后必须回收 continuity.openingDetail 或 continuity.payoff，让故事闭合。',
     '',
-    '【必须写出的因果过渡】',
-    '第一幕：雷达异常 → 用户注意到一个具体前兆 → 做出选择',
-    '第二幕：选择产生一个具体后果 → 这个后果触发本次因果变体 → 局势升级 → 再次选择',
-    '第三幕：第二幕的选择留下代价或线索 → 前兆被回收 → 最后一次选择',
-    '终幕：问题必须从“前兆 + 选择 + 代价”里自然长出来，不能突然讲人生道理',
+    '【因果过渡】',
+    '- 按前面的状态专属四幕结构执行；每一幕都必须有前兆 → 触发 → 后果。',
+    '- 危险态每一幕测试不同方向；叠加态保留多种可能；良好态围绕最强子维度逐级加码。',
     '',
     '【活力：像现场直播，不像报告】',
     '- 系统要有实时反应：等等、不是吧、我再看一眼、我这边信号在抖',
@@ -1541,11 +1639,8 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     '- 不要连续四句都以“你”开头，不要每段都总结升华',
     '- 每份剧本至少有两个具体的声音或触感细节',
     '',
-    '【四幕结构】',
-    '第一幕：' + b.acts[0].prompt,
-    '第二幕：' + b.acts[1].prompt,
-    '第三幕：' + b.acts[2].prompt,
-    '终幕：一个不评判的灵魂反问，让用户自己回答。',
+    '【四幕结构：必须按当前维度状态执行】',
+    ...stateActs,
     '',
     '请写一个完整的四幕选择剧本，总字数 1000-1300 字。',
     '只输出合法 JSON，不要 markdown、代码块或解释。结构：',

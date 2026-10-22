@@ -2387,16 +2387,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       lead: '',
       gap: 0
     };
-    if(entry && entry.answers){
-      try {
-        const r = Q.computeResult(entry.answers);
+    try {
+      const r = (entry && entry.answers) ? Q.computeResult(entry.answers) : state.result;
+      if(r){
         if(r.dimGroupRatio && r.dimGroupRatio[dim]) context.ratios = r.dimGroupRatio[dim];
         if(r.dimLeadInfo && r.dimLeadInfo[dim]){
           context.lead = r.dimLeadInfo[dim].lead;
           context.gap = r.dimLeadInfo[dim].gap;
         }
-      } catch(e){}
-    }
+      }
+    } catch(e){}
     return context;
   }
 
@@ -2414,6 +2414,17 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const d = dims[dim] || dims.PO;
     const code = (entry && entry.code) || 'QBTI';
     const address = name || 'you';
+    const mode = dimState === 'danger' ? 'danger' : dimState === 'good' ? 'good' : 'superposition';
+    const stateContract = mode === 'danger'
+      ? 'STATE CONTRACT — DANGER: the direction is not locked. The script should help the user feel which of several concrete directions carries energy. Each act must test a different direction. The final question only asks which direction to try first; no long-term demand.'
+      : mode === 'good'
+        ? 'STATE CONTRACT — GOOD: the direction is clear. Identify the strongest subdimension and amplify it. Each act should use the strength against a larger challenge. The final question invites one concrete next step in the strongest direction.'
+        : 'STATE CONTRACT — SUPERPOSITION: keep two or more possibilities alive. Let them interfere; do not force a collapse in Act 1. The final question helps the user notice which side is more coherent without choosing for them.';
+    const stateActs = mode === 'danger'
+      ? 'Act 1: three different direction clues; Act 2: the choice creates a cost and interference from another direction; Act 3: a small experiment; Final: which direction to try first.'
+      : mode === 'good'
+        ? 'Act 1: use the strongest strength on a concrete challenge; Act 2: the strength meets resistance and must level up; Act 3: migrate it to a larger scene; Final: one concrete next step in the strongest direction.'
+        : 'Act 1: two impulses coexist; Act 2: they interfere and create a third pattern; Act 3: a small measurement that does not kill the other side; Final: which side feels more coherent.';
     return [
       'You are the QBTI quantum-state system. First person: "I". The user is "you".',
       'OUTPUT LANGUAGE: ' + target + '. Write every visible string in ' + target + '. Do not use Chinese characters. JSON keys remain English.',
@@ -2421,10 +2432,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       'SCENE: ' + d.scene,
       'User code: ' + code + '; dimension state: ' + (dimState || 'superposition') + '; danger: ' + (isDanger ? 'yes' : 'no') + '; address: ' + address + '.',
       'This must be a fresh four-act interactive script. Do not reuse any previous text.',
+      stateContract,
+      stateActs,
       'MANDATORY OPENING: first 2-4 intro lines are "I" scanning the user’s radar; include the word Error, a new error code, and scan/probe/radar; the anomaly must foreshadow Act 1.',
       'INTRO: 8-10 short lines: beep → scanning radar → Error code → state reading → non-judgmental reassurance → "I understand why…" → a grounded real-life line → "so now…" → "empty your mind… follow the words…" → "imagine…".',
       'SCENE: 2-4 background lines with concrete abandoned-place details; if intro ends with "imagine", set bridge to [].',
-      'STRUCTURE: Act 1 (3 options), Act 2 (3 options), Act 3 (3 options), Final open question (4 options). Each option has 1-2 feedback lines. Include branches A/B/C. Plant one concrete detail and pay it off in the final question.',
+      'STRUCTURE: follow the state act plan above. Act 1/2/3 have 3 options; Final has 4 options. Each option has 1-2 feedback lines. Include branches A/B/C. Plant one concrete detail and pay it off in the final question.',
       'RULES: no judging, diagnosing, labeling, "you should", "you must", parents, teachers, AI, scores or reports. Humor comes from the system and situation, never from mocking the user. No sudden events without a physical precursor. Do not end lines with the Chinese full stop "。".',
       'LENGTH: about 600-850 words.',
       'OUTPUT: valid JSON only, no markdown or explanation. Schema:',
@@ -2444,6 +2457,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }[currentLang()] || '简体中文';
     const context = buildDialogueContext(dim, dimState, name, entry, isDanger);
     const stateText = dimState === 'danger' ? '危险/未坍缩，主线目标不清晰' : dimState === 'good' ? '良好/方向清晰' : '叠加/方向未定';
+    const stateStrategy = dimState === 'danger'
+      ? '【状态专属】危险/未坍缩：不要劝他振作；让几个具体方向轮流上场，每次选择都让某个方向更清楚；终幕只问“愿意先试哪一步”。'
+      : dimState === 'good'
+        ? '【状态专属】良好/方向清晰：识别并放大他最强的子维度；每一幕把优势推到更大的挑战里；终幕邀请一个具体下一步，不要写成躺平。'
+        : '【状态专属】叠加/未定：让两个真实冲动同时在场，制造干涉；不要第一幕就逼他选死；终幕帮助他观察哪边更相干，而不是替他选边。';
     const address = dialogueAddress(name);
     const ratios = Object.keys(context.ratios || {}).map(k => k + '=' + context.ratios[k] + '%').join(' / ');
     const forbidden = dim === 'PO'
@@ -2500,7 +2518,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       '【核心：尊重用户】不爆粗口、不嘲讽、不贬低、不贴标签、不诊断、不评价用户的选择；幽默来自系统自己和情境，不来自嘲笑用户',
       '【语气】像真人在说话，可以吐槽设备、吐槽自己、慌、嘴硬、被打脸、说半句话；可以用“不是哥们”“绷不住了”“什么鬼”，但不要每句都堆梗',
       '不要把选项写成“怂”“莽”“摆烂”这种人格局限标签；描述行为，不评价人格',
-      '【逻辑】第一幕：雷达异常→具体前兆→选择；第二幕：选择的后果触发变体→升级→选择；第三幕：代价/线索→回收前兆→选择；终幕：从经历里长出来',
+      stateStrategy,
+      '【逻辑】按状态专属结构写；第一幕埋前兆，第二幕让后果升级，第三幕回收前兆并做最后选择，终幕从经历里长出来',
       '【因果骨架】' + causal,
       '【活力】系统实时反应（等等/不是吧/我再看一眼）；每个选择先改变一个具体东西（灯、灰、声音、位置、温度），再谈感受；允许短句、打断、改口',
       '【标点】每个数组元素只写一句话，句末不要加“。”；需要停顿用“…”或直接结束',
