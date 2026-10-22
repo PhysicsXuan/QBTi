@@ -1220,7 +1220,166 @@ function dialogueSafeText(value, max){
   return String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').slice(0, max || 120);
 }
 
+const DIALOGUE_BLUEPRINTS_EN = {
+  PO: {
+    name: 'Potential Openness',
+    scene: 'an abandoned observatory control room with a faded star map, a dormant radio receiver and a long-sealed observation door',
+    link: 'the old radio receiver still blinking on the wall and the seam in the star map',
+    background: 'the observatory was shut down more than ten years ago; the roof supports creak, rust falls from the star-map seam, and the old receiver is still on standby',
+    metaphor: 'the sealed door may lead to new observation data, or to nothing at all',
+    forbidden: 'do not turn the scene into a generic locked door, shelter, apocalypse, monster, train, library or lighthouse',
+    logic: 'the radar anomaly must grow from a concrete physical precursor: a loose rivet, falling dust, a temperature change, or wind through the star-map seam'
+  },
+  II: {
+    name: 'Intrinsic Interest',
+    scene: 'an old train stopped on a circular track, its boiler cold, one dim lamp still burning in the cab',
+    link: 'the old broadcast radio and pressure gauge in the driver cab',
+    background: 'the mining line was abandoned years ago; coal dust covers the floor, the tunnel walls carry old maintenance marks, and the boiler has been cold for a long time',
+    metaphor: 'whether to relight the fire, knowing the next tunnel may still be dark',
+    forbidden: 'do not turn the scene into a generic locked door, shelter, apocalypse, monster, observatory, library or lighthouse',
+    logic: 'the radar anomaly must be caused by something already present: a pressure drop, a loose coupling, coal dust, or a failing gauge'
+  },
+  LA: {
+    name: 'Learning Agency',
+    scene: 'a library closed for years, where the checkout terminal still glows and the shelves sit on old rails',
+    link: 'the green terminal on the checkout desk and a map left by the previous reader',
+    background: 'the library closed long ago; damp has reached the lower shelves, the rails are worn, and the terminal still holds an unfinished borrowing record',
+    metaphor: 'whether to follow the map left by someone else, or draw a route of your own',
+    forbidden: 'do not turn the scene into a generic locked door, shelter, apocalypse, monster, observatory, train or lighthouse',
+    logic: 'the radar anomaly must come from an existing detail: a jammed rail, a damp page, a flickering terminal, or a mark on the old map'
+  },
+  UR: {
+    name: 'Uncertainty Response',
+    scene: 'a dark sea at night, a decommissioned lighthouse, fog, a radio running on an old generator and a tide that is going out',
+    link: 'the radio at the base of the lighthouse and the foghorn with unstable voltage',
+    background: 'the lighthouse was taken out of service years ago; the generator is weak, the fuel gauge is almost empty, and black reef edges appear when the tide recedes',
+    metaphor: 'whether to trust a sound in the fog, or wait until the sea shows its shape',
+    forbidden: 'do not turn the scene into a generic locked door, shelter, apocalypse, monster, observatory, train or library',
+    logic: 'the radar anomaly must be tied to an existing detail: unstable voltage, a tide change, a fog signal, or a failing generator'
+  }
+};
+
+function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
+  const b = DIALOGUE_BLUEPRINTS_EN[dimension];
+  if(!b) return null;
+  const c = context || {};
+  const target = DIALOGUE_LANG_NAMES[lang] || 'English';
+  const stateText = c.dimensionState === 'danger' ? 'danger / not yet collapsed'
+    : c.dimensionState === 'good' ? 'good / direction is clear'
+    : 'superposition / direction not fixed';
+  const ratios = c.ratios && typeof c.ratios === 'object'
+    ? Object.keys(c.ratios).slice(0, 6).map(k => dialogueSafeText(k, 8) + '=' + (Number(c.ratios[k]) || 0) + '%').join(' / ')
+    : '';
+  const addressText = dialogueSafeText(address, 20) || 'you';
+  const errorCodes = ['Error 404 No Found', 'Error 403 Signal Lost', 'Error 500 Radar Overheat', 'Error 502 Dimension Echo Lost', 'Error 418 Radar Out of Range'];
+  const errorCode = errorCodes[Math.floor(Math.random() * errorCodes.length)];
+  const openingAngles = ['a half-finished complaint from the system', 'a broken notification tone', 'a smell that should not be there', 'a very small action nobody noticed', 'one wrong detail in the environment'];
+  const openingAngle = openingAngles[Math.floor(Math.random() * openingAngles.length)];
+  const moods = ['the system is sleepy', 'the system is secretly panicking', 'the system is pretending to be calm', 'the system just got embarrassed', 'the system is holding itself together'];
+  const mood = moods[Math.floor(Math.random() * moods.length)];
+  return [
+    'You are the QBTI quantum-state system. Your first-person voice is "I"; the user is "you".',
+    'OUTPUT LANGUAGE: ' + target + '. Every string value in the JSON must be written in ' + target + '. Do not write Chinese characters. The JSON keys stay in English.',
+    'You are guiding the user through one immersive dimensional dialogue.',
+    '',
+    'DIMENSION: ' + b.name,
+    'SCENE: ' + b.scene,
+    'RADAR LINK: ' + b.link,
+    'BACKGROUND MATERIAL: ' + b.background,
+    'CORE METAPHOR: ' + b.metaphor,
+    'FORBIDDEN: ' + b.forbidden,
+    'CAUSAL RULE: ' + b.logic,
+    'Generation nonce: ' + dialogueSafeText(nonce, 48),
+    'Opening angle for this run: ' + openingAngle,
+    'System mood: ' + mood,
+    'This is a fresh generation. Do not reuse the previous opening, sentence patterns, options, feedback or metaphors.',
+    '',
+    'RADAR OPENING (MANDATORY):',
+    '- The first 2-4 intro lines must show "I" scanning the user’s radar for this dimension.',
+    '- Include the word "Error" and this error code: ' + errorCode + '.',
+    '- Include at least one of: scan, probe, radar.',
+    '- The radar result must match the dimension state: danger = lost/interrupted signal; good = stable/locked signal; superposition = two frequencies/drift.',
+    '- The anomaly must cause or foreshadow the first concrete detail in Act 1. It cannot be decorative.',
+    '',
+    'INTRO RHYTHM:',
+    '- Write 8-10 short intro lines in this order: "—beep…" → "I’m scanning your [dimension] radar…" → Error code → a specific reading of the state → a non-judgmental reassurance ("don’t worry… there is still room…") → "I understand why you might be in this state…" → a grounded real-life line about how many unknowns a person meets every day → "so now…" → "shut down the console… empty your mind… follow the words…" → "imagine…".',
+    '- Include the equivalent of "empty your mind", "follow the words" and "imagine" in the target language. Do not skip these three beats.',
+    '',
+    'RADAR → SCENE:',
+    '- Do not jump to the scene immediately after the error.',
+    '- If the intro ends with an imagination transition, set "bridge" to an empty array [].',
+    '- Otherwise write 1-3 bridge lines connecting the signal to: ' + b.link + '.',
+    '- Always write 2-4 background lines: what the place is, why it was abandoned, and two concrete details from the background material.',
+    '',
+    'USER CONTEXT:',
+    'Home questionnaire code: ' + dialogueSafeText(c.code, 40),
+    'Dimension state: ' + stateText,
+    'Overall state: ' + (c.quantumState === 'danger' ? 'danger, main direction unclear' : 'not in danger state'),
+    ratios ? 'Within-dimension ratios: ' + ratios : '',
+    c.lead ? 'Leading subdimension: ' + dialogueSafeText(c.lead, 8) + (c.gap != null ? ', gap ' + (Number(c.gap) || 0) + '%' : '') : '',
+    'Address the user as: "' + addressText + '". If the name is "you", use "you".',
+    '',
+    'NON-NEGOTIABLE RULES:',
+    '- Do not define, label, diagnose or judge the user.',
+    '- Do not say "you should", "you must", "you need to", "I suggest you", or "believe in yourself".',
+    '- Do not give answers or make decisions for the user.',
+    '- Do not mention parents, teachers, AI, models, scores, assessment or reports.',
+    '- The user is always your teammate. Humor comes from the system, the equipment and the absurd situation, never from mocking the user.',
+    '- Describe behavior, not personality labels.',
+    '',
+    'CAUSALITY AND CONTINUITY:',
+    '- No sudden cracks, sudden sounds, sudden shadows or sudden messages. Every anomaly needs a physical precursor: a loose support, dust, temperature, tide, worn rail, weak voltage or a consequence of the previous choice.',
+    '- Act 1 plants a concrete detail. Act 2 makes it matter. Act 3 pays off the cost or clue.',
+    '- Each choice must change at least one concrete thing: light, dust, sound, position, temperature or pressure.',
+    '- The final question must grow naturally from the experience. Do not start preaching.',
+    '',
+    'STRUCTURE:',
+    '- Act 1: radar anomaly → concrete precursor → choice (3 options).',
+    '- Act 2: consequence of the choice → escalation → choice (3 options).',
+    '- Act 3: cost or clue → payoff of the precursor → choice (3 options).',
+    '- Final: one open, non-judgmental question (4 options).',
+    '- Every option needs 1-2 feedback lines. Do not leave feedback empty.',
+    '- Include branches A, B and C, each 2-4 lines.',
+    '- Keep the whole script around 600-850 words. Be vivid and specific, not long-winded.',
+    '- Do not end lines with the Chinese full stop "。"; use the target language’s normal punctuation.',
+    '',
+    'OUTPUT: valid JSON only, no markdown, no code fence, no explanation. Schema:',
+    '{',
+    '  "continuity": { "openingDetail": "a concrete detail planted early", "causeChain": ["precursor→trigger", "trigger→consequence", "consequence→final payoff"], "payoff": "how the final question pays it off" },',
+    '  "intro": ["8-10 lines"],',
+    '  "bridge": [],',
+    '  "background": ["2-4 lines"],',
+    '  "act1": { "lines": ["1-3 transition lines"], "prompt": "question", "options": [',
+    '    { "text": "option A", "feedback": ["1-2 lines"] },',
+    '    { "text": "option B", "feedback": ["1-2 lines"] },',
+    '    { "text": "option C", "feedback": ["1-2 lines"] }',
+    '  ] },',
+    '  "act2": { "lines": ["2-4 transition lines"], "prompt": "question", "options": [',
+    '    { "text": "option A", "feedback": ["1-2 lines"] },',
+    '    { "text": "option B", "feedback": ["1-2 lines"] },',
+    '    { "text": "option C", "feedback": ["1-2 lines"] }',
+    '  ] },',
+    '  "branches": { "A": ["2-4 lines"], "B": ["2-4 lines"], "C": ["2-4 lines"] },',
+    '  "act3": { "lines": ["2-4 transition lines"], "prompt": "question", "options": [',
+    '    { "text": "option A", "feedback": ["1-2 lines"] },',
+    '    { "text": "option B", "feedback": ["1-2 lines"] },',
+    '    { "text": "option C", "feedback": ["1-2 lines"] }',
+    '  ] },',
+    '  "final": { "lines": ["2-4 closing lines"], "prompt": "open question", "options": [',
+    '    { "text": "option A", "feedback": ["1-2 lines"] },',
+    '    { "text": "option B", "feedback": ["1-2 lines"] },',
+    '    { "text": "option C", "feedback": ["1-2 lines"] },',
+    '    { "text": "option D", "feedback": ["1-2 lines"] }',
+    '  ] }',
+    '}',
+    'Output the JSON now.'
+  ].filter(Boolean).join('\n');
+}
+
 function buildDialoguePrompt(dimension, address, context, nonce, lang){
+  if(lang !== 'zh-CN' && lang !== 'zh-TW'){
+    return buildDialoguePromptEnglish(dimension, address, context, nonce, lang);
+  }
   const b = DIALOGUE_BLUEPRINTS[dimension];
   if(!b) return null;
   const c = context || {};

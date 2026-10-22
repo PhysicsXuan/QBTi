@@ -1933,7 +1933,43 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     return context;
   }
 
+  function buildEmergencyDialoguePromptEnglish(dim, dimState, name, entry, isDanger){
+    const lang = currentLang();
+    const target = {
+      en: 'English', es: 'Español', pt: 'Português', ko: '한국어', ja: '日本語', fr: 'Français'
+    }[lang] || 'English';
+    const dims = {
+      PO: { name: 'Potential Openness', scene: 'an abandoned observatory with a faded star map and a long-sealed observation door' },
+      II: { name: 'Intrinsic Interest', scene: 'an old train on a circular track with a cold boiler and one dim cab lamp' },
+      LA: { name: 'Learning Agency', scene: 'a closed library with a glowing checkout terminal, old shelf rails and a map left by the previous reader' },
+      UR: { name: 'Uncertainty Response', scene: 'a dark sea at night, a decommissioned lighthouse, fog, a weak generator and a receding tide' }
+    };
+    const d = dims[dim] || dims.PO;
+    const code = (entry && entry.code) || 'QBTI';
+    const address = name || 'you';
+    return [
+      'You are the QBTI quantum-state system. First person: "I". The user is "you".',
+      'OUTPUT LANGUAGE: ' + target + '. Write every visible string in ' + target + '. Do not use Chinese characters. JSON keys remain English.',
+      'DIMENSION: ' + d.name,
+      'SCENE: ' + d.scene,
+      'User code: ' + code + '; dimension state: ' + (dimState || 'superposition') + '; danger: ' + (isDanger ? 'yes' : 'no') + '; address: ' + address + '.',
+      'This must be a fresh four-act interactive script. Do not reuse any previous text.',
+      'MANDATORY OPENING: first 2-4 intro lines are "I" scanning the user’s radar; include the word Error, a new error code, and scan/probe/radar; the anomaly must foreshadow Act 1.',
+      'INTRO: 8-10 short lines: beep → scanning radar → Error code → state reading → non-judgmental reassurance → "I understand why…" → a grounded real-life line → "so now…" → "empty your mind… follow the words…" → "imagine…".',
+      'SCENE: 2-4 background lines with concrete abandoned-place details; if intro ends with "imagine", set bridge to [].',
+      'STRUCTURE: Act 1 (3 options), Act 2 (3 options), Act 3 (3 options), Final open question (4 options). Each option has 1-2 feedback lines. Include branches A/B/C. Plant one concrete detail and pay it off in the final question.',
+      'RULES: no judging, diagnosing, labeling, "you should", "you must", parents, teachers, AI, scores or reports. Humor comes from the system and situation, never from mocking the user. No sudden events without a physical precursor. Do not end lines with the Chinese full stop "。".',
+      'LENGTH: about 600-850 words.',
+      'OUTPUT: valid JSON only, no markdown or explanation. Schema:',
+      '{"continuity":{"openingDetail":"…","causeChain":["…","…","…"],"payoff":"…"},"intro":["…"],"bridge":[],"background":["…"],"act1":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"act2":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"branches":{"A":["…"],"B":["…"],"C":["…"]},"act3":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"final":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]}}',
+      'Output the JSON now.'
+    ].join('\n');
+  }
+
   function buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger){
+    if(currentLang() !== 'zh-CN' && currentLang() !== 'zh-TW'){
+      return buildEmergencyDialoguePromptEnglish(dim, dimState, name, entry, isDanger);
+    }
     const d = DIALOGUE_DIMS[dim] || DIALOGUE_DIMS.PO;
     const langName = {
       'zh-CN': '简体中文', 'zh-TW': '繁體中文', en: 'English', es: 'Español',
