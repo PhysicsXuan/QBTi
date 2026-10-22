@@ -1608,6 +1608,54 @@ app.post('/api/dialogue/prompt', async (req, res) => {
   res.json({ success: true, dimension: dimension, prompt: prompt });
 });
 
+// 4.8.4 量子态状况（第五维度前的小球观测，确定性分析，不消耗 AI Token）
+app.post('/api/quantum/status', (req, res) => {
+  const body = req.body || {};
+  const dim = String(body.dimension || '').toUpperCase();
+  const dims = { PO: ['X', 'C', 'A'], II: ['P', 'M', 'I'], LA: ['I', 'D', 'E'], UR: ['T', 'H', 'R'] };
+  if(!dims[dim]) return res.status(400).json({ error: '维度不正确' });
+  const type = ['good', 'danger', 'superposition'].includes(body.type) ? body.type : 'superposition';
+  const input = body.scores && typeof body.scores === 'object' ? body.scores : {};
+  const scores = {};
+  dims[dim].forEach(k => { scores[k] = Math.max(0, Math.min(100, Number(input[k]) || 0)); });
+  const values = Object.values(scores);
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  const min = Math.min.apply(null, values);
+  const max = Math.max.apply(null, values);
+  const spread = max - min;
+
+  let ladder = avg >= 66 ? 5 : avg >= 53 ? 4 : avg >= 40 ? 3 : avg >= 28 ? 2 : 1;
+  if(type === 'danger') ladder -= 1;
+  if(type === 'good') ladder += 1;
+  if(spread > 45) ladder -= 1;
+  if(min < 25) ladder -= 1;
+  ladder = Math.max(1, Math.min(5, Math.round(ladder)));
+  const next = Math.min(5, ladder + 1);
+
+  const guidance = type === 'good'
+    ? 'clear'
+    : type === 'danger'
+      ? 'blocked'
+      : (avg >= 50 ? 'forming' : 'weak');
+
+  const stability = spread < 20 ? 'high' : spread < 36 ? 'medium' : 'low';
+  res.json({
+    success: true,
+    version: 'quantum-status-v1',
+    dimension: dim,
+    type: type,
+    ladder: ladder,
+    nextLadder: next,
+    guidance: guidance,
+    stability: stability,
+    avg: Math.round(avg * 10) / 10,
+    min: Math.round(min * 10) / 10,
+    max: Math.round(max * 10) / 10,
+    spread: Math.round(spread * 10) / 10,
+    scores: scores
+  });
+});
+
 // 4.8.5 全局 AI 配置（管理员设置一次，所有学生端自动接入）
 const aiProxyHits = new Map();
 

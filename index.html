@@ -398,6 +398,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   .settings-seg button{padding:5px 10px;font-size:calc(12px * var(--q-fs));}
 }
 </style>
+<link rel="stylesheet" href="quantum-status.css">
 </head>
 <body>
 
@@ -560,6 +561,60 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     </div>
   </section>
 </div>
+
+  <div class="nebula-choice" id="nebulaChoice" aria-hidden="true">
+    <div class="nebula-choice-card">
+      <div class="nc-kicker" id="ncKicker">NEBULA OPEN</div>
+      <h2 id="ncTitle">量子球已经炸开</h2>
+      <p id="ncSub">接下来，你想先观测它现在的量子态，还是直接进入球内？</p>
+      <div class="nc-actions">
+        <button class="nc-btn nc-status" id="btnNcStatus" type="button">
+          <span class="nc-icon">◈</span>
+          <span class="nc-label" id="ncStatusLabel">查看量子态状况</span>
+          <span class="nc-desc" id="ncStatusDesc">先看它现在处在哪个能级</span>
+        </button>
+        <button class="nc-btn nc-enter" id="btnNcEnter" type="button">
+          <span class="nc-icon">✦</span>
+          <span class="nc-label" id="ncEnterLabel">进入量子球</span>
+          <span class="nc-desc" id="ncEnterDesc">生成一段这个维度的剧本</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="quantum-status" id="quantumStatus" aria-hidden="true">
+    <div class="qs-aurora"></div>
+    <button class="qs-close" id="qsClose" type="button" aria-label="结束观测">×</button>
+    <div class="qs-shell">
+      <div class="qs-header">
+        <div>
+          <div class="qs-kicker" id="qsKicker">QUANTUM STATE OBSERVATION</div>
+          <h2 class="qs-main-title" id="qsMainTitle">量子态观测</h2>
+        </div>
+        <div class="qs-tabs" id="qsTabs"></div>
+      </div>
+      <div class="qs-main">
+        <div class="qs-visual">
+          <div class="qs-orb-wrap">
+            <div class="qs-orbit orbit-a"></div>
+            <div class="qs-orbit orbit-b"></div>
+            <div class="qs-orb" id="qsOrb" data-state="superposition"><i></i><b></b></div>
+            <div class="qs-particles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="qs-visual-label" id="qsVisualLabel">叠加态 · 相位未锁定</div>
+        </div>
+        <div class="qs-copy">
+          <div class="qs-page-kicker" id="qsPageKicker"></div>
+          <h3 class="qs-page-title" id="qsPageTitle"></h3>
+          <div class="qs-page-body" id="qsPageBody"></div>
+          <div class="qs-guidance" id="qsGuidance"></div>
+          <div class="qs-continue" id="qsContinue">点击屏幕任意位置以继续</div>
+        </div>
+      </div>
+      <div class="qs-ladder" id="qsLadder"></div>
+      <div class="qs-four" id="qsFour"></div>
+    </div>
+  </div>
 
   <div class="q-dialog" id="qDialog" role="dialog" aria-live="polite">
     <button class="q-dialog-close" id="qDialogClose" type="button" aria-label="结束对话">×</button>
@@ -728,6 +783,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 <script src="qbti-core.js"></script>
 <script src="qbti-i18n.js"></script>
 <script src="qbti-hidden.js"></script>
+<script src="quantum-status-text.js"></script>
 <script src="freedom-render.js"></script>
 <script src="qbti-settings.js"></script>
 <script src="quantum-sphere.js"></script>
@@ -2703,6 +2759,348 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(qDialogAlive(session)) closeNebulaDialogue(true);
   }
 
+  /* ============================================================
+     星云炸开后的双选择 + 量子态观测（测试版）
+     ============================================================ */
+  const QS_DIMS = ['PO', 'II', 'LA', 'UR'];
+  let qsState = {
+    open: false, dim: 'PO', page: 0, data: null, context: null,
+    loading: false, requestId: 0, cache: {}
+  };
+  let nebulaChoiceDim = 'PO';
+
+  function statusPack(){
+    const lang = currentLang();
+    if(!window.QBTI_STATUS_TEXT) return null;
+    return window.QBTI_STATUS_TEXT[lang]
+      || (String(lang).indexOf('zh') === 0 ? window.QBTI_STATUS_TEXT['zh-CN'] : window.QBTI_STATUS_TEXT.en)
+      || null;
+  }
+  function dimLabel(dim){
+    const d = Q.DIMS.find(x => x.id === dim);
+    const I = window.QBTI_I18N;
+    return (I && d) ? (I.dim(dim, 'name') || d.name) : (d ? d.name : dim);
+  }
+  function qsEsc(v){ return escapeHTML(v); }
+
+  function getQuantumDimensionContext(dim){
+    let res = state.result || null;
+    try {
+      const entry = resolveHomepageThemeEntry();
+      if(entry && entry.answers) res = Q.computeResult(entry.answers);
+    } catch(e){}
+    if(!res){
+      return { dimension: dim, type: 'superposition', scores: { A:50, B:50, C:50 }, ratios: {}, lead: '', gap: 0 };
+    }
+    let raw = null;
+    try { raw = Q.analyzeDimensionStates(res); } catch(e){}
+    const d = Q.DIMS.find(x => x.id === dim);
+    const letters = d ? d.letters : [];
+    const scores = {};
+    letters.forEach(l => { scores[l] = Math.round(Number(res.dominanceScore && res.dominanceScore[l]) || 0); });
+    const info = raw && raw[dim] ? raw[dim] : null;
+    const leadInfo = res.dimLeadInfo && res.dimLeadInfo[dim] ? res.dimLeadInfo[dim] : null;
+    return {
+      dimension: dim,
+      type: info ? info.type : 'superposition',
+      scores: scores,
+      ratios: res.dimGroupRatio && res.dimGroupRatio[dim] ? res.dimGroupRatio[dim] : {},
+      lead: leadInfo ? leadInfo.lead : '',
+      gap: leadInfo ? Number(leadInfo.gap) || 0 : 0
+    };
+  }
+
+  function localQuantumStatus(ctx){
+    const values = Object.values(ctx.scores || {}).map(Number);
+    const avg = values.length ? values.reduce((a,b) => a+b, 0) / values.length : 0;
+    const min = values.length ? Math.min.apply(null, values) : 0;
+    const max = values.length ? Math.max.apply(null, values) : 0;
+    const spread = max - min;
+    let ladder = avg >= 66 ? 5 : avg >= 53 ? 4 : avg >= 40 ? 3 : avg >= 28 ? 2 : 1;
+    if(ctx.type === 'danger') ladder -= 1;
+    if(ctx.type === 'good') ladder += 1;
+    if(spread > 45) ladder -= 1;
+    if(min < 25) ladder -= 1;
+    ladder = Math.max(1, Math.min(5, Math.round(ladder)));
+    return {
+      success: true, dimension: ctx.dimension, type: ctx.type,
+      ladder: ladder, nextLadder: Math.min(5, ladder + 1),
+      guidance: ctx.type === 'good' ? 'clear' : ctx.type === 'danger' ? 'blocked' : (avg >= 50 ? 'forming' : 'weak'),
+      stability: spread < 20 ? 'high' : spread < 36 ? 'medium' : 'low',
+      avg: Math.round(avg * 10) / 10, min: Math.round(min * 10) / 10,
+      max: Math.round(max * 10) / 10, spread: Math.round(spread * 10) / 10,
+      scores: ctx.scores
+    };
+  }
+
+  async function fetchQuantumStatus(ctx){
+    try {
+      const res = await fetch('/api/quantum/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ctx)
+      });
+      const data = await res.json().catch(() => ({}));
+      if(res.ok && data && data.success) return data;
+    } catch(e){}
+    return localQuantumStatus(ctx);
+  }
+
+  function buildStatusTabs(){
+    const tabs = $('qsTabs');
+    if(!tabs) return;
+    tabs.innerHTML = '';
+    QS_DIMS.forEach(dim => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'qs-tab' + (dim === qsState.dim ? ' active' : '');
+      b.textContent = dimLabel(dim);
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        if(dim === qsState.dim && !qsState.loading) { qsState.page = 0; renderQuantumStatusPage(0); return; }
+        qsState.dim = dim; qsState.page = 0; qsState.data = null; qsState.context = null;
+        renderStatusTabs();
+        loadQuantumStatusDim(dim);
+      });
+      tabs.appendChild(b);
+    });
+  }
+  function renderStatusTabs(){
+    document.querySelectorAll('#qsTabs .qs-tab').forEach(b => {
+      b.classList.toggle('active', b.textContent === dimLabel(qsState.dim));
+    });
+  }
+
+  function renderQuantumStatusLoading(){
+    const pack = statusPack();
+    const ui = pack.ui;
+    if($('qsKicker')) $('qsKicker').textContent = ui.kicker;
+    if($('qsMainTitle')) $('qsMainTitle').textContent = ui.title;
+    if($('qsPageKicker')) $('qsPageKicker').textContent = 'QUANTUM FIELD';
+    if($('qsPageTitle')) $('qsPageTitle').textContent = ui.loading;
+    if($('qsPageBody')) $('qsPageBody').innerHTML = (ui.loadingLines || []).map((t, i) => '<p class="qs-line" style="--i:' + i + '">' + qsEsc(t) + '</p>').join('');
+    if($('qsGuidance')){ $('qsGuidance').className = 'qs-guidance'; $('qsGuidance').innerHTML = ''; }
+    if($('qsLadder')){ $('qsLadder').className = 'qs-ladder'; $('qsLadder').innerHTML = ''; }
+    if($('qsFour')){ $('qsFour').className = 'qs-four'; $('qsFour').innerHTML = ''; }
+    if($('qsContinue')){ $('qsContinue').style.visibility = 'hidden'; }
+    if($('qsOrb')) $('qsOrb').dataset.state = 'superposition';
+    if($('qsVisualLabel')) $('qsVisualLabel').textContent = '正在读取量子场';
+  }
+
+  async function loadQuantumStatusDim(dim){
+    qsState.loading = true;
+    qsState.dim = dim;
+    qsState.requestId += 1;
+    const rid = qsState.requestId;
+    renderStatusTabs();
+    if(!qsState.cache[dim]){
+      renderQuantumStatusLoading();
+      qsState.context = getQuantumDimensionContext(dim);
+      const data = await fetchQuantumStatus(qsState.context);
+      if(rid !== qsState.requestId || !qsState.open) return;
+      qsState.data = data;
+      qsState.cache[dim] = data;
+    } else {
+      qsState.context = getQuantumDimensionContext(dim);
+      qsState.data = qsState.cache[dim];
+    }
+    qsState.loading = false;
+    renderQuantumStatusPage(0);
+  }
+
+  function qsPageData(){
+    const pack = statusPack();
+    const data = qsState.data || localQuantumStatus(getQuantumDimensionContext(qsState.dim));
+    return { pack: pack, data: data };
+  }
+
+  function renderQuantumStatusPage(page){
+    const { pack, data } = qsPageData();
+    const ui = pack.ui;
+    qsState.page = page;
+    qsState.data = data;
+    const type = data.type || 'superposition';
+    const stateMeta = pack.states[type] || pack.states.superposition;
+    const dimName = dimLabel(qsState.dim);
+    if($('qsKicker')) $('qsKicker').textContent = ui.kicker;
+    if($('qsMainTitle')) $('qsMainTitle').textContent = ui.title;
+    if($('qsOrb')) $('qsOrb').dataset.state = type;
+    if($('qsVisualLabel')) $('qsVisualLabel').textContent = stateMeta.visual;
+    if($('qsPageKicker')) $('qsPageKicker').textContent = pack.pageKickers[page] || '';
+    if($('qsPageTitle')){
+      const t = pack.pageTitles[page] || '';
+      $('qsPageTitle').textContent = t.replace('{dim}', dimName);
+      $('qsPageTitle').style.animation = 'none';
+      void $('qsPageTitle').offsetWidth;
+      $('qsPageTitle').style.animation = 'qsLineIn .6s ease both';
+    }
+    const body = $('qsPageBody');
+    const guidance = $('qsGuidance');
+    const ladder = $('qsLadder');
+    const four = $('qsFour');
+    if(guidance){ guidance.className = 'qs-guidance'; guidance.innerHTML = ''; }
+    if(ladder){ ladder.className = 'qs-ladder'; ladder.innerHTML = ''; }
+    if(four){ four.className = 'qs-four'; four.innerHTML = ''; }
+    if($('qsContinue')){ $('qsContinue').style.visibility = 'visible'; $('qsContinue').textContent = page >= 4 ? ui.finish : ui.continue; }
+
+    const line = (text, i, extra) => '<p class="qs-line" style="--i:' + i + '">' + text + '</p>';
+    if(page === 0){
+      const text = (pack.stateBody[qsState.dim] && pack.stateBody[qsState.dim][type]) || '';
+      body.innerHTML = line('你刚刚炸开的是 <b>' + qsEsc(dimName) + '</b> 这一颗量子球。', 0)
+        + line('它现在呈现为 <em>' + qsEsc(stateMeta.name) + '</em>。', 1)
+        + line(qsEsc(text), 2);
+    } else if(page === 1){
+      const g = pack.guidance[data.guidance] || pack.guidance.weak;
+      const pct = data.guidance === 'clear' ? 92 : data.guidance === 'forming' ? 64 : data.guidance === 'weak' ? 34 : 12;
+      body.innerHTML = line('引导倾向不是“推着你走”，而是这颗球是否已经有一条可以对齐的轨道。', 0)
+        + line('当前这个维度的引导倾向：<b>' + qsEsc(g.label) + '</b>。', 1)
+        + line(qsEsc(g.body), 2);
+      if(guidance){
+        guidance.className = 'qs-guidance show';
+        guidance.dataset.guide = data.guidance;
+        guidance.innerHTML = '<div class="qs-guide-head"><span>' + qsEsc(pack.guidance.title) + '</span><span>' + qsEsc(g.label) + ' · ' + pct + '%</span></div>'
+          + '<div class="qs-guide-track"><div class="qs-guide-fill" style="--w:' + pct + '%"></div></div>';
+      }
+    } else if(page === 2){
+      const levels = pack.ladder.levels;
+      body.innerHTML = line('量子能量不是连续爬坡，而是一阶一阶跳。', 0)
+        + line(pack.ladder.body.replace('{dim}', qsEsc(dimName)).replace('{level}', data.ladder).replace('{next}', data.nextLadder), 1);
+      if(ladder){
+        ladder.className = 'qs-ladder show';
+        const heights = [32, 62, 94, 126, 158];
+        let html = '<div class="qs-ladder-title">' + qsEsc(pack.ladder.title) + ' · n=' + data.ladder + '</div><div class="qs-ladder-bars">';
+        for(let i = 0; i < 5; i++){
+          const lv = i + 1;
+          html += '<div class="qs-step" data-active="' + (lv === data.ladder ? '1' : '0') + '" data-next="' + (lv === data.nextLadder ? '1' : '0') + '">'
+            + '<div class="qs-step-bar" style="--h:' + heights[i] + 'px"></div>'
+            + '<div class="qs-step-label">' + qsEsc(levels[i] || ('n=' + lv)) + '</div></div>';
+        }
+        html += '<div class="qs-dot" style="left:' + (((data.ladder - 0.5) / 5) * 100) + '%;bottom:' + (heights[data.ladder - 1] + 20) + 'px"></div>';
+        html += '</div><div class="qs-ladder-foot">' + qsEsc(pack.ladder.foot) + '</div>';
+        ladder.innerHTML = html;
+      }
+    } else if(page === 3){
+      const q = pack.quantum[type] || pack.quantum.superposition;
+      body.innerHTML = line('把刚才的大白话，翻译成量子语言：', 0)
+        + line('<b>' + qsEsc(pack.quantum.title) + '</b>：' + qsEsc(q), 1)
+        + line('当前能级 n=' + data.ladder + '，稳定度：' + qsEsc((pack.ui.stability && pack.ui.stability[data.stability]) || data.stability || 'medium') + '。', 2);
+    } else {
+      body.innerHTML = line(qsEsc(pack.four.sub), 0)
+        + line('你不是四种人格中的一种，而是四个维度同时处在不同的能级。', 1);
+      if(four){
+        four.className = 'qs-four show';
+        four.innerHTML = QS_DIMS.map(dim => {
+          const ctx = getQuantumDimensionContext(dim);
+          const st = pack.states[ctx.type] || pack.states.superposition;
+          return '<button type="button" class="qs-four-card" data-dim="' + dim + '">'
+            + '<div class="qs-four-name">' + qsEsc(dimLabel(dim)) + '</div>'
+            + '<div class="qs-four-state ' + ctx.type + '">' + qsEsc(st.name) + '</div></button>';
+        }).join('');
+        four.querySelectorAll('.qs-four-card').forEach(card => {
+          card.addEventListener('click', e => {
+            e.stopPropagation();
+            const dim = card.dataset.dim;
+            if(!dim) return;
+            qsState.dim = dim; qsState.page = 0; qsState.data = null; qsState.context = null;
+            renderStatusTabs();
+            loadQuantumStatusDim(dim);
+          });
+        });
+      }
+    }
+  }
+
+  function advanceQuantumStatus(){
+    if(qsState.loading || !qsState.open) return;
+    if(qsState.page >= 4){ closeQuantumStatus(); return; }
+    renderQuantumStatusPage(qsState.page + 1);
+  }
+
+  function openQuantumStatus(dim){
+    const pack = statusPack();
+    if(!pack) return;
+    qsState.open = true;
+    qsState.dim = QS_DIMS.includes(dim) ? dim : 'PO';
+    qsState.page = 0; qsState.data = null; qsState.context = null; qsState.cache = {};
+    const el = $('quantumStatus');
+    if(el){ el.classList.add('show'); el.setAttribute('aria-hidden', 'false'); }
+    document.body.style.overflow = 'hidden';
+    buildStatusTabs();
+    if($('qsClose')) $('qsClose').setAttribute('aria-label', pack.ui.close);
+    loadQuantumStatusDim(qsState.dim);
+  }
+
+  function hideQuantumStatus(){
+    qsState.open = false;
+    qsState.loading = false;
+    qsState.requestId += 1;
+    const el = $('quantumStatus');
+    if(el){ el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); }
+    document.body.style.overflow = '';
+  }
+  function closeQuantumStatus(){
+    hideQuantumStatus();
+    if(window.QuantumSphere && window.QuantumSphere.goBack) window.QuantumSphere.goBack();
+  }
+
+  function openNebulaChoice(detail){
+    const pack = statusPack();
+    if(!pack) return;
+    if(!document.getElementById('screen-home') || !document.getElementById('screen-home').classList.contains('active')) return;
+    if(window.QuantumSphere && window.QuantumSphere.isNebula && !window.QuantumSphere.isNebula()) return;
+    nebulaChoiceDim = QS_DIMS.includes(detail && detail.dim) ? detail.dim : 'PO';
+    const c = pack.choice;
+    if($('ncKicker')) $('ncKicker').textContent = c.kicker;
+    if($('ncTitle')) $('ncTitle').textContent = c.title;
+    if($('ncSub')) $('ncSub').textContent = c.sub;
+    if($('ncStatusLabel')) $('ncStatusLabel').textContent = c.statusLabel;
+    if($('ncStatusDesc')) $('ncStatusDesc').textContent = c.statusDesc;
+    if($('ncEnterLabel')) $('ncEnterLabel').textContent = c.enterLabel;
+    if($('ncEnterDesc')) $('ncEnterDesc').textContent = c.enterDesc;
+    const el = $('nebulaChoice');
+    if(el){ el.classList.add('show'); el.setAttribute('aria-hidden', 'false'); }
+  }
+  function hideNebulaChoice(){
+    const el = $('nebulaChoice');
+    if(el){ el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); }
+  }
+
+  function bindQuantumStatusUI(){
+    const choice = $('nebulaChoice');
+    if(choice){
+      choice.addEventListener('click', e => {
+        if(e.target.closest('.nc-btn')) return;
+        e.stopPropagation();
+      });
+    }
+    if($('btnNcStatus')) $('btnNcStatus').addEventListener('click', e => {
+      e.stopPropagation();
+      hideNebulaChoice();
+      openQuantumStatus(nebulaChoiceDim);
+    });
+    if($('btnNcEnter')) $('btnNcEnter').addEventListener('click', e => {
+      e.stopPropagation();
+      hideNebulaChoice();
+      openNebulaDialogue({ dim: nebulaChoiceDim });
+    });
+    if($('qsClose')) $('qsClose').addEventListener('click', e => { e.stopPropagation(); closeQuantumStatus(); });
+    const status = $('quantumStatus');
+    if(status){
+      status.addEventListener('click', e => {
+        if(e.target.closest('.qs-close,.qs-tab,.qs-four-card')) return;
+        advanceQuantumStatus();
+      });
+    }
+    document.addEventListener('keydown', e => {
+      if(e.key === 'Escape' && qsState.open){ closeQuantumStatus(); }
+      else if(e.key === 'Escape' && $('nebulaChoice') && $('nebulaChoice').classList.contains('show')){
+        hideNebulaChoice();
+        if(window.QuantumSphere && window.QuantumSphere.goBack) window.QuantumSphere.goBack();
+      }
+    });
+  }
+  bindQuantumStatusUI();
+
   async function openNebulaDialogue(detail){
     const home = document.getElementById('screen-home');
     if(!home || !home.classList.contains('active')) return;
@@ -2801,8 +3199,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
   }
 
-  window.addEventListener('qbti:nebula-open', e => { openNebulaDialogue(e.detail || {}); });
-  window.addEventListener('qbti:nebula-close', () => { qDialogHide(); });
+  window.addEventListener('qbti:nebula-open', e => { openNebulaChoice(e.detail || {}); });
+  window.addEventListener('qbti:nebula-close', () => { qDialogHide(); hideNebulaChoice(); hideQuantumStatus(); });
   if($('qDialog')) $('qDialog').addEventListener('click', e => {
     if(e.target.closest && (e.target.closest('#qDialogClose') || e.target.closest('.q-dialog-choice'))) return;
     qDialogAdvance();
