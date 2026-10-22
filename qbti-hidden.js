@@ -230,6 +230,61 @@
     }
   };
 
+  const TYPE_EXTRA = {
+    'zh-CN': {
+      freedom: { congrats: '恭喜。你触发了极低概率的第五维度：自由高达。', explain: '这不是普通的人格标签，而是一种极端倾向：你把自由看得高于秩序，把反抗视为本能，并相信真正的力量应该由自己定义。' },
+      madman: { congrats: '恭喜。你触发了极稀有的第五维度：疯子。', explain: '你对知识的渴望超过了对安全、关系甚至人性的需求。你愿意为真相付出任何代价，也因此看见了别人不愿看见的深渊。' },
+      einstein: { congrats: '恭喜。你触发了极低概率的第五维度：爱因斯坦。', explain: '你拥有把复杂世界压缩成结构的能力。你习惯跳出系统看问题，创造新的推理路径，而不是接受现成答案。' },
+      jerry: { congrats: '恭喜。你触发了极低概率的第五维度：杰瑞鼠。', explain: '你的核心不是蛮力，而是生存智慧：韧性、狡猾、适应力和一点点坏运气都打不死你。你总能在规则缝隙里找到下一步。' }
+    },
+    'zh-TW': {
+      freedom: { congrats: '恭喜。你觸發了極低機率的第五維度：自由鋼彈。', explain: '這不是普通的人格標籤，而是一種極端傾向：你把自由看得高於秩序，把反抗視為本能，並相信真正的力量應該由自己定義。' },
+      madman: { congrats: '恭喜。你觸發了極稀有的第五維度：瘋子。', explain: '你對知識的渴望超過了對安全、關係甚至人性的需求。你願意為真相付出任何代價，也因此看見了別人不願看見的深淵。' },
+      einstein: { congrats: '恭喜。你觸發了極低機率的第五維度：愛因斯坦。', explain: '你擁有把複雜世界壓縮成結構的能力。你習慣跳出系統看問題，創造新的推理路徑，而不是接受現成答案。' },
+      jerry: { congrats: '恭喜。你觸發了極低機率的第五維度：傑瑞鼠。', explain: '你的核心不是蠻力，而是生存智慧：韌性、狡猾、適應力和一點點壞運氣都打不死你。你總能在規則縫隙裡找到下一步。' }
+    },
+    en: {
+      freedom: { congrats: 'Congratulations. You have triggered an extremely rare fifth dimension: Freedom GUNDAM.', explain: 'This is not an ordinary personality label. It is an extreme tendency: you place freedom above order, treat rebellion as instinct, and believe true power should be defined by you.' },
+      madman: { congrats: 'Congratulations. You have triggered an extremely rare fifth dimension: The Madman.', explain: 'Your hunger for knowledge exceeds your need for safety, relationships, even humanity. You will pay any price for the truth, and that is why you see abysses others refuse to look at.' },
+      einstein: { congrats: 'Congratulations. You have triggered an extremely rare fifth dimension: Einstein.', explain: 'You can compress a complicated world into structure. You step outside the system, invent new paths of reasoning, and refuse to accept ready-made answers.' },
+      jerry: { congrats: 'Congratulations. You have triggered an extremely rare fifth dimension: Jerry.', explain: 'Your core is not brute force but survival wisdom: resilience, cunning, adaptability and a little bad luck cannot kill you. You always find the next move in the cracks of the rules.' }
+    },
+    es: {
+      freedom: { congrats: 'Felicidades. Has activado una quinta dimensión extremadamente rara: Freedom GUNDAM.', explain: 'No es una etiqueta de personalidad normal. Es una tendencia extrema: pones la libertad por encima del orden, tratas la rebelión como instinto y crees que el verdadero poder debe definirlo tú.' },
+      madman: { congrats: 'Felicidades. Has activado una quinta dimensión extremadamente rara: El Loco.', explain: 'Tu hambre de conocimiento supera tu necesidad de seguridad, de relaciones e incluso de humanidad. Pagarías cualquier precio por la verdad, y por eso ves abismos que otros evitan mirar.' },
+      einstein: { congrats: 'Felicidades. Has activado una quinta dimensión extremadamente rara: Einstein.', explain: 'Puedes comprimir un mundo complejo en estructura. Sales del sistema, inventas nuevas rutas de razonamiento y te niegas a aceptar respuestas ya hechas.' },
+      jerry: { congrats: 'Felicidades. Has activado una quinta dimensión extremadamente rara: Jerry.', explain: 'Tu núcleo no es la fuerza bruta, sino la sabiduría de supervivencia: resistencia, astucia, adaptación y un poco de mala suerte no pueden matarte. Siempre encuentras el siguiente movimiento en las grietas de las reglas.' }
+    },
+    pt: {
+      freedom: { congrats: 'Parabéns. Você ativou uma quinta dimensão extremamente rara: Freedom GUNDAM.', explain: 'Não é um rótulo de personalidade comum. É uma tendência extrema: você coloca a liberdade acima da ordem, trata a rebelião como instinto e acredita que o verdadeiro poder deve ser definido por você.' },
+      madman: { congrats: 'Parabéns. Você ativou uma quinta dimensão extremamente rara: O Louco.', explain: 'Sua fome de conhecimento supera a necessidade de segurança, de relações e até de humanidade. Você pagaria qualquer preço pela verdade, e por isso vê abismos que os outros evitam olhar.' },
+      einstein: { congrats: 'Parabéns. Você ativou uma quinta dimensão extremamente rara: Einstein.', explain: 'Você consegue comprimir um mundo complexo em estrutura. Sai do sistema, inventa novos caminhos de raciocínio e se recusa a aceitar respostas prontas.' },
+      jerry: { congrats: 'Parabéns. Você ativou uma quinta dimensão extremamente rara: Jerry.', explain: 'Seu núcleo não é a força bruta, mas a sabedoria de sobrevivência: resiliência, astúcia, adaptação e um pouco de azar não conseguem te matar. Você sempre encontra o próximo movimento nas frestas das regras.' }
+    },
+    ko: {
+      freedom: { congrats: '축하합니다. 당신은 극히 낮은 확률의 다섯 번째 차원을 열었습니다: 프리덤 건담.', explain: '이것은 평범한 성격 라벨이 아니라 극단적인 성향입니다. 당신은 자유를 질서보다 위에 두고, 반항을 본능으로 여기며, 진정한 힘은 자신이 정의해야 한다고 믿습니다.' },
+      madman: { congrats: '축하합니다. 당신은 극히 희귀한 다섯 번째 차원을 열었습니다: 미치광이.', explain: '지식에 대한 갈망이 안전, 관계, 심지어 인간성에 대한 필요보다 큽니다. 진리를 위해 어떤 대가도 치를 수 있기에, 다른 사람이 보지 않으려는 심연을 봅니다.' },
+      einstein: { congrats: '축하합니다. 당신은 극히 낮은 확률의 다섯 번째 차원을 열었습니다: 아인슈타인.', explain: '복잡한 세계를 구조로 압축할 수 있습니다. 시스템 밖으로 나와 새로운 추론 경로를 만들고, 주어진 답을 그대로 받아들이지 않습니다.' },
+      jerry: { congrats: '축하합니다. 당신은 극히 낮은 확률의 다섯 번째 차원을 열었습니다: 제리.', explain: '당신의 핵심은 완력이 아니라 생존의 지혜입니다. 끈기, 교활함, 적응력, 그리고 약간의 불운도 당신을 죽일 수 없습니다. 언제나 규칙의 틈에서 다음 수를 찾습니다.' }
+    },
+    ja: {
+      freedom: { congrats: 'おめでとう。あなたは極めて低い確率の第五次元を起動しました：フリーダムガンダム。', explain: 'これは普通の性格ラベルではありません。自由を秩序より上に置き、反逆を本能とし、真の力は自分で定義すべきだと信じる極端な傾向です。' },
+      madman: { congrats: 'おめでとう。あなたは極めて希少な第五次元を起動しました：狂人。', explain: '知識への渇望が、安全、関係、さらには人間性への必要を超えています。真理のためにどんな代償も払うからこそ、他人が見ようとしない深淵を見るのです。' },
+      einstein: { congrats: 'おめでとう。あなたは極めて低い確率の第五次元を起動しました：アインシュタイン。', explain: '複雑な世界を構造に圧縮できます。システムの外に出て新しい推論の道を作り、用意された答えを受け入れません。' },
+      jerry: { congrats: 'おめでとう。あなたは極めて低い確率の第五次元を起動しました：ジェリー。', explain: '核となるのは腕力ではなく生存の知恵です。粘り強さ、狡猾さ、適応力、そして少しの不運でもあなたは死にません。いつもルールの隙間に次の一手を見つけます。' }
+    },
+    fr: {
+      freedom: { congrats: 'Félicitations. Vous avez déclenché une cinquième dimension extrêmement rare : Freedom GUNDAM.', explain: 'Ce n’est pas une étiquette de personnalité ordinaire. C’est une tendance extrême : vous placez la liberté au-dessus de l’ordre, faites de la rébellion un instinct et croyez que la vraie puissance doit être définie par vous.' },
+      madman: { congrats: 'Félicitations. Vous avez déclenché une cinquième dimension extrêmement rare : Le Fou.', explain: 'Votre soif de connaissance dépasse votre besoin de sécurité, de relations et même d’humanité. Vous paierez n’importe quel prix pour la vérité, et c’est pourquoi vous voyez des abîmes que les autres refusent de regarder.' },
+      einstein: { congrats: 'Félicitations. Vous avez déclenché une cinquième dimension extrêmement rare : Einstein.', explain: 'Vous pouvez comprimer un monde complexe en structure. Vous sortez du système, inventez de nouveaux chemins de raisonnement et refusez les réponses toutes faites.' },
+      jerry: { congrats: 'Félicitations. Vous avez déclenché une cinquième dimension extrêmement rare : Jerry.', explain: 'Votre force n’est pas la violence, mais la sagesse de survie : résilience, ruse, adaptation et un peu de malchance ne peuvent pas vous tuer. Vous trouvez toujours le prochain coup dans les fissures des règles.' }
+    }
+  };
+  Object.keys(TYPE_EXTRA).forEach(lang => {
+    if(!PACKS[lang]) return;
+    Object.keys(TYPE_EXTRA[lang]).forEach(k => Object.assign(PACKS[lang].types[k], TYPE_EXTRA[lang][k]));
+  });
+
   function get(lang){ return PACKS[lang] || PACKS['zh-CN']; }
 
   function checkUnlock(res){

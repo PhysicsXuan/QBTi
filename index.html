@@ -96,9 +96,45 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .code{font-size:clamp(calc(40px * var(--q-fs)),calc(9.5vw * var(--q-fs)),calc(72px * var(--q-fs)));font-weight:800;letter-spacing:.06em;line-height:1.05;background:linear-gradient(110deg,#fff,var(--q-color));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 .code .code-suffix{color:var(--q-color);-webkit-text-fill-color:var(--q-color);}
 .type-name{margin-top:18px;font-size:clamp(calc(20px * var(--q-fs)),calc(3.8vw * var(--q-fs)),calc(28px * var(--q-fs)));font-weight:800;color:#fff;letter-spacing:.08em;text-shadow:0 0 24px rgba(var(--q-r),var(--q-g),var(--q-b),.4);}
-.type-name .tn-suffix{font-size:.72em;color:#9EEBFF;font-weight:700;}
+.type-name .tn-suffix{font-size:.72em;color:#9EEBFF;font-weight:700;-webkit-text-fill-color:#9EEBFF;}
 .r-tagline{color:var(--muted);font-size:calc(14.5px * var(--q-fs));max-width:680px;margin:24px auto 0;line-height:1.75}
-.hidden-personality{max-width:680px;margin:28px auto 0;padding:22px;border-radius:18px;border:1px solid rgba(255,105,120,.26);background:linear-gradient(135deg,rgba(75,8,22,.42),rgba(24,8,36,.42));text-align:left;box-shadow:0 0 34px rgba(235,65,75,.08)}
+.hidden-personality{position:relative;max-width:760px;margin:28px auto 0;padding:26px;border-radius:20px;border:1px solid rgba(255,105,120,.26);background:linear-gradient(135deg,rgba(75,8,22,.42),rgba(24,8,36,.42));text-align:left;box-shadow:0 0 44px rgba(235,65,75,.10);overflow:hidden;min-height:300px;isolation:isolate}
+.hidden-personality::before{content:'';position:absolute;inset:-40%;background:conic-gradient(from 0deg,transparent,rgba(255,154,167,.10),transparent 35%,rgba(80,140,255,.10),transparent 70%);animation:hpAurora 18s linear infinite;z-index:0;pointer-events:none}
+.hidden-personality .hp-content{position:relative;z-index:2;max-width:58%}
+.hidden-personality .hp-art{position:absolute;z-index:1;right:-2%;top:-8%;width:60%;height:116%;pointer-events:none;opacity:.95;filter:drop-shadow(0 18px 34px rgba(0,0,0,.35))}
+.hidden-personality .hp-art svg{width:100%;height:100%;display:block;overflow:visible}
+.hidden-personality.hp-freedom{background:radial-gradient(circle at 78% 40%,rgba(55,120,255,.20),transparent 48%),linear-gradient(135deg,rgba(5,18,52,.72),rgba(12,7,30,.88));border-color:rgba(100,170,255,.35)}
+.hidden-personality.hp-madman{background:radial-gradient(circle at 78% 40%,rgba(190,40,255,.20),transparent 48%),linear-gradient(135deg,rgba(35,4,48,.78),rgba(12,5,22,.9));border-color:rgba(210,100,255,.34)}
+.hidden-personality.hp-einstein{background:radial-gradient(circle at 78% 40%,rgba(255,180,70,.18),transparent 48%),linear-gradient(135deg,rgba(45,26,8,.72),rgba(18,10,6,.9));border-color:rgba(255,200,110,.32)}
+.hidden-personality.hp-jerry{background:radial-gradient(circle at 78% 40%,rgba(255,140,50,.18),transparent 48%),linear-gradient(135deg,rgba(48,22,6,.75),rgba(14,9,5,.9));border-color:rgba(255,170,90,.32)}
+.hidden-personality .hp-kicker{position:relative;z-index:2;font-size:calc(10.5px * var(--q-fs));letter-spacing:.18em;color:#FF9AA7;text-transform:uppercase;text-shadow:0 0 14px rgba(255,80,110,.55)}
+.hidden-personality .hp-name{position:relative;z-index:2;margin-top:8px;font-size:clamp(28px,5vw,48px);line-height:1.14;font-weight:900;letter-spacing:.02em;background:linear-gradient(105deg,#fff 5%,#FFD8B0 24%,#FF6B81 44%,#C9B6FF 64%,#fff 86%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 18px rgba(255,100,130,.35));animation:hpNameShimmer 7s linear infinite}
+.hidden-personality .hp-sub{position:relative;z-index:2;margin-top:8px;font-size:calc(12.5px * var(--q-fs));color:#FFC2C8;letter-spacing:.08em}
+.hidden-personality .hp-congrats{position:relative;z-index:2;margin-top:16px;font-size:calc(14px * var(--q-fs));line-height:1.7;font-weight:650;color:#FFE3A8}
+.hidden-personality .hp-desc{position:relative;z-index:2;margin-top:10px;font-size:calc(13px * var(--q-fs));line-height:1.8;color:#F0E5F0}
+.hidden-personality .hp-explain{position:relative;z-index:2;margin-top:10px;font-size:calc(12.5px * var(--q-fs));line-height:1.85;color:#D8C8DA}
+.hidden-personality .hp-scores{position:relative;z-index:2;display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.hidden-personality .hp-chip{padding:5px 9px;border-radius:99px;border:1px solid rgba(255,255,255,.1);font-size:calc(10.5px * var(--q-fs));color:#CBBBCB;background:rgba(255,255,255,.03)}
+.hidden-personality .hp-spark{animation:hpSpark 2.8s ease-in-out infinite}
+.hidden-personality .hp-float{animation:hpFloat 6s ease-in-out infinite}
+.hidden-personality .hp-spin-slow{transform-box:fill-box;transform-origin:center;animation:hpSpin 30s linear infinite}
+.hidden-personality .hp-pulse{transform-box:fill-box;transform-origin:center;animation:hpPulse 2.4s ease-in-out infinite}
+.hidden-personality .hp-tongue{transform-box:fill-box;transform-origin:top center;animation:hpTongue 3.2s ease-in-out infinite}
+.type-name{background:linear-gradient(105deg,#fff 0%,#BFD9FF 28%,#fff 55%,#D9C7FF 78%,#fff 100%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 16px rgba(120,170,255,.25));animation:hpNameShimmer 9s linear infinite}
+.hidden-report-banner{margin:0 0 16px;padding:18px 18px 16px;border-radius:16px;border:1px solid rgba(255,170,90,.30);background:linear-gradient(135deg,rgba(55,22,6,.55),rgba(20,10,25,.55));box-shadow:0 0 28px rgba(255,130,70,.08)}
+.hidden-report-banner .hrb-kicker{font-size:10px;letter-spacing:.18em;color:#FFB36B;text-transform:uppercase}
+.hidden-report-banner .hrb-name{font-size:calc(22px * var(--q-fs));font-weight:900;margin-top:6px;background:linear-gradient(105deg,#fff,#FFD8B0,#FF8C63,#fff);background-size:200%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:hpNameShimmer 7s linear infinite}
+.hidden-report-banner .hrb-congrats{margin-top:8px;font-size:calc(13px * var(--q-fs));line-height:1.7;color:#FFE3A8;font-weight:650}
+.hidden-report-banner .hrb-explain{margin-top:8px;font-size:calc(12.5px * var(--q-fs));line-height:1.85;color:#E2D2E2}
+@keyframes hpNameShimmer{0%{background-position:0% 50%}100%{background-position:220% 50%}}
+@keyframes hpAurora{to{transform:rotate(360deg)}}
+@keyframes hpFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes hpSpin{to{transform:rotate(360deg)}}
+@keyframes hpPulse{0%,100%{opacity:.35;transform:scale(.92)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes hpSpark{0%,100%{opacity:.15}50%{opacity:1}}
+@keyframes hpTongue{0%,72%,100%{transform:scaleY(1)}80%,92%{transform:scaleY(1.18)}}
+@media(max-width:700px){.hidden-personality{min-height:360px;padding:20px}.hidden-personality .hp-content{max-width:100%}.hidden-personality .hp-art{width:100%;height:100%;right:-18%;top:0;opacity:.30}.hidden-personality .hp-name{font-size:clamp(26px,8vw,38px)}}
+@media(prefers-reduced-motion:reduce){.hidden-personality *,.type-name{animation:none!important}}
 .hidden-personality .hp-kicker{font-size:calc(10.5px * var(--q-fs));letter-spacing:.16em;color:#FF9AA7;text-transform:uppercase}
 .hidden-personality .hp-name{margin-top:8px;font-size:calc(24px * var(--q-fs));font-weight:800;color:#fff}
 .hidden-personality .hp-sub{margin-top:4px;font-size:calc(12.5px * var(--q-fs));color:#FFC2C8;letter-spacing:.04em}
@@ -106,8 +142,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .hidden-personality .hp-scores{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
 .hidden-personality .hp-chip{padding:5px 9px;border-radius:99px;border:1px solid rgba(255,255,255,.1);font-size:calc(10.5px * var(--q-fs));color:#CBBBCB;background:rgba(255,255,255,.03)}
 .hidden-quiz-wrap{max-width:760px;margin:0 auto;padding:18px 0 40px}
-.hidden-quiz-kicker{font-size:calc(11px * var(--q-fs));letter-spacing:.2em;color:#FF9AA7;text-transform:uppercase}
-.hidden-quiz-title{font-size:calc(30px * var(--q-fs));font-weight:800;color:#fff;margin-top:8px}
+.hidden-quiz-kicker{font-size:calc(11px * var(--q-fs));letter-spacing:.2em;color:#FF9AA7;text-transform:uppercase;text-shadow:0 0 14px rgba(255,80,110,.5)}
+.hidden-quiz-title{font-size:calc(34px * var(--q-fs));font-weight:900;margin-top:8px;background:linear-gradient(105deg,#fff,#FFD8B0,#FF6B81,#C9B6FF,#fff);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 18px rgba(255,100,130,.30));animation:hpNameShimmer 7s linear infinite}
 .hidden-quiz-sub{font-size:calc(13px * var(--q-fs));line-height:1.8;color:var(--muted);margin-top:10px;max-width:640px}
 .hidden-progress{height:4px;border-radius:99px;background:rgba(255,255,255,.08);margin:26px 0 8px;overflow:hidden}
 .hidden-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#EB414B,#FF9AA7);transition:width .35s ease}
@@ -461,6 +497,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         <h3 data-i18n="result.aiTitle">个性化波函数解读</h3>
         <button class="btn sm" id="btnAI">生成报告</button>
       </div>
+      <div id="hiddenReportBanner" style="display:none;"></div>
       <div class="ai-body" id="aiBody">
         <div class="ai-empty" data-i18n="result.aiEmpty">点击「生成报告」，AI 将基于你的十二维量子态，输出一份只写给你自己的成长路径。</div>
       </div>
@@ -820,19 +857,46 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function currentLang(){
     return (window.QBTI_I18N && window.QBTI_I18N.current) || 'zh-CN';
   }
+  function buildHiddenPromptBlock(){
+    const h = state.hiddenResult;
+    if(!h || !h.obtained || !window.QBTI_HIDDEN) return '';
+    const pack = window.QBTI_HIDDEN.get(currentLang());
+    const type = pack.types[h.key];
+    if(!type) return '';
+    const lang = currentLang();
+    if(lang === 'zh-CN' || lang === 'zh-TW'){
+      return '【隐藏人格报告要求】\n'
+        + '用户已经获得第五维度隐藏人格：' + type.name + '（' + type.subtitle + '）。\n'
+        + type.congrats + '\n'
+        + type.explain + '\n'
+        + '请在报告开头用一小段向用户表示祝贺，并解释这种隐藏人格的含义；不要把它写成普通人格标签，也不要提及其它隐藏人格。'
+        + '报告其余部分仍然只面向学生本人。';
+    }
+    return '[HIDDEN PERSONALITY REPORT REQUIREMENT]\n'
+      + 'The user has unlocked the fifth-dimension hidden personality: ' + type.name + ' (' + type.subtitle + ').\n'
+      + type.congrats + '\n'
+      + type.explain + '\n'
+      + 'Open the report with a short congratulation and explain what this hidden personality means. '
+      + 'Do not treat it as an ordinary personality label and do not mention any other hidden personality. '
+      + 'The rest of the report is still for the student only.';
+  }
+
   function buildLocalizedPrompt(res, validity){
     const lang = currentLang();
     /* 学生端报告只使用学生版提示词，绝不包含家长内容 */
     const base = (Q.buildStudentPrompt ? Q.buildStudentPrompt(res, validity) : Q.buildPrompt(res, validity));
     const meta = REPORT_LANG[lang];
-    if(!meta || lang === 'zh-CN') return base;
-    if(lang === 'zh-TW') return base + '\n\n【輸出語言】\n' + meta.instr;
-    return base
+    let out;
+    if(!meta || lang === 'zh-CN') out = base;
+    else if(lang === 'zh-TW') out = base + '\n\n【輸出語言】\n' + meta.instr;
+    else out = base
       + '\n\n【OUTPUT LANGUAGE — THIS OVERRIDES THE CHINESE INSTRUCTIONS ABOVE】\n'
       + meta.instr + '\n'
       + 'Use exactly these four section headings:\n'
       + meta.headings.join('\n') + '\n'
       + 'This report is for the student only. Translate every part into ' + meta.name + '; never mention parents, guardians, authenticity scores, or parent-facing advice. Do not output Chinese.';
+    const hidden = buildHiddenPromptBlock();
+    return hidden ? out + '\n\n' + hidden : out;
   }
 
   function isAdmin(){ return !!(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin()); }
@@ -1617,8 +1681,188 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     syncLatestHistoryToServer();
   }
 
+  function hiddenArt(key){
+    if(key === 'freedom') return `
+      <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="fgA" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f4fbff"/><stop offset=".45" stop-color="#8fc6ff"/><stop offset="1" stop-color="#2b56d9"/></linearGradient>
+          <linearGradient id="fgW" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#123cff"/><stop offset="1" stop-color="#07122e"/></linearGradient>
+          <linearGradient id="fgG" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff3b0"/><stop offset="1" stop-color="#d18a18"/></linearGradient>
+          <radialGradient id="fgGlow"><stop stop-color="#4ecbff" stop-opacity=".55"/><stop offset="1" stop-color="#4ecbff" stop-opacity="0"/></radialGradient>
+        </defs>
+        <g class="hp-spin-slow" opacity=".28" fill="none" stroke="#5db7ff">
+          <circle cx="330" cy="175" r="132" stroke-dasharray="4 12"/>
+          <circle cx="330" cy="175" r="108" stroke-dasharray="1 18"/>
+          <path d="M120 175 H540 M330 -10 V360" opacity=".22"/>
+        </g>
+        <circle cx="345" cy="165" r="150" fill="url(#fgGlow)"/>
+        <g class="hp-float">
+          <path d="M300 190 L135 72 L185 188 L128 304 L300 238 Z" fill="url(#fgW)" stroke="#4f9dff" stroke-width="2" opacity=".95"/>
+          <path d="M300 190 L465 72 L415 188 L472 304 L300 238 Z" fill="url(#fgW)" stroke="#4f9dff" stroke-width="2" opacity=".95"/>
+          <path d="M222 208 L172 232 L188 292 L244 270 Z" fill="url(#fgA)" stroke="#0a1b45" stroke-width="3"/>
+          <path d="M378 208 L428 232 L412 292 L356 270 Z" fill="url(#fgA)" stroke="#0a1b45" stroke-width="3"/>
+          <path d="M252 196 L348 196 L368 286 L232 286 Z" fill="url(#fgA)" stroke="#0a1b45" stroke-width="3"/>
+          <path d="M270 210 L330 210 L322 246 L278 246 Z" fill="#1d55e8"/>
+          <circle cx="300" cy="228" r="14" fill="#ff4d6d" stroke="#ffd6de" stroke-width="3" class="hp-pulse"/>
+          <path d="M260 100 L306 116 L316 164 L290 190 L255 176 L244 134 Z" fill="url(#fgA)" stroke="#0a1b45" stroke-width="3"/>
+          <path d="M300 122 L300 78 L328 108 L300 100 L272 108 Z" fill="url(#fgG)" stroke="#7a4a00" stroke-width="2"/>
+          <path d="M266 142 L290 146 L286 160 L262 156 Z" fill="#62e8ff"/>
+          <path d="M310 146 L334 142 L338 156 L314 160 Z" fill="#62e8ff"/>
+          <path d="M282 174 L318 174 L308 186 L292 186 Z" fill="#07142f"/>
+          <rect x="214" y="214" width="16" height="76" rx="4" fill="#d6e9ff" opacity=".9"/>
+          <rect x="370" y="214" width="16" height="76" rx="4" fill="#d6e9ff" opacity=".9"/>
+          <path d="M180 300 L112 344" stroke="#ff6fa5" stroke-width="7" stroke-linecap="round" opacity=".9"/>
+          <path d="M180 300 L112 344" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+        </g>
+        <g fill="#b8ecff">
+          <circle class="hp-spark" cx="150" cy="110" r="2.5" style="animation-delay:.2s"/>
+          <circle class="hp-spark" cx="440" cy="250" r="3" style="animation-delay:.9s"/>
+          <circle class="hp-spark" cx="390" cy="70" r="2" style="animation-delay:1.4s"/>
+          <circle class="hp-spark" cx="205" cy="315" r="2.5" style="animation-delay:.5s"/>
+        </g>
+      </svg>`;
+    if(key === 'madman') return `
+      <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
+        <defs>
+          <radialGradient id="mdGlow"><stop stop-color="#d04dff" stop-opacity=".55"/><stop offset="1" stop-color="#d04dff" stop-opacity="0"/></radialGradient>
+          <linearGradient id="mdHair" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#35104f"/><stop offset="1" stop-color="#0b0314"/></linearGradient>
+        </defs>
+        <circle cx="345" cy="165" r="150" fill="url(#mdGlow)"/>
+        <g class="hp-spin-slow" fill="none" stroke="#d26bff" opacity=".3">
+          <circle cx="345" cy="170" r="135" stroke-dasharray="2 14"/>
+          <circle cx="345" cy="170" r="110" stroke-dasharray="8 20"/>
+          <path d="M80 310 Q260 80 520 250" stroke-dasharray="3 10"/>
+        </g>
+        <g class="hp-float">
+          <path d="M270 300 Q250 250 268 205 L258 150 L232 92 L278 126 L282 70 L310 122 L342 62 L338 130 L400 96 L372 156 L420 178 L366 200 L390 268 L338 240 L330 300 Z" fill="url(#mdHair)" stroke="#b84cff" stroke-width="2.5"/>
+          <path d="M286 190 Q345 150 398 190 Q390 262 342 286 Q300 272 286 190 Z" fill="#17061f" stroke="#c56bff" stroke-width="2"/>
+          <path d="M305 215 L330 224 L310 232 Z" fill="#ff5bd8" class="hp-pulse"/>
+          <path d="M365 215 L390 224 L370 232 Z" fill="#ff5bd8" class="hp-pulse" style="animation-delay:.4s"/>
+          <path d="M316 250 Q345 270 378 250" fill="none" stroke="#ff9df2" stroke-width="4" stroke-linecap="round"/>
+          <path d="M322 252 L332 240 L342 254 L352 240 L362 254 L372 240" fill="none" stroke="#f4d7ff" stroke-width="2"/>
+          <path d="M270 190 Q210 170 190 220 Q230 214 258 238" fill="none" stroke="#c56bff" stroke-width="3"/>
+          <path d="M400 190 Q460 170 482 220 Q440 214 410 238" fill="none" stroke="#c56bff" stroke-width="3"/>
+        </g>
+        <g fill="#e5a8ff" font-family="Georgia,serif" class="hp-pulse">
+          <text x="110" y="120" font-size="34">∞</text>
+          <text x="420" y="100" font-size="26">Σ</text>
+          <text x="445" y="300" font-size="38">?</text>
+          <text x="100" y="290" font-size="24">√-1</text>
+        </g>
+        <g fill="#d9a0ff">
+          <circle class="hp-spark" cx="170" cy="180" r="2.5" style="animation-delay:.2s"/>
+          <circle class="hp-spark" cx="450" cy="190" r="3" style="animation-delay:.8s"/>
+          <circle class="hp-spark" cx="390" cy="315" r="2" style="animation-delay:1.3s"/>
+        </g>
+      </svg>`;
+    if(key === 'einstein') return `
+      <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
+        <defs>
+          <radialGradient id="egGlow"><stop stop-color="#ffbb66" stop-opacity=".45"/><stop offset="1" stop-color="#ffbb66" stop-opacity="0"/></radialGradient>
+          <linearGradient id="egHair" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff7e7"/><stop offset="1" stop-color="#b8b4c9"/></linearGradient>
+        </defs>
+        <circle cx="340" cy="165" r="155" fill="url(#egGlow)"/>
+        <g class="hp-spin-slow" fill="none" stroke="#ffd18a" opacity=".28">
+          <ellipse cx="335" cy="180" rx="170" ry="58" stroke-dasharray="4 12" transform="rotate(-18 335 180)"/>
+          <ellipse cx="335" cy="180" rx="120" ry="42" stroke-dasharray="1 14" transform="rotate(22 335 180)"/>
+        </g>
+        <g class="hp-float">
+          <circle cx="330" cy="178" r="72" fill="#f2c9a4" stroke="#6e4121" stroke-width="2"/>
+          <path d="M265 150 Q242 92 288 104 Q282 64 318 92 Q330 48 356 88 Q390 58 398 106 Q440 98 414 150 Q406 122 382 132 Q370 98 346 122 Q330 92 312 124 Q292 100 282 132 Q262 118 265 150 Z" fill="url(#egHair)" stroke="#e6e0ef" stroke-width="2"/>
+          <path d="M278 175 Q305 165 322 176" fill="none" stroke="#5b3520" stroke-width="4" stroke-linecap="round"/>
+          <path d="M340 176 Q365 165 388 178" fill="none" stroke="#5b3520" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="303" cy="181" r="5" fill="#1a0d06"/>
+          <circle cx="365" cy="181" r="5" fill="#1a0d06"/>
+          <path d="M290 205 Q330 198 374 208 Q370 218 330 216 Q300 218 290 205 Z" fill="#e8e4ef" stroke="#958eaa" stroke-width="1.5"/>
+          <path d="M300 224 Q330 218 362 224" fill="none" stroke="#8a4a3b" stroke-width="3" stroke-linecap="round"/>
+          <path class="hp-tongue" d="M322 229 Q338 228 344 246 Q338 260 326 248 Q318 240 322 229 Z" fill="#ff7180" stroke="#b23d50" stroke-width="1.5"/>
+        </g>
+        <g fill="#ffe2ad" font-family="Georgia,serif" opacity=".9">
+          <text x="90" y="110" font-size="26">E=mc²</text>
+          <text x="430" y="130" font-size="22">∂</text>
+          <text x="70" y="295" font-size="20">Gμν</text>
+          <text x="430" y="300" font-size="26">π</text>
+        </g>
+        <g fill="#ffd79a">
+          <circle class="hp-spark" cx="180" cy="230" r="2.5" style="animation-delay:.4s"/>
+          <circle class="hp-spark" cx="470" cy="220" r="3" style="animation-delay:1s"/>
+          <circle class="hp-spark" cx="390" cy="80" r="2" style="animation-delay:1.5s"/>
+        </g>
+      </svg>`;
+    if(key === 'jerry') return `
+      <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
+        <defs>
+          <radialGradient id="jgGlow"><stop stop-color="#ffae4d" stop-opacity=".45"/><stop offset="1" stop-color="#ffae4d" stop-opacity="0"/></radialGradient>
+          <linearGradient id="jgFur" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#c77a35"/><stop offset="1" stop-color="#7a3f16"/></linearGradient>
+          <linearGradient id="jgCheese" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe28a"/><stop offset="1" stop-color="#e2a324"/></linearGradient>
+        </defs>
+        <circle cx="345" cy="180" r="150" fill="url(#jgGlow)"/>
+        <g class="hp-spin-slow" fill="none" stroke="#ffc46b" opacity=".28">
+          <circle cx="330" cy="190" r="140" stroke-dasharray="3 16"/>
+          <path d="M110 260 Q240 150 470 230" stroke-dasharray="2 12"/>
+        </g>
+        <g class="hp-float">
+          <circle cx="252" cy="122" r="48" fill="url(#jgFur)" stroke="#3b1a08" stroke-width="3"/>
+          <circle cx="408" cy="122" r="48" fill="url(#jgFur)" stroke="#3b1a08" stroke-width="3"/>
+          <circle cx="252" cy="122" r="26" fill="#e7a275"/>
+          <circle cx="408" cy="122" r="26" fill="#e7a275"/>
+          <path d="M265 148 Q330 100 395 150 Q410 214 372 262 Q330 296 288 262 Q248 218 265 148 Z" fill="url(#jgFur)" stroke="#3b1a08" stroke-width="3"/>
+          <path d="M290 220 Q330 196 372 220 Q368 266 330 280 Q292 266 290 220 Z" fill="#f4d6ad"/>
+          <path d="M300 185 Q316 172 332 186" fill="none" stroke="#3b1a08" stroke-width="3" stroke-linecap="round"/>
+          <path d="M350 186 Q366 172 382 186" fill="none" stroke="#3b1a08" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="316" cy="190" r="6" fill="#1b0c05"/>
+          <circle cx="366" cy="190" r="6" fill="#1b0c05"/>
+          <circle cx="341" cy="218" r="8" fill="#251108"/>
+          <path d="M316 238 Q340 252 364 238" fill="none" stroke="#5a2410" stroke-width="3" stroke-linecap="round"/>
+          <path d="M292 230 L232 218 M292 242 L228 246 M388 230 L448 216 M388 242 L452 248" stroke="#5a2410" stroke-width="2" stroke-linecap="round"/>
+          <path d="M395 262 Q450 300 410 330 Q380 344 364 322" fill="none" stroke="#a85a24" stroke-width="8" stroke-linecap="round"/>
+          <g transform="translate(402 238) rotate(-12)">
+            <path d="M0 0 L58 0 L76 38 L18 38 Z" fill="url(#jgCheese)" stroke="#8a5a0c" stroke-width="3"/>
+            <circle cx="20" cy="16" r="5" fill="#c58a1a"/><circle cx="42" cy="25" r="4" fill="#c58a1a"/><circle cx="56" cy="9" r="3.5" fill="#c58a1a"/>
+          </g>
+        </g>
+        <g fill="#ffd89a">
+          <circle class="hp-spark" cx="170" cy="160" r="2.5" style="animation-delay:.3s"/>
+          <circle class="hp-spark" cx="450" cy="270" r="3" style="animation-delay:1.1s"/>
+          <circle class="hp-spark" cx="390" cy="70" r="2" style="animation-delay:1.6s"/>
+        </g>
+      </svg>`;
+    return '';
+  }
+
   function renderHiddenPersonality(){
     const el = $('hiddenPersonality');
+    if(!el) return;
+    const h = state.hiddenResult;
+    if(!h || !h.obtained || !window.QBTI_HIDDEN){
+      el.style.display = 'none'; el.innerHTML = '';
+      renderHiddenReportBanner();
+      return;
+    }
+    const pack = window.QBTI_HIDDEN.get(currentLang());
+    const type = pack.types[h.key];
+    if(!type){ el.style.display = 'none'; renderHiddenReportBanner(); return; }
+    const chips = window.QBTI_HIDDEN.TRAITS.map(k => {
+      const t = pack.types[k];
+      return '<span class="hp-chip">' + escapeHTML(t.name) + ' · ' + (Number(h.scores && h.scores[k]) || 0) + '</span>';
+    }).join('');
+    el.className = 'hidden-personality hp-' + h.key;
+    el.style.display = 'block';
+    el.innerHTML = '<div class="hp-art" aria-hidden="true">' + hiddenArt(h.key) + '</div>'
+      + '<div class="hp-content">'
+      + '<div class="hp-kicker">' + escapeHTML(pack.ui.fifth) + '</div>'
+      + '<div class="hp-name">' + escapeHTML(type.name) + '</div>'
+      + '<div class="hp-sub">' + escapeHTML(type.subtitle) + '</div>'
+      + '<div class="hp-congrats">' + escapeHTML(type.congrats || '') + '</div>'
+      + '<div class="hp-desc">' + escapeHTML(type.desc) + '</div>'
+      + '<div class="hp-explain">' + escapeHTML(type.explain || '') + '</div>'
+      + '<div class="hp-scores">' + chips + '</div>'
+      + '</div>';
+    renderHiddenReportBanner();
+  }
+
+  function renderHiddenReportBanner(){
+    const el = $('hiddenReportBanner');
     if(!el) return;
     const h = state.hiddenResult;
     if(!h || !h.obtained || !window.QBTI_HIDDEN){
@@ -1626,17 +1870,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
     const pack = window.QBTI_HIDDEN.get(currentLang());
     const type = pack.types[h.key];
-    if(!type){ el.style.display = 'none'; return; }
-    const chips = window.QBTI_HIDDEN.TRAITS.map(k => {
-      const t = pack.types[k];
-      return '<span class="hp-chip">' + escapeHTML(t.name) + ' · ' + (Number(h.scores && h.scores[k]) || 0) + '</span>';
-    }).join('');
+    if(!type){ el.style.display = 'none'; el.innerHTML = ''; return; }
     el.style.display = 'block';
-    el.innerHTML = '<div class="hp-kicker">' + escapeHTML(pack.ui.fifth) + '</div>'
-      + '<div class="hp-name">' + escapeHTML(type.name) + '</div>'
-      + '<div class="hp-sub">' + escapeHTML(type.subtitle) + '</div>'
-      + '<div class="hp-desc">' + escapeHTML(type.desc) + '</div>'
-      + '<div class="hp-scores">' + chips + '</div>';
+    el.innerHTML = '<div class="hrb-kicker">' + escapeHTML(pack.ui.fifth) + '</div>'
+      + '<div class="hrb-name">' + escapeHTML(type.name) + ' · ' + escapeHTML(type.subtitle) + '</div>'
+      + '<div class="hrb-congrats">' + escapeHTML(type.congrats || '') + '</div>'
+      + '<div class="hrb-explain">' + escapeHTML(type.explain || '') + '</div>';
   }
 
   function renderQuantumStateBadge(qs, dimStates){
@@ -2673,7 +2912,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       const ht = hp.types[state.hiddenResult.key];
       if(ht){
         const hs = window.QBTI_HIDDEN.TRAITS.map(k => hp.types[k].name + '=' + (Number(state.hiddenResult.scores && state.hiddenResult.scores[k]) || 0)).join(' / ');
-        txt += '\n\n' + hp.ui.fifth + '\n' + ht.name + ' · ' + ht.subtitle + '\n' + ht.desc + '\n' + hs;
+        txt += '\n\n' + hp.ui.fifth + '\n' + ht.name + ' · ' + ht.subtitle + '\n' + (ht.congrats || '') + '\n' + ht.desc + '\n' + (ht.explain || '') + '\n' + hs;
       }
     }
     try {
