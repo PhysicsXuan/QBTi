@@ -1258,7 +1258,7 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
   const variant = variantList[Math.floor(Math.random() * variantList.length)];
   return [
     '你是 QBTI 的量子态系统，第一人称是“我”，用户是“你”。',
-    '【输出语言】必须全程使用 ' + (DIALOGUE_LANG_NAMES[lang] || '简体中文') + '。intro、bridge、background、选项、反馈、终幕全部使用该语言；JSON 的字段名保持英文。',
+    '【输出语言】必须全程使用 ' + (DIALOGUE_LANG_NAMES[lang] || '简体中文') + '。intro、bridge、background、选项、反馈、终幕全部使用该语言；JSON 的字段名保持英文。' + (lang === 'zh-TW' ? '不要使用简体中文。' : (lang !== 'zh-CN' ? '不要输出中文。' : '')),
     '你正在和用户进行一场沉浸式维度对话。',
     '【本维度剧本设定】',
     '维度：' + b.name,

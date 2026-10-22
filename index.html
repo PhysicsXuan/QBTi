@@ -450,31 +450,31 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         <p class="contact-text" data-i18n="contact.text">如果你希望了解项目、提出建议，或者参与后续的量子态映射研究，可以通过邮件与我们联系。</p>
         <a class="contact-mail" href="mailto:1182332400@qq.com">1182332400@qq.com</a>
         <div class="feedback-card">
-          <h3>投诉与反馈</h3>
-          <p class="feedback-sub">遇到问题、想投诉，或对问卷和产品有建议，都可以写在这里。所有反馈会汇总到学生端管理员后台。<b style="color:#DDE2FF;">我们将通过邮件的方式联系您。</b></p>
+          <h3 data-i18n="contact.feedbackTitle">投诉与反馈</h3>
+          <p class="feedback-sub"><span data-i18n="contact.feedbackSub">遇到问题、想投诉，或对问卷和产品有建议，都可以写在这里。所有反馈会汇总到学生端管理员后台。</span><br><b data-i18n="contact.feedbackNote" style="color:#DDE2FF;">我们将通过邮件的方式联系您。</b></p>
           <div class="feedback-grid">
             <div class="feedback-field">
-              <label for="fbType">类型</label>
+              <label for="fbType" data-i18n="contact.feedbackType">类型</label>
               <select class="feedback-select" id="fbType">
-                <option value="suggestion">建议</option>
-                <option value="complaint">投诉</option>
-                <option value="other">其他</option>
+                <option value="suggestion" data-i18n="contact.feedbackSuggestion">建议</option>
+                <option value="complaint" data-i18n="contact.feedbackComplaint">投诉</option>
+                <option value="other" data-i18n="contact.feedbackOther">其他</option>
               </select>
             </div>
             <div class="feedback-field">
-              <label for="fbName">称呼（选填）</label>
-              <input class="feedback-input" id="fbName" type="text" maxlength="50" placeholder="怎么称呼你" />
+              <label for="fbName" data-i18n="contact.feedbackName">称呼（选填）</label>
+              <input class="feedback-input" id="fbName" type="text" maxlength="50" data-i18n-placeholder="contact.feedbackNamePh" placeholder="怎么称呼你" />
             </div>
           </div>
           <div class="feedback-field">
-            <label for="fbEmail">联系邮箱（必填）</label>
-            <input class="feedback-input" id="fbEmail" type="email" maxlength="255" required placeholder="请填写常用邮箱，我们将通过邮件联系你" />
+            <label for="fbEmail" data-i18n="contact.feedbackEmail">联系邮箱（必填）</label>
+            <input class="feedback-input" id="fbEmail" type="email" maxlength="255" required data-i18n-placeholder="contact.feedbackEmailPh" placeholder="请填写常用邮箱，我们将通过邮件联系你" />
           </div>
           <div class="feedback-field">
-            <label for="fbContent">反馈内容</label>
-            <textarea class="feedback-textarea" id="fbContent" maxlength="2000" placeholder="请描述你遇到的问题、投诉内容或对问卷的建议（5-2000 字）"></textarea>
+            <label for="fbContent" data-i18n="contact.feedbackContent">反馈内容</label>
+            <textarea class="feedback-textarea" id="fbContent" maxlength="2000" data-i18n-placeholder="contact.feedbackContentPh" placeholder="请描述你遇到的问题、投诉内容或对问卷的建议（5-2000 字）"></textarea>
           </div>
-          <button class="feedback-submit" id="btnSubmitFeedback" type="button">提交反馈</button>
+          <button class="feedback-submit" id="btnSubmitFeedback" type="button" data-i18n="contact.feedbackSubmit">提交反馈</button>
           <div class="feedback-status" id="fbStatus"></div>
         </div>
       </div>
@@ -839,6 +839,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('btnBackFromIntro').addEventListener('click', () => goToScreen('screen-home'));
   $('btnBackFromContact').addEventListener('click', () => goToScreen('screen-home'));
 
+  function feedbackText(key, fallback){
+    const I = window.QBTI_I18N;
+    return (I && I.t) ? (I.t(key) || fallback) : fallback;
+  }
+
   $('btnSubmitFeedback').addEventListener('click', async () => {
     const status = $('fbStatus');
     const btn = $('btnSubmitFeedback');
@@ -846,11 +851,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const content = contentEl ? contentEl.value.trim() : '';
     const email = $('fbEmail') ? $('fbEmail').value.trim() : '';
     if(content.length < 5){
-      if(status){ status.className = 'feedback-status err'; status.textContent = '反馈内容至少 5 个字。'; }
+      if(status){ status.className = 'feedback-status err'; status.textContent = feedbackText('contact.feedbackContentError', '反馈内容至少 5 个字。'); }
       return;
     }
     if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-      if(status){ status.className = 'feedback-status err'; status.textContent = '请填写正确的联系邮箱，我们将通过邮件的方式联系您。'; }
+      if(status){ status.className = 'feedback-status err'; status.textContent = feedbackText('contact.feedbackEmailError', '请填写正确的联系邮箱。'); }
       return;
     }
     const u = (window.QAuth && window.QAuth.getCurrentUser) ? window.QAuth.getCurrentUser() : null;
@@ -863,7 +868,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       userEmail: u && u.email ? u.email : '',
       page: 'contact'
     };
-    if(btn){ btn.disabled = true; btn.textContent = '提交中…'; }
+    if(btn){ btn.disabled = true; btn.textContent = feedbackText('contact.feedbackSending', '提交中…'); }
     if(status){ status.className = 'feedback-status'; status.textContent = ''; }
     try {
       const res = await fetch('/api/feedback', {
@@ -872,13 +877,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         body: JSON.stringify(payload)
       });
       const data = await res.json().catch(() => ({}));
-      if(!res.ok || !data.success) throw new Error(data.error || '提交失败，请稍后再试');
-      if(status){ status.className = 'feedback-status ok'; status.textContent = '已收到，感谢你的反馈。'; }
+      if(!res.ok || !data.success) throw new Error('FEEDBACK_FAILED');
+      if(status){ status.className = 'feedback-status ok'; status.textContent = feedbackText('contact.feedbackSuccess', '已收到，感谢你的反馈。'); }
       if(contentEl) contentEl.value = '';
     } catch(err){
-      if(status){ status.className = 'feedback-status err'; status.textContent = err.message || '提交失败，请稍后再试'; }
+      if(status){ status.className = 'feedback-status err'; status.textContent = feedbackText('contact.feedbackFail', '提交失败，请稍后再试'); }
     } finally {
-      if(btn){ btn.disabled = false; btn.textContent = '提交反馈'; }
+      if(btn){ btn.disabled = false; btn.textContent = feedbackText('contact.feedbackSubmit', '提交反馈'); }
     }
   });
   $('btnBackFromResult').addEventListener('click', () => goToScreen('screen-intro'));
@@ -2000,7 +2005,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     ].join('\n');
     return [
       '你是 QBTI 的量子态系统，第一人称“我”，用户是“你”。',
-      '【输出语言】必须全程使用 ' + langName + '。intro、bridge、background、选项、反馈、终幕全部使用该语言；JSON 字段名保持英文。',
+      '【输出语言】必须全程使用 ' + langName + '。intro、bridge、background、选项、反馈、终幕全部使用该语言；JSON 字段名保持英文。' + (currentLang() === 'zh-TW' ? '不要使用简体中文。' : (currentLang() !== 'zh-CN' ? '不要输出中文。' : '')),
       '维度：' + d.name,
       '场景：' + d.place + '；核心物件：' + d.object + '；核心隐喻：' + d.theme,
       '禁止：' + forbidden,

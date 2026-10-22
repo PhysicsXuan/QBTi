@@ -175,10 +175,20 @@
   const DIM_ZH_CN = { PO: { name: '潜能开放度' }, II: { name: '内在驱动力' }, LA: { name: '学习自主性' }, UR: { name: '未知应对方式' } };
   const DIM_ZH_TW = { PO: { name: '潛能開放度' }, II: { name: '內在驅動力' }, LA: { name: '學習自主性' }, UR: { name: '未知應對方式' } };
   const DIM_EN = { PO: { name: 'Potential Openness' }, II: { name: 'Intrinsic Interest' }, LA: { name: 'Learning Agency' }, UR: { name: 'Uncertainty Response' } };
+  const DIM_ES = { PO: { name: 'Apertura potencial' }, II: { name: 'Motivación intrínseca' }, LA: { name: 'Autonomía de aprendizaje' }, UR: { name: 'Respuesta a la incertidumbre' } };
+  const DIM_PT = { PO: { name: 'Abertura potencial' }, II: { name: 'Motivação intrínseca' }, LA: { name: 'Autonomia de aprendizagem' }, UR: { name: 'Resposta à incerteza' } };
+  const DIM_KO = { PO: { name: '잠재 개방성' }, II: { name: '내재적 동기' }, LA: { name: '학습 자율성' }, UR: { name: '불확실성 대응' } };
+  const DIM_JA = { PO: { name: '潜在的な開放性' }, II: { name: '内発的動機' }, LA: { name: '学習の自律性' }, UR: { name: '不確実性への対応' } };
+  const DIM_FR = { PO: { name: 'Ouverture potentielle' }, II: { name: 'Motivation intrinsèque' }, LA: { name: 'Autonomie d’apprentissage' }, UR: { name: 'Réponse à l’incertitude' } };
 
   const SUB_ZH_CN = { X: '探索欲', C: '创造', A: '适应', U: '好奇', P: '热情', M: '意义', I: '主动', D: '独立', E: '坚持', T: '容忍', H: '挑战', R: '韧性' };
   const SUB_ZH_TW = { X: '探索慾', C: '創造', A: '適應', U: '好奇', P: '熱情', M: '意義', I: '主動', D: '獨立', E: '堅持', T: '容忍', H: '挑戰', R: '韌性' };
   const SUB_EN = { X: 'Exploration', C: 'Creativity', A: 'Adaptation', U: 'Curiosity', P: 'Passion', M: 'Meaning', I: 'Initiative', D: 'Independence', E: 'Endurance', T: 'Tolerance', H: 'Challenge', R: 'Resilience' };
+  const SUB_ES = { X: 'Exploración', C: 'Creatividad', A: 'Adaptación', U: 'Curiosidad', P: 'Pasión', M: 'Significado', I: 'Iniciativa', D: 'Independencia', E: 'Persistencia', T: 'Tolerancia', H: 'Desafío', R: 'Resiliencia' };
+  const SUB_PT = { X: 'Exploração', C: 'Criatividade', A: 'Adaptação', U: 'Curiosidade', P: 'Paixão', M: 'Significado', I: 'Iniciativa', D: 'Independência', E: 'Persistência', T: 'Tolerância', H: 'Desafio', R: 'Resiliência' };
+  const SUB_KO = { X: '탐구욕', C: '창의성', A: '적응력', U: '호기심', P: '열정', M: '의미', I: '주도성', D: '독립성', E: '끈기', T: '관용', H: '도전', R: '회복탄력성' };
+  const SUB_JA = { X: '探究心', C: '創造性', A: '適応力', U: '好奇心', P: '情熱', M: '意味', I: '主体性', D: '独立性', E: '継続力', T: '寛容', H: '挑戦', R: '回復力' };
+  const SUB_FR = { X: 'Exploration', C: 'Créativité', A: 'Adaptation', U: 'Curiosité', P: 'Passion', M: 'Sens', I: 'Initiative', D: 'Indépendance', E: 'Persévérance', T: 'Tolérance', H: 'Défi', R: 'Résilience' };
 
   /* ============ UI 翻译 ============ */
   const UI = {
@@ -432,15 +442,107 @@
     }
   };
 
+  const FEEDBACK_UI = {
+    'zh-CN': {
+      'contact.feedbackTitle': '投诉与反馈',
+      'contact.feedbackSub': '遇到问题、想投诉，或对问卷和产品有建议，都可以写在这里。所有反馈会汇总到学生端管理员后台。',
+      'contact.feedbackType': '类型', 'contact.feedbackSuggestion': '建议', 'contact.feedbackComplaint': '投诉', 'contact.feedbackOther': '其他',
+      'contact.feedbackName': '称呼（选填）', 'contact.feedbackNamePh': '怎么称呼你',
+      'contact.feedbackEmail': '联系邮箱（必填）', 'contact.feedbackEmailPh': '请填写常用邮箱，我们将通过邮件联系你',
+      'contact.feedbackContent': '反馈内容', 'contact.feedbackContentPh': '请描述你遇到的问题、投诉内容或对问卷的建议（5-2000 字）',
+      'contact.feedbackSubmit': '提交反馈', 'contact.feedbackSending': '提交中…', 'contact.feedbackSuccess': '已收到，感谢你的反馈。',
+      'contact.feedbackContentError': '反馈内容至少 5 个字。', 'contact.feedbackEmailError': '请填写正确的联系邮箱，我们将通过邮件的方式联系您。',
+      'contact.feedbackFail': '提交失败，请稍后再试', 'contact.feedbackNote': '我们将通过邮件的方式联系您。'
+    },
+    'zh-TW': {
+      'contact.feedbackTitle': '投訴與回饋',
+      'contact.feedbackSub': '遇到問題、想投訴，或對問卷和產品有建議，都可以寫在這裡。所有回饋會彙總到學生端管理員後台。',
+      'contact.feedbackType': '類型', 'contact.feedbackSuggestion': '建議', 'contact.feedbackComplaint': '投訴', 'contact.feedbackOther': '其他',
+      'contact.feedbackName': '稱呼（選填）', 'contact.feedbackNamePh': '怎麼稱呼你',
+      'contact.feedbackEmail': '聯絡郵箱（必填）', 'contact.feedbackEmailPh': '請填寫常用郵箱，我們將透過郵件聯絡你',
+      'contact.feedbackContent': '回饋內容', 'contact.feedbackContentPh': '請描述你遇到的問題、投訴內容或對問卷的建議（5-2000 字）',
+      'contact.feedbackSubmit': '提交回饋', 'contact.feedbackSending': '提交中…', 'contact.feedbackSuccess': '已收到，感謝你的回饋。',
+      'contact.feedbackContentError': '回饋內容至少 5 個字。', 'contact.feedbackEmailError': '請填寫正確的聯絡郵箱，我們將透過郵件與您聯絡。',
+      'contact.feedbackFail': '提交失敗，請稍後再試', 'contact.feedbackNote': '我們將透過郵件與您聯絡。'
+    },
+    en: {
+      'contact.feedbackTitle': 'Complaints & Feedback',
+      'contact.feedbackSub': 'If you have a problem, a complaint, or a suggestion about the questionnaire or product, write it here. All feedback goes to the student administrator.',
+      'contact.feedbackType': 'Type', 'contact.feedbackSuggestion': 'Suggestion', 'contact.feedbackComplaint': 'Complaint', 'contact.feedbackOther': 'Other',
+      'contact.feedbackName': 'Name (optional)', 'contact.feedbackNamePh': 'How should we address you?',
+      'contact.feedbackEmail': 'Contact email (required)', 'contact.feedbackEmailPh': 'Enter an email we can use to contact you',
+      'contact.feedbackContent': 'Feedback', 'contact.feedbackContentPh': 'Describe the issue, complaint, or suggestion (5–2000 characters)',
+      'contact.feedbackSubmit': 'Submit feedback', 'contact.feedbackSending': 'Submitting…', 'contact.feedbackSuccess': 'Received. Thank you for your feedback.',
+      'contact.feedbackContentError': 'Feedback must be at least 5 characters.', 'contact.feedbackEmailError': 'Enter a valid contact email. We will contact you by email.',
+      'contact.feedbackFail': 'Submission failed. Please try again later.', 'contact.feedbackNote': 'We will contact you by email.'
+    },
+    es: {
+      'contact.feedbackTitle': 'Quejas y comentarios',
+      'contact.feedbackSub': 'Si tienes un problema, una queja o una sugerencia sobre el cuestionario o el producto, escríbelo aquí. Todos los comentarios llegan al administrador del estudiante.',
+      'contact.feedbackType': 'Tipo', 'contact.feedbackSuggestion': 'Sugerencia', 'contact.feedbackComplaint': 'Queja', 'contact.feedbackOther': 'Otro',
+      'contact.feedbackName': 'Nombre (opcional)', 'contact.feedbackNamePh': '¿Cómo quieres que te llamemos?',
+      'contact.feedbackEmail': 'Correo de contacto (obligatorio)', 'contact.feedbackEmailPh': 'Escribe un correo para poder contactarte',
+      'contact.feedbackContent': 'Comentario', 'contact.feedbackContentPh': 'Describe el problema, la queja o la sugerencia (5–2000 caracteres)',
+      'contact.feedbackSubmit': 'Enviar comentario', 'contact.feedbackSending': 'Enviando…', 'contact.feedbackSuccess': 'Recibido. Gracias por tu comentario.',
+      'contact.feedbackContentError': 'El comentario debe tener al menos 5 caracteres.', 'contact.feedbackEmailError': 'Escribe un correo válido. Te contactaremos por email.',
+      'contact.feedbackFail': 'No se pudo enviar. Inténtalo más tarde.', 'contact.feedbackNote': 'Te contactaremos por correo electrónico.'
+    },
+    pt: {
+      'contact.feedbackTitle': 'Reclamações e feedback',
+      'contact.feedbackSub': 'Se tiver um problema, uma reclamação ou uma sugestão sobre o questionário ou o produto, escreva aqui. Todo o feedback vai para o administrador do estudante.',
+      'contact.feedbackType': 'Tipo', 'contact.feedbackSuggestion': 'Sugestão', 'contact.feedbackComplaint': 'Reclamação', 'contact.feedbackOther': 'Outro',
+      'contact.feedbackName': 'Nome (opcional)', 'contact.feedbackNamePh': 'Como devemos chamar você?',
+      'contact.feedbackEmail': 'Email de contacto (obrigatório)', 'contact.feedbackEmailPh': 'Digite um email para entrarmos em contacto',
+      'contact.feedbackContent': 'Feedback', 'contact.feedbackContentPh': 'Descreva o problema, a reclamação ou a sugestão (5–2000 caracteres)',
+      'contact.feedbackSubmit': 'Enviar feedback', 'contact.feedbackSending': 'Enviando…', 'contact.feedbackSuccess': 'Recebido. Obrigado pelo seu feedback.',
+      'contact.feedbackContentError': 'O feedback deve ter pelo menos 5 caracteres.', 'contact.feedbackEmailError': 'Digite um email válido. Entraremos em contacto por email.',
+      'contact.feedbackFail': 'Falha ao enviar. Tente novamente mais tarde.', 'contact.feedbackNote': 'Entraremos em contacto por email.'
+    },
+    ko: {
+      'contact.feedbackTitle': '불편 신고 및 피드백',
+      'contact.feedbackSub': '설문이나 제품에 문제, 불만, 제안이 있다면 여기에 적어 주세요. 모든 피드백은 학생 관리자에게 전달됩니다.',
+      'contact.feedbackType': '유형', 'contact.feedbackSuggestion': '제안', 'contact.feedbackComplaint': '불만', 'contact.feedbackOther': '기타',
+      'contact.feedbackName': '이름 (선택)', 'contact.feedbackNamePh': '어떻게 불러 드릴까요?',
+      'contact.feedbackEmail': '연락 이메일 (필수)', 'contact.feedbackEmailPh': '연락받을 이메일을 입력해 주세요',
+      'contact.feedbackContent': '피드백 내용', 'contact.feedbackContentPh': '문제, 불만 또는 제안을 적어 주세요 (5–2000자)',
+      'contact.feedbackSubmit': '피드백 보내기', 'contact.feedbackSending': '보내는 중…', 'contact.feedbackSuccess': '접수되었습니다. 피드백 감사합니다.',
+      'contact.feedbackContentError': '피드백은 5자 이상이어야 합니다.', 'contact.feedbackEmailError': '올바른 연락 이메일을 입력해 주세요. 이메일로 연락드립니다.',
+      'contact.feedbackFail': '전송에 실패했습니다. 잠시 후 다시 시도해 주세요.', 'contact.feedbackNote': '이메일로 연락드립니다.'
+    },
+    ja: {
+      'contact.feedbackTitle': 'ご意見・ご不満',
+      'contact.feedbackSub': 'アンケートや製品についての問題、ご不満、ご提案があればここに書いてください。すべてのフィードバックは学生管理者に届きます。',
+      'contact.feedbackType': '種類', 'contact.feedbackSuggestion': '提案', 'contact.feedbackComplaint': 'ご不満', 'contact.feedbackOther': 'その他',
+      'contact.feedbackName': 'お名前（任意）', 'contact.feedbackNamePh': '何とお呼びすればよいですか？',
+      'contact.feedbackEmail': '連絡先メール（必須）', 'contact.feedbackEmailPh': '連絡用のメールアドレスを入力してください',
+      'contact.feedbackContent': 'フィードバック内容', 'contact.feedbackContentPh': '問題、ご不満、ご提案をご記入ください（5〜2000文字）',
+      'contact.feedbackSubmit': 'フィードバックを送信', 'contact.feedbackSending': '送信中…', 'contact.feedbackSuccess': '受け付けました。フィードバックありがとうございます。',
+      'contact.feedbackContentError': 'フィードバックは5文字以上で入力してください。', 'contact.feedbackEmailError': '正しい連絡先メールを入力してください。メールでご連絡します。',
+      'contact.feedbackFail': '送信に失敗しました。しばらくしてから再度お試しください。', 'contact.feedbackNote': 'メールでご連絡します。'
+    },
+    fr: {
+      'contact.feedbackTitle': 'Réclamations et retours',
+      'contact.feedbackSub': 'Si vous avez un problème, une réclamation ou une suggestion concernant le questionnaire ou le produit, écrivez-le ici. Tous les retours vont à l’administrateur étudiant.',
+      'contact.feedbackType': 'Type', 'contact.feedbackSuggestion': 'Suggestion', 'contact.feedbackComplaint': 'Réclamation', 'contact.feedbackOther': 'Autre',
+      'contact.feedbackName': 'Nom (facultatif)', 'contact.feedbackNamePh': 'Comment devons-nous vous appeler ?',
+      'contact.feedbackEmail': 'Email de contact (obligatoire)', 'contact.feedbackEmailPh': 'Saisissez un email pour vous contacter',
+      'contact.feedbackContent': 'Votre retour', 'contact.feedbackContentPh': 'Décrivez le problème, la réclamation ou la suggestion (5–2000 caractères)',
+      'contact.feedbackSubmit': 'Envoyer le retour', 'contact.feedbackSending': 'Envoi…', 'contact.feedbackSuccess': 'Bien reçu. Merci pour votre retour.',
+      'contact.feedbackContentError': 'Le retour doit contenir au moins 5 caractères.', 'contact.feedbackEmailError': 'Saisissez un email valide. Nous vous contacterons par email.',
+      'contact.feedbackFail': 'Échec de l’envoi. Réessayez plus tard.', 'contact.feedbackNote': 'Nous vous contacterons par email.'
+    }
+  };
+  Object.keys(FEEDBACK_UI).forEach(lang => { if(UI[lang]) Object.assign(UI[lang], FEEDBACK_UI[lang]); });
+
   const LANG_PACK = {
     'zh-CN': { q: Q_ZH_CN, opt: OPT_ZH_CN, sfx: SFX_ZH_CN, dim: DIM_ZH_CN, sub: SUB_ZH_CN, fullQuestion: true },
     'zh-TW': { q: Q_ZH_TW, opt: OPT_ZH_TW, sfx: SFX_ZH_TW, dim: DIM_ZH_TW, sub: SUB_ZH_TW, fullQuestion: true },
     'en':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_EN,    sub: SUB_EN,    fullQuestion: true },
-    'es':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_EN,    sub: SUB_EN,    fullQuestion: false },
-    'pt':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_EN,    sub: SUB_EN,    fullQuestion: false },
-    'ko':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_EN,    sub: SUB_EN,    fullQuestion: false },
-    'ja':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_EN,    sub: SUB_EN,    fullQuestion: false },
-    'fr':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_EN,    sub: SUB_EN,    fullQuestion: false }
+    'es':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_ES,    sub: SUB_ES,    fullQuestion: false },
+    'pt':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_PT,    sub: SUB_PT,    fullQuestion: false },
+    'ko':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_KO,    sub: SUB_KO,    fullQuestion: false },
+    'ja':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_JA,    sub: SUB_JA,    fullQuestion: false },
+    'fr':    { q: Q_EN,    opt: OPT_EN,    sfx: SFX_EN,    dim: DIM_FR,    sub: SUB_FR,    fullQuestion: false }
   };
 
   const api = {
@@ -492,6 +594,11 @@
         if(val == null) return;
         if(val.indexOf('<') >= 0) el.innerHTML = val;
         else el.textContent = val;
+      });
+      root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        const val = dict[key] != null ? dict[key] : UI['zh-CN'][key];
+        if(val != null) el.placeholder = val;
       });
     }
   };

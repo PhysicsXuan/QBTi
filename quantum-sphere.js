@@ -374,6 +374,26 @@
 
     const BALL_NAMES = ['潜能开放度','内在驱动力','学习自主性','未知应对方式'];
     const BALL_SHORT = ['PO','II','LA','UR'];
+    let lastBallLang = null;
+    function localizedBallName(i){
+      try {
+        if(window.QBTI_I18N && window.QBTI_I18N.dim){
+          const n = window.QBTI_I18N.dim(BALL_SHORT[i], 'name');
+          if(n) return n;
+        }
+      } catch(e){}
+      return BALL_NAMES[i];
+    }
+    function refreshBallNames(){
+      const lang = (window.QBTI_I18N && window.QBTI_I18N.current) || 'zh-CN';
+      if(lang === lastBallLang) return;
+      lastBallLang = lang;
+      for(const b of balls){
+        if(!b._dim) continue;
+        const idx = BALL_SHORT.indexOf(b._dim);
+        if(idx >= 0) b.name = localizedBallName(idx);
+      }
+    }
 
     let W = 0, H = 0;
     let BASE_CX = 0, BASE_CY = 0, BASE_R = 0;
@@ -558,10 +578,10 @@
       if(!isFinite(hx)) hx = minHx;
       if(!isFinite(hy)) hy = minHy;
       return [
-        {ox:-hx, oy:-hy, name: BALL_NAMES[0], short: BALL_SHORT[0], dim: 'PO'},
-        {ox: hx, oy:-hy, name: BALL_NAMES[1], short: BALL_SHORT[1], dim: 'II'},
-        {ox:-hx, oy: hy, name: BALL_NAMES[2], short: BALL_SHORT[2], dim: 'LA'},
-        {ox: hx, oy: hy, name: BALL_NAMES[3], short: BALL_SHORT[3], dim: 'UR'}
+        {ox:-hx, oy:-hy, name: localizedBallName(0), short: BALL_SHORT[0], dim: 'PO'},
+        {ox: hx, oy:-hy, name: localizedBallName(1), short: BALL_SHORT[1], dim: 'II'},
+        {ox:-hx, oy: hy, name: localizedBallName(2), short: BALL_SHORT[2], dim: 'LA'},
+        {ox: hx, oy: hy, name: localizedBallName(3), short: BALL_SHORT[3], dim: 'UR'}
       ];
     }
     function updateLayoutTargets(instant){
@@ -1941,6 +1961,7 @@
       const dt = Math.min(0.05, Math.max(0.001, (now - lastFrame)/1000));
       lastFrame = now;
       const t = (now - t0)/1000;
+      refreshBallNames();
 
       if(W === 0 || H === 0){
         resize();
