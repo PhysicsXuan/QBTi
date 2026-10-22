@@ -98,6 +98,26 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .type-name{margin-top:18px;font-size:clamp(calc(20px * var(--q-fs)),calc(3.8vw * var(--q-fs)),calc(28px * var(--q-fs)));font-weight:800;color:#fff;letter-spacing:.08em;text-shadow:0 0 24px rgba(var(--q-r),var(--q-g),var(--q-b),.4);}
 .type-name .tn-suffix{font-size:.72em;color:#9EEBFF;font-weight:700;}
 .r-tagline{color:var(--muted);font-size:calc(14.5px * var(--q-fs));max-width:680px;margin:24px auto 0;line-height:1.75}
+.hidden-personality{max-width:680px;margin:28px auto 0;padding:22px;border-radius:18px;border:1px solid rgba(255,105,120,.26);background:linear-gradient(135deg,rgba(75,8,22,.42),rgba(24,8,36,.42));text-align:left;box-shadow:0 0 34px rgba(235,65,75,.08)}
+.hidden-personality .hp-kicker{font-size:calc(10.5px * var(--q-fs));letter-spacing:.16em;color:#FF9AA7;text-transform:uppercase}
+.hidden-personality .hp-name{margin-top:8px;font-size:calc(24px * var(--q-fs));font-weight:800;color:#fff}
+.hidden-personality .hp-sub{margin-top:4px;font-size:calc(12.5px * var(--q-fs));color:#FFC2C8;letter-spacing:.04em}
+.hidden-personality .hp-desc{margin-top:12px;font-size:calc(13px * var(--q-fs));line-height:1.75;color:#E8DDE6}
+.hidden-personality .hp-scores{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.hidden-personality .hp-chip{padding:5px 9px;border-radius:99px;border:1px solid rgba(255,255,255,.1);font-size:calc(10.5px * var(--q-fs));color:#CBBBCB;background:rgba(255,255,255,.03)}
+.hidden-quiz-wrap{max-width:760px;margin:0 auto;padding:18px 0 40px}
+.hidden-quiz-kicker{font-size:calc(11px * var(--q-fs));letter-spacing:.2em;color:#FF9AA7;text-transform:uppercase}
+.hidden-quiz-title{font-size:calc(30px * var(--q-fs));font-weight:800;color:#fff;margin-top:8px}
+.hidden-quiz-sub{font-size:calc(13px * var(--q-fs));line-height:1.8;color:var(--muted);margin-top:10px;max-width:640px}
+.hidden-progress{height:4px;border-radius:99px;background:rgba(255,255,255,.08);margin:26px 0 8px;overflow:hidden}
+.hidden-progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#EB414B,#FF9AA7);transition:width .35s ease}
+.hidden-progress-text{font-size:calc(11px * var(--q-fs));color:var(--muted);letter-spacing:.08em}
+.hidden-question{margin-top:28px;font-size:calc(20px * var(--q-fs));line-height:1.65;color:#fff;font-weight:650;max-width:720px}
+.hidden-options{display:flex;flex-direction:column;gap:10px;margin-top:24px;max-width:720px}
+.hidden-option{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:13px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.025);color:#E8E4F2;font:inherit;font-size:calc(13.5px * var(--q-fs));line-height:1.6;text-align:left;cursor:pointer;transition:.2s}
+.hidden-option:hover{border-color:rgba(235,65,75,.45);background:rgba(235,65,75,.07);transform:translateY(-1px)}
+.hidden-option b{flex:0 0 18px;color:#FF9AA7}
+
 .section-title{font-size:calc(13px * var(--q-fs));letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin:52px 0 18px;display:flex;align-items:center;gap:12px;}
 .section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.1),transparent)}
 .dim-stacks{display:flex;flex-direction:column;gap:16px;margin-top:36px}
@@ -400,6 +420,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     </div>
   </section>
 
+  <section class="screen" id="screen-hidden">
+    <div class="hidden-quiz-wrap">
+      <div class="hidden-quiz-kicker" id="hiddenKicker">FIFTH DIMENSION</div>
+      <h2 class="hidden-quiz-title" id="hiddenTitle">深渊回响</h2>
+      <p class="hidden-quiz-sub" id="hiddenSub"></p>
+      <div class="hidden-progress"><i id="hiddenProgressBar"></i></div>
+      <div class="hidden-progress-text" id="hiddenProgressText"></div>
+      <div class="hidden-question" id="hiddenQuestion"></div>
+      <div class="hidden-options" id="hiddenOptions"></div>
+    </div>
+  </section>
+
   <section class="screen" id="screen-result">
     <div class="back-btn-wrap">
       <button class="page-back-btn" id="btnBackFromResult" data-i18n="backQbti">← 返回 QBTI 首页</button>
@@ -411,6 +443,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       <div class="code" id="rCode">—</div>
       <div class="type-name" id="rTypeName">—</div>
       <p class="r-tagline" id="rTagline"></p>
+      <div id="hiddenPersonality" style="display:none;"></div>
     </div>
     <div class="section-title" data-i18n="result.sec1">四维倾向 · 每维度内三字母合计 100%</div>
     <div class="dim-stacks" id="dimStacks"></div>
@@ -648,6 +681,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
 <script src="qbti-core.js"></script>
 <script src="qbti-i18n.js"></script>
+<script src="qbti-hidden.js"></script>
 <script src="qbti-settings.js"></script>
 <script src="quantum-sphere.js"></script>
 <script src="result-sphere.js"></script>
@@ -665,8 +699,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     validity: null, locked: false, result: null,
     quantumState: null, dimStates: null, aiReportText: null, aiReportSource: null,
     aiReportLang: null, aiLoading: false, aiError: null, lastAiAt: 0,
-    aiRequestId: 0, resultTs: null, restoredTs: null
+    aiRequestId: 0, resultTs: null, restoredTs: null,
+    hiddenUnlockKeys: [], hiddenQuiz: null, hiddenResult: null
   };
+  function escapeHTML(value){
+    return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+  }
   const CFG_KEY = 'qbti_config_v2';
   const RESULT_KEY_PREFIX = 'qbti_results_';
   const AI_CACHE_KEY = 'qbti_ai_cache_v1';
@@ -949,6 +989,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
             suffixGap: res.suffixGap,
             quantumState: entry.quantumState || qs.type,
             dimStates: entry.dimStates || ds,
+            hiddenResult: entry.hiddenResult || null,
             validity: validity,
             studentAiReport: entry.aiReport || null,
             studentAiReportSource: entry.aiReportSource || null,
@@ -989,6 +1030,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       suffixGap: state.result.suffixGap,
       quantumState: state.quantumState ? state.quantumState.type : null,
       dimStates: state.dimStates ? state.dimStates.types : null,
+      hiddenResult: state.hiddenResult || null,
       validity: state.validity || null,
       studentAiReport: state.aiReportText || null,
       studentAiReportSource: state.aiReportSource || null,
@@ -1013,7 +1055,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     try { history = JSON.parse(localStorage.getItem(key) || '[]'); if(!Array.isArray(history)) history = []; } catch(e){ history = []; }
     const ts = Date.now();
     state.resultTs = ts;
-    history.push({ ts, answers: Object.assign({}, answers), timings: state.timings ? Object.assign({}, state.timings) : {}, code: result.letters.join(''), suffix: result.suffix.letter, quantumState: qs ? qs.type : null, dimStates: ds, aiReport: state.aiReportText || null, aiReportSource: state.aiReportSource || null, aiReportLang: state.aiReportLang || null });
+    history.push({ ts, answers: Object.assign({}, answers), timings: state.timings ? Object.assign({}, state.timings) : {}, code: result.letters.join(''), suffix: result.suffix.letter, quantumState: qs ? qs.type : null, dimStates: ds, hiddenResult: state.hiddenResult || null, aiReport: state.aiReportText || null, aiReportSource: state.aiReportSource || null, aiReportLang: state.aiReportLang || null });
     const historyLimit = 500;
     if(history.length > historyLimit) history = history.slice(-historyLimit);
     try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
@@ -1313,6 +1355,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     state.timings = entry.timings ? Object.assign({}, entry.timings) : {};
     state.questionShownAt = {};
     state.result = Q.computeResult(state.answers);
+    state.hiddenResult = entry.hiddenResult || null;
+    state.hiddenUnlockKeys = [];
     state.restoredTs = entry.ts || null;
     state.resultTs = entry.ts || null;
     state.aiReportText = entry.aiReport || null;
@@ -1468,13 +1512,131 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       state.dimStates = { raw: raw, types: ds };
     }
     applyQuantumStateToSphere(qs, ds);
+    let hiddenUnlockKeys = [];
+    try {
+      if(window.QBTI_HIDDEN && window.QBTI_HIDDEN.checkUnlock) hiddenUnlockKeys = window.QBTI_HIDDEN.checkUnlock(state.result);
+    } catch(e){ console.warn('[QBTI hidden] unlock check failed', e); }
+    state.hiddenUnlockKeys = hiddenUnlockKeys;
+    state.hiddenResult = null;
     saveResultToUser(state.result, qs, ds, state.answers);
     syncLatestHistoryToServer();
     applyHomepageTheme();
+    if(hiddenUnlockKeys.length){
+      startHiddenQuiz();
+      return;
+    }
     renderResult(state.result, null);
     renderQuantumStateBadge(qs, ds);
     syncReportToServer();
     goToScreen('screen-result');
+  }
+
+  /* ============================================================
+     第五维度 · 深渊回响：10 道附加题
+     ============================================================ */
+  function startHiddenQuiz(){
+    state.hiddenQuiz = { idx: 0, answers: [], locked: false };
+    renderHiddenQuiz();
+    goToScreen('screen-hidden');
+  }
+
+  function renderHiddenQuiz(){
+    if(!state.hiddenQuiz || !window.QBTI_HIDDEN) return;
+    if(state.hiddenQuiz.idx >= 10){
+      finishHiddenQuiz();
+      return;
+    }
+    const pack = window.QBTI_HIDDEN.get(currentLang());
+    const q = pack.questions[state.hiddenQuiz.idx];
+    if(!q) return;
+    const $k = $('hiddenKicker'), $t = $('hiddenTitle'), $s = $('hiddenSub');
+    if($k) $k.textContent = pack.ui.kicker;
+    if($t) $t.textContent = pack.ui.title;
+    if($s) $s.textContent = pack.ui.sub;
+    const pct = Math.round(state.hiddenQuiz.idx / 10 * 100);
+    const bar = $('hiddenProgressBar');
+    if(bar) bar.style.width = pct + '%';
+    const pt = $('hiddenProgressText');
+    if(pt) pt.textContent = pack.ui.progress.replace('{n}', String(state.hiddenQuiz.idx + 1));
+    const qEl = $('hiddenQuestion');
+    if(qEl) qEl.textContent = q.q;
+    const opts = $('hiddenOptions');
+    if(!opts) return;
+    opts.innerHTML = '';
+    q.options.forEach((text, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'hidden-option';
+      b.innerHTML = '<b>' + String.fromCharCode(65 + i) + '</b><span>' + escapeHTML(text) + '</span>';
+      b.addEventListener('click', () => answerHidden(i));
+      opts.appendChild(b);
+    });
+  }
+
+  function answerHidden(index){
+    if(!state.hiddenQuiz || state.hiddenQuiz.locked) return;
+    state.hiddenQuiz.locked = true;
+    state.hiddenQuiz.answers.push(index);
+    state.hiddenQuiz.idx += 1;
+    setTimeout(() => {
+      if(!state.hiddenQuiz) return;
+      state.hiddenQuiz.locked = false;
+      if(state.hiddenQuiz.idx >= 10) finishHiddenQuiz();
+      else renderHiddenQuiz();
+    }, 160);
+  }
+
+  function finishHiddenQuiz(){
+    if(!state.hiddenQuiz || !state.hiddenQuiz.answers) return;
+    let hidden = null;
+    try {
+      hidden = window.QBTI_HIDDEN.evaluate(state.hiddenQuiz.answers, state.hiddenUnlockKeys);
+    } catch(e){ console.warn('[QBTI hidden] evaluate failed', e); }
+    state.hiddenResult = hidden;
+    if(hidden && state.resultTs){
+      try { updateHistoryHiddenResult(state.resultTs, hidden); } catch(e){}
+    }
+    state.hiddenQuiz = null;
+    renderResult(state.result, null);
+    renderQuantumStateBadge(state.quantumState, state.dimStates ? state.dimStates.types : null);
+    syncReportToServer();
+    goToScreen('screen-result');
+  }
+
+  function updateHistoryHiddenResult(ts, hidden){
+    if(!window.QAuth || !window.QAuth.isLoggedIn()) return;
+    const u = window.QAuth.getCurrentUser();
+    if(!u || !u.email) return;
+    const key = RESULT_KEY_PREFIX + u.email;
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem(key) || '[]'); if(!Array.isArray(history)) history = []; } catch(e){ return; }
+    const entry = history.find(h => Number(h.ts) === Number(ts));
+    if(!entry) return;
+    entry.hiddenResult = hidden;
+    try { localStorage.setItem(key, JSON.stringify(history)); } catch(e){}
+    syncLatestHistoryToServer();
+  }
+
+  function renderHiddenPersonality(){
+    const el = $('hiddenPersonality');
+    if(!el) return;
+    const h = state.hiddenResult;
+    if(!h || !h.obtained || !window.QBTI_HIDDEN){
+      el.style.display = 'none'; el.innerHTML = ''; return;
+    }
+    const pack = window.QBTI_HIDDEN.get(currentLang());
+    const type = pack.types[h.key];
+    if(!type){ el.style.display = 'none'; return; }
+    const chips = window.QBTI_HIDDEN.TRAITS.map(k => {
+      const t = pack.types[k];
+      return '<span class="hp-chip">' + escapeHTML(t.name) + ' · ' + (Number(h.scores && h.scores[k]) || 0) + '</span>';
+    }).join('');
+    el.style.display = 'block';
+    el.innerHTML = '<div class="hp-kicker">' + escapeHTML(pack.ui.fifth) + '</div>'
+      + '<div class="hp-name">' + escapeHTML(type.name) + '</div>'
+      + '<div class="hp-sub">' + escapeHTML(type.subtitle) + '</div>'
+      + '<div class="hp-desc">' + escapeHTML(type.desc) + '</div>'
+      + '<div class="hp-scores">' + chips + '</div>';
   }
 
   function renderQuantumStateBadge(qs, dimStates){
@@ -1602,6 +1764,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     $('rTypeName').innerHTML = (isZh && typeName ? typeName + ' · ' : '') + suffixName;
     const sufStab = stabLabel(res.suffixStability);
     $('rTagline').innerHTML = suffixDesc + '<br><span style="opacity:.75;font-size:calc(13px * var(--q-fs))">' + res.suffixGap + '% · ' + sufStab.text + '</span>';
+    renderHiddenPersonality();
 
     $('dimStacks').innerHTML = Q.DIMS.map(d => {
       const ratios = res.dimGroupRatio[d.id];
@@ -2471,6 +2634,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     state.idx = 0; state.answers = {}; state.timings = {}; state.questionShownAt = {};
     state.validity = null; state.result = null; state.aiReportText = null; state.aiReportSource = null;
     state.aiReportLang = null; state.aiError = null; state.aiLoading = false; state.lastAiAt = 0; state.resultTs = null;
+    state.hiddenResult = null; state.hiddenUnlockKeys = []; state.hiddenQuiz = null;
     state.aiRequestId++; state.restoredTs = null; state.locked = false;
     renderQuestion();
     goToScreen('screen-quiz');
@@ -2483,6 +2647,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     state.idx = 0; state.answers = {}; state.timings = {}; state.questionShownAt = {};
     state.validity = null; state.result = null; state.aiReportText = null; state.aiReportSource = null;
     state.aiReportLang = null; state.aiError = null; state.aiLoading = false; state.lastAiAt = 0; state.resultTs = null;
+    state.hiddenResult = null; state.hiddenUnlockKeys = []; state.hiddenQuiz = null;
     state.aiRequestId++; state.restoredTs = null; state.locked = false;
     updateRestoreBanner();
     goToScreen('screen-intro');
@@ -2502,7 +2667,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       return dimName + '：' + d.letters.map(l => l + '=' + r[l] + '%').join(' / ') + ' → ' + info.lead + ' (' + info.gap + '%)';
     }).join('\n');
     const vecLines = Q.SUFFIXES.map(sf => sf.letter + ' ' + (I18N ? I18N.sfx(sf.letter, 'name') : sf.name) + '：' + res.suffixRatio[sf.letter] + '%').join('\n');
-    const txt = 'QBTI\n' + fullCode + ' · ' + (typeName || '') + ' · ' + sName + '\n\n' + dimLines + '\n\n' + vecLines;
+    let txt = 'QBTI\n' + fullCode + ' · ' + (typeName || '') + ' · ' + sName + '\n\n' + dimLines + '\n\n' + vecLines;
+    if(state.hiddenResult && state.hiddenResult.obtained && window.QBTI_HIDDEN){
+      const hp = window.QBTI_HIDDEN.get(currentLang());
+      const ht = hp.types[state.hiddenResult.key];
+      if(ht){
+        const hs = window.QBTI_HIDDEN.TRAITS.map(k => hp.types[k].name + '=' + (Number(state.hiddenResult.scores && state.hiddenResult.scores[k]) || 0)).join(' / ');
+        txt += '\n\n' + hp.ui.fifth + '\n' + ht.name + ' · ' + ht.subtitle + '\n' + ht.desc + '\n' + hs;
+      }
+    }
     try {
       await navigator.clipboard.writeText(txt);
       const b = $('btnCopy');
@@ -2749,6 +2922,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(info.key === 'lang'){
         renderDimPreview();
         if($('screen-quiz').classList.contains('active')) renderQuestion();
+        if($('screen-hidden').classList.contains('active')) renderHiddenQuiz();
         if($('screen-result').classList.contains('active') && state.result){
           renderResult(state.result, state.restoredTs);
           renderQuantumStateBadge(state.quantumState, state.dimStates ? state.dimStates.types : null);
