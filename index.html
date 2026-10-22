@@ -104,6 +104,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .hidden-personality .hp-art{position:absolute;z-index:1;right:-2%;top:-8%;width:60%;height:116%;pointer-events:none;opacity:.95;filter:drop-shadow(0 18px 34px rgba(0,0,0,.35))}
 .hidden-personality .hp-art svg{width:100%;height:100%;display:block;overflow:visible}
 .hidden-personality.hp-freedom{background:radial-gradient(circle at 78% 40%,rgba(55,120,255,.20),transparent 48%),linear-gradient(135deg,rgba(5,18,52,.72),rgba(12,7,30,.88));border-color:rgba(100,170,255,.35)}
+.hidden-personality.hp-freedom .hp-art{left:0;right:0;top:0;width:100%;height:100%;opacity:1;filter:none}
+.hidden-personality.hp-freedom .hp-content{max-width:57%;text-shadow:0 2px 18px rgba(0,0,0,.75)}
+.hidden-personality.hp-freedom .freedom-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hidden-personality.hp-freedom .hp-photo-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(3,8,22,.985) 0%,rgba(3,8,22,.94) 34%,rgba(3,8,22,.62) 56%,rgba(3,8,22,.16) 78%,rgba(3,8,22,.05) 100%),linear-gradient(0deg,rgba(3,8,22,.8),transparent 34%,transparent 72%,rgba(3,8,22,.45))}
+.hidden-personality.hp-freedom .hp-scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(110,230,255,.035) 0,rgba(110,230,255,.035) 1px,transparent 1px,transparent 4px);mix-blend-mode:screen;animation:hpScan 8s linear infinite;opacity:.55;pointer-events:none}
+.hidden-personality.hp-freedom .hp-hud-wrap{position:absolute;inset:0}
+.hidden-personality.hp-freedom .hp-hud{width:100%;height:100%;display:block;mix-blend-mode:screen;opacity:.55;filter:drop-shadow(0 0 8px rgba(80,220,255,.35))}
 .hidden-personality.hp-madman{background:radial-gradient(circle at 78% 40%,rgba(190,40,255,.20),transparent 48%),linear-gradient(135deg,rgba(35,4,48,.78),rgba(12,5,22,.9));border-color:rgba(210,100,255,.34)}
 .hidden-personality.hp-einstein{background:radial-gradient(circle at 78% 40%,rgba(255,180,70,.18),transparent 48%),linear-gradient(135deg,rgba(45,26,8,.72),rgba(18,10,6,.9));border-color:rgba(255,200,110,.32)}
 .hidden-personality.hp-jerry{background:radial-gradient(circle at 78% 40%,rgba(255,140,50,.18),transparent 48%),linear-gradient(135deg,rgba(48,22,6,.75),rgba(14,9,5,.9));border-color:rgba(255,170,90,.32)}
@@ -133,7 +140,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 @keyframes hpPulse{0%,100%{opacity:.35;transform:scale(.92)}50%{opacity:1;transform:scale(1.08)}}
 @keyframes hpSpark{0%,100%{opacity:.15}50%{opacity:1}}
 @keyframes hpTongue{0%,72%,100%{transform:scaleY(1)}80%,92%{transform:scaleY(1.18)}}
-@media(max-width:700px){.hidden-personality{min-height:360px;padding:20px}.hidden-personality .hp-content{max-width:100%}.hidden-personality .hp-art{width:100%;height:100%;right:-18%;top:0;opacity:.30}.hidden-personality .hp-name{font-size:clamp(26px,8vw,38px)}}
+
+@keyframes hpScan{0%{background-position:0 0}100%{background-position:0 40px}}
+@media(max-width:700px){.hidden-personality.hp-freedom .hp-content{max-width:100%}.hidden-personality.hp-freedom .hp-photo-shade{background:linear-gradient(180deg,rgba(3,8,22,.55),rgba(3,8,22,.88) 48%,rgba(3,8,22,.96))}.hidden-personality.hp-freedom .hp-hud{opacity:.3}.hidden-personality{min-height:360px;padding:20px}.hidden-personality .hp-content{max-width:100%}.hidden-personality .hp-art{width:100%;height:100%;right:-18%;top:0;opacity:.30}.hidden-personality .hp-name{font-size:clamp(26px,8vw,38px)}}
 @media(prefers-reduced-motion:reduce){.hidden-personality *,.type-name{animation:none!important}}
 .hidden-personality .hp-kicker{font-size:calc(10.5px * var(--q-fs));letter-spacing:.16em;color:#FF9AA7;text-transform:uppercase}
 .hidden-personality .hp-name{margin-top:8px;font-size:calc(24px * var(--q-fs));font-weight:800;color:#fff}
@@ -719,6 +728,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 <script src="qbti-core.js"></script>
 <script src="qbti-i18n.js"></script>
 <script src="qbti-hidden.js"></script>
+<script src="freedom-render.js"></script>
 <script src="qbti-settings.js"></script>
 <script src="quantum-sphere.js"></script>
 <script src="result-sphere.js"></script>
@@ -938,6 +948,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       setTimeout(() => window.QuantumSphere.resize(), 500);
     }
     if(id === 'screen-contact') prefillFeedbackForm();
+    if(id !== 'screen-result' && window.QBTI_FREEDOM_RENDER) window.QBTI_FREEDOM_RENDER.stop();
+    if(id === 'screen-result' && state.hiddenResult && state.hiddenResult.key === 'freedom' && window.QBTI_FREEDOM_RENDER){
+      setTimeout(() => {
+        const c = $('freedomCanvas');
+        if(c && state.hiddenResult && state.hiddenResult.key === 'freedom') window.QBTI_FREEDOM_RENDER.start(c);
+      }, 80);
+    }
   }
 
   $('btnBackFromIntro').addEventListener('click', () => goToScreen('screen-home'));
@@ -1683,44 +1700,30 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   function hiddenArt(key){
     if(key === 'freedom') return `
-      <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
-        <defs>
-          <linearGradient id="fgA" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f4fbff"/><stop offset=".45" stop-color="#8fc6ff"/><stop offset="1" stop-color="#2b56d9"/></linearGradient>
-          <linearGradient id="fgW" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#123cff"/><stop offset="1" stop-color="#07122e"/></linearGradient>
-          <linearGradient id="fgG" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff3b0"/><stop offset="1" stop-color="#d18a18"/></linearGradient>
-          <radialGradient id="fgGlow"><stop stop-color="#4ecbff" stop-opacity=".55"/><stop offset="1" stop-color="#4ecbff" stop-opacity="0"/></radialGradient>
-        </defs>
-        <g class="hp-spin-slow" opacity=".28" fill="none" stroke="#5db7ff">
-          <circle cx="330" cy="175" r="132" stroke-dasharray="4 12"/>
-          <circle cx="330" cy="175" r="108" stroke-dasharray="1 18"/>
-          <path d="M120 175 H540 M330 -10 V360" opacity=".22"/>
-        </g>
-        <circle cx="345" cy="165" r="150" fill="url(#fgGlow)"/>
-        <g class="hp-float">
-          <path d="M300 190 L135 72 L185 188 L128 304 L300 238 Z" fill="url(#fgW)" stroke="#4f9dff" stroke-width="2" opacity=".95"/>
-          <path d="M300 190 L465 72 L415 188 L472 304 L300 238 Z" fill="url(#fgW)" stroke="#4f9dff" stroke-width="2" opacity=".95"/>
-          <path d="M222 208 L172 232 L188 292 L244 270 Z" fill="url(#fgA)" stroke="#0a1b45" stroke-width="3"/>
-          <path d="M378 208 L428 232 L412 292 L356 270 Z" fill="url(#fgA)" stroke="#0a1b45" stroke-width="3"/>
-          <path d="M252 196 L348 196 L368 286 L232 286 Z" fill="url(#fgA)" stroke="#0a1b45" stroke-width="3"/>
-          <path d="M270 210 L330 210 L322 246 L278 246 Z" fill="#1d55e8"/>
-          <circle cx="300" cy="228" r="14" fill="#ff4d6d" stroke="#ffd6de" stroke-width="3" class="hp-pulse"/>
-          <path d="M260 100 L306 116 L316 164 L290 190 L255 176 L244 134 Z" fill="url(#fgA)" stroke="#0a1b45" stroke-width="3"/>
-          <path d="M300 122 L300 78 L328 108 L300 100 L272 108 Z" fill="url(#fgG)" stroke="#7a4a00" stroke-width="2"/>
-          <path d="M266 142 L290 146 L286 160 L262 156 Z" fill="#62e8ff"/>
-          <path d="M310 146 L334 142 L338 156 L314 160 Z" fill="#62e8ff"/>
-          <path d="M282 174 L318 174 L308 186 L292 186 Z" fill="#07142f"/>
-          <rect x="214" y="214" width="16" height="76" rx="4" fill="#d6e9ff" opacity=".9"/>
-          <rect x="370" y="214" width="16" height="76" rx="4" fill="#d6e9ff" opacity=".9"/>
-          <path d="M180 300 L112 344" stroke="#ff6fa5" stroke-width="7" stroke-linecap="round" opacity=".9"/>
-          <path d="M180 300 L112 344" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".8"/>
-        </g>
-        <g fill="#b8ecff">
-          <circle class="hp-spark" cx="150" cy="110" r="2.5" style="animation-delay:.2s"/>
-          <circle class="hp-spark" cx="440" cy="250" r="3" style="animation-delay:.9s"/>
-          <circle class="hp-spark" cx="390" cy="70" r="2" style="animation-delay:1.4s"/>
-          <circle class="hp-spark" cx="205" cy="315" r="2.5" style="animation-delay:.5s"/>
-        </g>
-      </svg>`;
+      <canvas class="freedom-canvas" id="freedomCanvas" aria-label="Freedom GUNDAM"></canvas>
+      <div class="hp-photo-shade"></div>
+      <div class="hp-scan"></div>
+      <div class="hp-hud-wrap">
+          <svg viewBox="0 0 520 360" class="hp-hud" aria-hidden="true">
+            <g fill="none" stroke="#70e6ff" stroke-width="1.4" opacity=".72">
+              <circle cx="390" cy="150" r="105" stroke-dasharray="2 12" class="hp-spin-slow"/>
+              <circle cx="390" cy="150" r="86" stroke-dasharray="28 10 2 10"/>
+              <path d="M55 40 H150 M55 40 V120 M465 40 H400 M465 40 V90 M55 320 H135 M55 320 V270 M465 320 H390 M465 320 V280"/>
+              <path d="M390 45 V78 M390 222 V258 M300 150 H335 M445 150 H478"/>
+              <path d="M92 150 H150 M150 150 L175 128" opacity=".55"/>
+            </g>
+            <g fill="#a9f4ff" font-family="monospace" opacity=".85">
+              <text x="68" y="82" font-size="9" letter-spacing="2">FREEDOM // UNIT 05</text>
+              <text x="68" y="300" font-size="8" letter-spacing="1">SYNC 98.7%  ·  LIMIT RELEASED</text>
+              <text x="405" y="270" font-size="8" letter-spacing="1">WING / ZERO</text>
+            </g>
+            <g fill="#ff6b81" opacity=".9">
+              <circle cx="390" cy="150" r="3" class="hp-pulse"/>
+              <circle cx="150" cy="150" r="2.2" class="hp-spark"/>
+              <circle cx="470" cy="250" r="2.2" class="hp-spark" style="animation-delay:.8s"/>
+            </g>
+          </svg>
+      </div>`;
     if(key === 'madman') return `
       <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
         <defs>
@@ -1833,6 +1836,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function renderHiddenPersonality(){
     const el = $('hiddenPersonality');
     if(!el) return;
+    if(window.QBTI_FREEDOM_RENDER) window.QBTI_FREEDOM_RENDER.stop();
     const h = state.hiddenResult;
     if(!h || !h.obtained || !window.QBTI_HIDDEN){
       el.style.display = 'none'; el.innerHTML = '';
@@ -1858,6 +1862,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       + '<div class="hp-explain">' + escapeHTML(type.explain || '') + '</div>'
       + '<div class="hp-scores">' + chips + '</div>'
       + '</div>';
+    if(h.key === 'freedom' && window.QBTI_FREEDOM_RENDER){
+      window.QBTI_FREEDOM_RENDER.start($('freedomCanvas'));
+    } else if(window.QBTI_FREEDOM_RENDER){
+      window.QBTI_FREEDOM_RENDER.stop();
+    }
     renderHiddenReportBanner();
   }
 
