@@ -2941,20 +2941,33 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(guidance){ guidance.className = 'qs-guidance'; guidance.innerHTML = ''; }
     if(ladder){ ladder.className = 'qs-ladder'; ladder.innerHTML = ''; }
     if(four){ four.className = 'qs-four'; four.innerHTML = ''; }
-    if($('qsContinue')){ $('qsContinue').style.visibility = 'visible'; $('qsContinue').textContent = page >= 4 ? ui.finish : ui.continue; }
-
     const line = (text, i, extra) => '<p class="qs-line" style="--i:' + i + '">' + text + '</p>';
+    if($('quantumStatus')) $('quantumStatus').dataset.page = String(page);
+    const visualLabels = [
+      stateMeta.visual,
+      pack.sections.barrier + ' · ' + (pack.guidance[data.guidance] ? pack.guidance[data.guidance].label : ''),
+      'n=' + data.ladder + ' → n=' + data.nextLadder,
+      pack.sections.behavior,
+      pack.sections.leap,
+      pack.sections.four
+    ];
+    if($('qsVisualLabel')) $('qsVisualLabel').textContent = visualLabels[page] || stateMeta.visual;
+    if($('qsContinue')){ $('qsContinue').style.visibility = 'visible'; $('qsContinue').textContent = page >= 5 ? ui.finish : ui.continue; }
+
     if(page === 0){
+      const es = (pack.energyState[qsState.dim] && pack.energyState[qsState.dim][type]) || stateMeta.name;
       const text = (pack.stateBody[qsState.dim] && pack.stateBody[qsState.dim][type]) || '';
-      body.innerHTML = line('你刚刚炸开的是 <b>' + qsEsc(dimName) + '</b> 这一颗量子球。', 0)
-        + line('它现在呈现为 <em>' + qsEsc(stateMeta.name) + '</em>。', 1)
-        + line(qsEsc(text), 2);
+      body.innerHTML = line(qsEsc(pack.energyLead.replace('{dim}', dimName)), 0)
+        + line(pack.sections.energy + '：<b>' + qsEsc(es) + '</b>', 1)
+        + line(qsEsc(text), 2)
+        + line(qsEsc(pack.energyNote), 3);
     } else if(page === 1){
       const g = pack.guidance[data.guidance] || pack.guidance.weak;
       const pct = data.guidance === 'clear' ? 92 : data.guidance === 'forming' ? 64 : data.guidance === 'weak' ? 34 : 12;
-      body.innerHTML = line('引导倾向不是“推着你走”，而是这颗球是否已经有一条可以对齐的轨道。', 0)
-        + line('当前这个维度的引导倾向：<b>' + qsEsc(g.label) + '</b>。', 1)
-        + line(qsEsc(g.body), 2);
+      body.innerHTML = line(qsEsc(pack.barrierLead), 0)
+        + line(qsEsc(pack.barrier[qsState.dim] || ''), 1)
+        + line(qsEsc(pack.barrierState[type] || ''), 2)
+        + line(qsEsc(pack.barrierNote), 3);
       if(guidance){
         guidance.className = 'qs-guidance show';
         guidance.dataset.guide = data.guidance;
@@ -2963,7 +2976,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
     } else if(page === 2){
       const levels = pack.ladder.levels;
-      body.innerHTML = line('量子能量不是连续爬坡，而是一阶一阶跳。', 0)
+      body.innerHTML = line(qsEsc(pack.ladderLead), 0)
         + line(pack.ladder.body.replace('{dim}', qsEsc(dimName)).replace('{level}', data.ladder).replace('{next}', data.nextLadder), 1);
       if(ladder){
         ladder.className = 'qs-ladder show';
@@ -2981,12 +2994,20 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
     } else if(page === 3){
       const q = pack.quantum[type] || pack.quantum.superposition;
-      body.innerHTML = line('把刚才的大白话，翻译成量子语言：', 0)
-        + line('<b>' + qsEsc(pack.quantum.title) + '</b>：' + qsEsc(q), 1)
-        + line('当前能级 n=' + data.ladder + '，稳定度：' + qsEsc((pack.ui.stability && pack.ui.stability[data.stability]) || data.stability || 'medium') + '。', 2);
+      const st = (pack.ui.stability && pack.ui.stability[data.stability]) || data.stability || 'medium';
+      body.innerHTML = line(qsEsc(pack.behaviorLead), 0)
+        + line(qsEsc(pack.behavior[qsState.dim] || ''), 1)
+        + line(qsEsc(pack.behaviorType[type] || ''), 2)
+        + line(qsEsc(pack.behaviorNote), 3)
+        + line(pack.currentLevel.replace('{level}', data.ladder).replace('{stability}', qsEsc(st)) + ' ' + qsEsc(q), 4);
+    } else if(page === 4){
+      body.innerHTML = line(qsEsc(pack.leapLead), 0)
+        + line(qsEsc(pack.leap[qsState.dim] || ''), 1)
+        + line(qsEsc(pack.leapState[type] || ''), 2)
+        + line(qsEsc(pack.leapNote), 3);
     } else {
-      body.innerHTML = line(qsEsc(pack.four.sub), 0)
-        + line('你不是四种人格中的一种，而是四个维度同时处在不同的能级。', 1);
+      body.innerHTML = line(qsEsc(pack.fourLead), 0)
+        + line(qsEsc(pack.four.sub), 1);
       if(four){
         four.className = 'qs-four show';
         four.innerHTML = QS_DIMS.map(dim => {
@@ -3012,7 +3033,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   function advanceQuantumStatus(){
     if(qsState.loading || !qsState.open) return;
-    if(qsState.page >= 4){ closeQuantumStatus(); return; }
+    if(qsState.page >= 5){ closeQuantumStatus(); return; }
+    const el = $('quantumStatus');
+    if(el) el.scrollTo({ top: 0, behavior: 'smooth' });
     renderQuantumStatusPage(qsState.page + 1);
   }
 
@@ -3023,7 +3046,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     qsState.dim = QS_DIMS.includes(dim) ? dim : 'PO';
     qsState.page = 0; qsState.data = null; qsState.context = null; qsState.cache = {};
     const el = $('quantumStatus');
-    if(el){ el.classList.add('show'); el.setAttribute('aria-hidden', 'false'); }
+    if(el){ el.classList.add('show'); el.setAttribute('aria-hidden', 'false'); el.dataset.page = 'loading'; }
     document.body.style.overflow = 'hidden';
     buildStatusTabs();
     if($('qsClose')) $('qsClose').setAttribute('aria-label', pack.ui.close);

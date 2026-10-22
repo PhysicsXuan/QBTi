@@ -66,6 +66,16 @@
 .qs-guidance[data-guide="blocked"] .qs-guide-fill{background:linear-gradient(90deg,#D52A4C,#FF8A9F)}
 .qs-continue{margin-top:30px;color:rgba(225,240,255,.48);font-size:calc(11px * var(--q-fs));letter-spacing:.16em;animation:qsHintBreath 3.2s ease-in-out infinite;min-height:1.5em}
 .qs-continue::after{content:'  ›';opacity:.6}
+.quantum-status[data-page="1"] .qs-orb-wrap::before{content:'';position:absolute;z-index:3;left:61%;top:13%;width:7px;height:74%;border-radius:99px;background:linear-gradient(180deg,transparent,rgba(255,190,120,.65),rgba(255,120,160,.75),transparent);box-shadow:0 0 22px rgba(255,150,130,.45),0 0 70px rgba(255,100,160,.18);transform:rotate(7deg);pointer-events:none;animation:qsBarrier 3.4s ease-in-out infinite}
+.quantum-status[data-page="1"] .qs-orb{filter:saturate(.85) brightness(.9)}
+.quantum-status[data-page="3"] .qs-orb-wrap::before{content:'';position:absolute;z-index:3;width:78%;height:30%;border:1px solid rgba(130,235,255,.38);border-radius:50%;transform:rotate(-18deg);box-shadow:0 0 26px rgba(80,200,255,.14);pointer-events:none;animation:qsBehaviorOrbit 9s linear infinite}
+.quantum-status[data-page="3"] .qs-orb-wrap::after{content:'';position:absolute;z-index:3;width:8px;height:8px;border-radius:50%;background:#C8FAFF;box-shadow:0 0 16px #62E7FF,0 0 34px rgba(90,200,255,.7);transform:translate(160%,-40%);animation:qsBehaviorDot 4.5s linear infinite}
+.quantum-status[data-page="4"] .qs-orb-wrap::before{content:'';position:absolute;z-index:0;width:45%;height:45%;border-radius:50%;border:1px solid rgba(180,240,255,.35);box-shadow:0 0 30px rgba(100,200,255,.14);animation:qsLeapRing 3.2s ease-out infinite}
+.quantum-status[data-page="4"] .qs-orb-wrap::after{content:'';position:absolute;z-index:0;width:45%;height:45%;border-radius:50%;border:1px solid rgba(255,200,130,.22);animation:qsLeapRing 3.2s ease-out 1.6s infinite}
+@keyframes qsBarrier{0%,100%{opacity:.55;transform:rotate(7deg) scaleY(.96)}50%{opacity:1;transform:rotate(7deg) scaleY(1.03)}}
+@keyframes qsBehaviorOrbit{to{transform:rotate(342deg)}}
+@keyframes qsBehaviorDot{0%{transform:translate(160%,-40%) rotate(0deg)}100%{transform:translate(160%,-40%) rotate(360deg)}}
+@keyframes qsLeapRing{0%{opacity:.6;transform:scale(.85)}100%{opacity:0;transform:scale(1.9)}}
 .qs-ladder{display:none;margin:18px auto 0;width:min(920px,100%);padding:24px 26px 14px;border-radius:18px;border:1px solid rgba(130,180,255,.16);background:rgba(8,14,34,.46);backdrop-filter:blur(8px)}
 .qs-ladder.show{display:block;animation:qsLineIn .6s ease both}
 .qs-ladder-title{font-size:calc(11px * var(--q-fs));letter-spacing:.16em;color:#9CB9E5;text-transform:uppercase}

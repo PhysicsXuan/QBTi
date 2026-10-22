@@ -26,8 +26,66 @@
       superposition: { name: '叠加态', visual: '叠加 · 相位未锁定' },
       danger: { name: '高能不稳定态', visual: '高能 · 退相干' }
     },
-    pageKickers: ['CURRENT EIGENSTATE', 'GUIDANCE TENDENCY', 'ENERGY LADDER', 'QUANTUM TRANSLATION', 'FOUR-DIMENSIONAL FIELD'],
-    pageTitles: ['{dim}量子球', '它有没有引导倾向？', '能量停在第几阶？', '把大白话翻译成量子语言', '四维量子场'],
+    energyLead: '你刚刚炸开的是 {dim} 这一颗量子球。',
+    barrierLead: '势垒不是敌人，它只是你现在真实遇到的阻力。',
+    ladderLead: '量子能量不是连续爬坡，而是一阶一阶跳。',
+    behaviorLead: '这个维度正在用一种独特的方式维持自己。',
+    leapLead: '跃迁不是被推着走，而是一次可选的、轻轻的位移。',
+    fourLead: '你不是四种人格中的一种，而是四个维度同时处在不同的能级。',
+    currentLevel: '当前能级 n={level}，稳定度：{stability}。',
+    sections: {
+      energy: '能级观测',
+      barrier: '势垒描述',
+      ladder: '量子能量阶梯',
+      behavior: '量子行为',
+      leap: '跃迁引导',
+      four: '四维量子场'
+    },
+    energyState: {
+      PO: { good: '低能稳定态', superposition: '门缝叠加态', danger: '高能散射态' },
+      II: { good: '持续激发态', superposition: '双频跃迁态', danger: '能量泄漏态' },
+      LA: { good: '超导态', superposition: '路径叠加态', danger: '轨道退相干态' },
+      UR: { good: '相干基态', superposition: '隧穿叠加态', danger: '高能耗散态' }
+    },
+    energyNote: '这不是好坏评价，只是你现在所在的能量位置。',
+    barrier: {
+      PO: '势垒不是“你不够勇敢”。它是门外没有足够已知信号时，身体自然产生的迟疑；先允许这堵墙存在，门才有被重新看见的可能。',
+      II: '势垒不是懒。它是意义感、热情和外部要求没有同频时产生的内耗；推力越大，噪声越响。',
+      LA: '势垒来自“被安排”与“自己想走”的拉扯。你还没有拿到足够的自主空间，所以轨道总被外部指令改写。',
+      UR: '势垒是恢复速度暂时跟不上挑战幅度。不确定本身在消耗能量，先恢复，不等于退缩。'
+    },
+    barrierState: {
+      good: '这堵墙不高，但它真实存在；你不需要假装它不存在。',
+      superposition: '墙在两种可能之间移动；你既想过去，又不想失去退路。',
+      danger: '墙现在偏高，硬撞会继续漏能；先允许它存在，是降低损耗的一部分。'
+    },
+    barrierNote: '势垒不需要现在被克服。先允许它存在，能量才不会被“必须马上解决”继续抽走。',
+    behavior: {
+      PO: '你用的是“弱测量”：不直接推开门，而是先听门缝、看灰尘、试探风的方向。你通过不把结果看死，保留更多可能。',
+      II: '你用的是“脉冲激发”：靠一阵一阵的热情点火，而不是持续燃烧。间歇不是失败，是当前能量供给方式。',
+      LA: '你用的是“模式切换”：在自主和外部指令之间来回切换，用不同模式保住前进。',
+      UR: '你用的是“量子隧穿”：不把高墙撞碎，而是从最薄的地方穿过去；幽默、撤退、硬撑，都是你的隧穿路径。'
+    },
+    behaviorType: {
+      good: '这个策略目前是有效的，它让你的能量没有白白耗散。',
+      superposition: '这个策略让你同时保留两条路，但也让你难以完全锁定一条。',
+      danger: '这个策略在帮你活下来，同时也在消耗你；它值得被看见，而不是被责怪。'
+    },
+    behaviorNote: '这是你在当前能量状态下长出来的生存策略，不是缺陷。',
+    leap: {
+      PO: '如果愿意，下一次不必推开门。只把耳朵贴近门缝，听一秒，再决定要不要继续。',
+      II: '如果愿意，先不急着重新点火。只问自己一句：还有什么值得我再加一次燃料？',
+      LA: '如果愿意，先不规划整条路。只画出下一步的一个点，然后允许自己只走到那里。',
+      UR: '如果愿意，先不解决不确定。只允许自己在雾里站一会儿，看看哪一块地面是稳的。'
+    },
+    leapState: {
+      good: '不需要一次跳很远，你已经在一条可维持的轨道上。',
+      superposition: '不需要现在选死一边，先让下一次观测更清楚。',
+      danger: '不需要马上跃迁，先让能量停止继续漏，就是下一步。'
+    },
+    leapNote: '这不是建议，也不是要求。只是一个开放的邀请：你可以现在跳，也可以先不跳。',
+    pageKickers: ['ENERGY LEVEL', 'POTENTIAL BARRIER', 'ENERGY LADDER', 'QUANTUM BEHAVIOR', 'QUANTUM LEAP', 'FOUR-DIMENSIONAL FIELD'],
+    pageTitles: ['{dim} · 能级观测', '势垒描述', '量子能量阶梯', '量子行为', '跃迁引导', '四维量子场'],
     stateBody: {
       PO: {
         good: '你的潜能量子球已经锁在一个相对低的能级上。它不再四处乱撞，而是把能量收束到少数几个真正想探索的方向。',
@@ -101,8 +159,66 @@
       superposition: { name: 'Superposition', visual: 'Superposition · phase unlocked' },
       danger: { name: 'High-energy unstable state', visual: 'High energy · decoherence' }
     },
-    pageKickers: ['CURRENT EIGENSTATE', 'GUIDANCE TENDENCY', 'ENERGY LADDER', 'QUANTUM TRANSLATION', 'FOUR-DIMENSIONAL FIELD'],
-    pageTitles: ['Your {dim} quantum ball', 'Does it have a guidance tendency?', 'Which energy level is it on?', 'Translating plain language into quantum language', 'The four-dimensional quantum field'],
+    energyLead: 'You have just opened the {dim} quantum ball.',
+    barrierLead: 'A barrier is not the enemy. It is the resistance you are actually meeting right now.',
+    ladderLead: 'Quantum energy does not climb smoothly; it jumps in steps.',
+    behaviorLead: 'This dimension is sustaining itself in a particular way.',
+    leapLead: 'A leap is not being pushed. It is an optional, gentle displacement.',
+    fourLead: 'You are not one of four personality types. Four dimensions are sitting at different energy levels at the same time.',
+    currentLevel: 'Current level n={level}; stability: {stability}.',
+    sections: {
+      energy: 'Energy Level',
+      barrier: 'Potential Barrier',
+      ladder: 'Quantum Energy Ladder',
+      behavior: 'Quantum Behavior',
+      leap: 'Quantum Leap',
+      four: 'Four-Dimensional Field'
+    },
+    energyState: {
+      PO: { good: 'Low-energy stable state', superposition: 'Door-gap superposition', danger: 'High-energy scattering state' },
+      II: { good: 'Sustained excited state', superposition: 'Dual-frequency transition', danger: 'Energy-leak state' },
+      LA: { good: 'Superconducting state', superposition: 'Path superposition', danger: 'Orbital decoherence' },
+      UR: { good: 'Coherent ground state', superposition: 'Tunneling superposition', danger: 'High-energy dissipation' }
+    },
+    energyNote: 'This is not a good-or-bad judgement. It is simply where your energy sits right now.',
+    barrier: {
+      PO: 'The barrier is not a sign that you are not brave enough. It is the hesitation your body produces when there is not enough known signal beyond the door. Let the wall exist for now; only then can the door be seen again.',
+      II: 'The barrier is not laziness. It is the friction created when meaning, passion and external demands are not on the same frequency. The harder the push, the louder the noise.',
+      LA: 'The barrier comes from the pull between being arranged and wanting to walk your own route. You have not been given enough autonomous space, so your orbit keeps being rewritten by external instructions.',
+      UR: 'The barrier is your recovery speed lagging behind the size of the challenge. Uncertainty itself is draining energy; recovering is not the same as retreating.'
+    },
+    barrierState: {
+      good: 'The wall is not high, but it is real. You do not have to pretend it is not there.',
+      superposition: 'The wall moves between two possibilities; you want to cross, but you also do not want to lose the way back.',
+      danger: 'The wall is high right now. Hitting it head-on will leak more energy; allowing it to exist is part of reducing the loss.'
+    },
+    barrierNote: 'The barrier does not need to be overcome right now. Let it exist first, so that “I must solve this immediately” stops draining you.',
+    behavior: {
+      PO: 'You use weak measurement: instead of pushing the door open, you listen at the gap, watch the dust, and test the direction of the wind. By not forcing a result, you keep more possibilities alive.',
+      II: 'You use pulsed excitation: lighting the fire in bursts rather than burning continuously. The pauses are not failure; they are how your energy is supplied right now.',
+      LA: 'You use mode switching: moving between autonomy and external instruction, using different modes to keep moving forward.',
+      UR: 'You use quantum tunneling: rather than smashing the wall, you pass through its thinnest place. Humor, retreat and grit are all tunneling paths.'
+    },
+    behaviorType: {
+      good: 'This strategy is working right now; it keeps your energy from dissipating for nothing.',
+      superposition: 'This strategy keeps two routes open, but it also makes it hard to lock onto one.',
+      danger: 'This strategy is helping you survive while also consuming you. It deserves to be seen, not blamed.'
+    },
+    behaviorNote: 'This is a survival strategy grown from your current energy state, not a defect.',
+    leap: {
+      PO: 'If you are willing, you do not have to open the door next time. Just put your ear to the gap, listen for one second, and then decide whether to continue.',
+      II: 'If you are willing, do not rush to relight the fire. Just ask yourself: what is still worth adding one more measure of fuel to?',
+      LA: 'If you are willing, do not plan the whole road. Draw only the next point, and allow yourself to walk just that far.',
+      UR: 'If you are willing, do not solve uncertainty yet. Let yourself stand in the fog for a while and notice which patch of ground is steady.'
+    },
+    leapState: {
+      good: 'You do not need to jump far; you are already on a sustainable orbit.',
+      superposition: 'You do not need to kill one side of the possibility now; let the next observation become clearer first.',
+      danger: 'You do not need to leap immediately. Letting the energy stop leaking is already the next step.'
+    },
+    leapNote: 'This is not advice and not a requirement. It is an open invitation: you can jump now, or you can wait.',
+    pageKickers: ['ENERGY LEVEL', 'POTENTIAL BARRIER', 'ENERGY LADDER', 'QUANTUM BEHAVIOR', 'QUANTUM LEAP', 'FOUR-DIMENSIONAL FIELD'],
+    pageTitles: ['Your {dim} · Energy Level', 'Potential Barrier', 'Quantum Energy Ladder', 'Quantum Behavior', 'Quantum Leap', 'The Four-Dimensional Field'],
     stateBody: {
       PO: {
         good: 'Your potential quantum ball is locked at a relatively low energy level. It is no longer bouncing everywhere; its energy is gathered into a few directions it genuinely wants to explore.',
