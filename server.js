@@ -1719,12 +1719,13 @@ app.post('/api/quantum/status', (req, res) => {
   const max = Math.max.apply(null, values);
   const spread = max - min;
 
-  let ladder = avg >= 66 ? 5 : avg >= 53 ? 4 : avg >= 40 ? 3 : avg >= 28 ? 2 : 1;
-  if(type === 'danger') ladder -= 1;
-  if(type === 'good') ladder += 1;
-  if(spread > 45) ladder -= 1;
-  if(min < 25) ladder -= 1;
-  ladder = Math.max(1, Math.min(5, Math.round(ladder)));
+  let position = 1 + avg / 25;
+  if(type === 'good') position += 0.18;
+  if(type === 'danger') position -= 0.18;
+  if(spread > 45) position -= 0.22;
+  if(min < 25) position -= 0.20;
+  position = Math.max(1.05, Math.min(4.95, position));
+  const ladder = Math.max(1, Math.min(5, Math.round(position)));
   const next = Math.min(5, ladder + 1);
 
   const guidance = type === 'good'
@@ -1740,6 +1741,7 @@ app.post('/api/quantum/status', (req, res) => {
     dimension: dim,
     type: type,
     ladder: ladder,
+    ladderPosition: Math.round(position * 10) / 10,
     nextLadder: next,
     guidance: guidance,
     stability: stability,
@@ -1962,7 +1964,9 @@ function qlogPrompt(body, lang){
       'behavior（量子行为）：描述这个状态下独特的生存策略（反射/隧穿/纠缠/自发辐射等），要具体到用户的数据。',
       'leap（跃迁引导）：开放、非说教的温柔邀请；不是建议，不是命令，不替用户决定。',
       '红线：不定义用户、不贴人格标签、不诊断、不评价好坏；不写“你应该/你必须/你需要/建议你”；不出现家长、老师、AI、模型、分数、报告；不写“突然”；不使用空洞鸡汤。',
-      '每段长度由内容决定，不要为了字数截断或硬凑；像观测站日志，有物理意象，但让用户听得懂。',
+      '内容要全面、具体，不设字数上限；每段至少 4-6 句并充分展开，但不要为了凑字数重复或灌水。',
+      '必须引用用户的具体分数、内部占比、主导子维度和差值，解释这些数据如何导致当前状态；至少给出两个日常表现例子，避免只堆量子名词。',
+      'energy 要写：状态名称 + 为什么 + 日常表现 + 这个状态在保护什么；barrier 要写：外部/内部阻力 + 为什么存在 + 用户如何感知 + 允许它存在；behavior 要写：策略如何运作 + 代价 + 它带来了什么；leap 要写：一个很小、可选的实验或邀请 + 不要求结果。',
       '只输出合法 JSON，不要 markdown，不要代码块。结构：{"energy":"...","barrier":"...","behavior":"...","leap":"..."}'
     ].join('\n');
   }
@@ -1979,7 +1983,9 @@ function qlogPrompt(body, lang){
     'behavior: this state’s distinctive survival strategy (reflection/tunneling/entanglement/spontaneous emission), grounded in the user data.',
     'leap: an open, non-preachy, gentle invitation; not advice, not a command, not a decision for the user.',
     'Rules: do not define, label, diagnose or judge; do not use "you should", "you must", "you need to", "I suggest"; do not mention parents, teachers, AI, models, scores or reports; no sudden events; no empty motivational talk.',
-    'Length is determined by the content; do not truncate or pad to hit a word count. Write like a station log: physical imagery that a user can understand.',
+    'Be comprehensive and specific, not abstract. There is no upper word limit; each section should have at least 4-6 sentences and be fully developed, but do not repeat or pad just to add length.',
+    'Cite the user’s specific scores, internal ratios, leading subdimension and gap, and explain how those data produce the current state. Give at least two everyday examples; do not just pile up quantum vocabulary.',
+    'energy: name the state + why + everyday signs + what the state protects; barrier: external/internal resistance + why it exists + how the user feels it + allow it; behavior: how the strategy works + its cost + what it gives; leap: one tiny optional experiment or invitation + no required outcome.',
     'Output valid JSON only, no markdown, no code fence. Schema: {"energy":"...","barrier":"...","behavior":"...","leap":"..."}'
   ].join('\n');
 }
@@ -2014,7 +2020,7 @@ app.post('/api/quantum/log', async (req, res) => {
     safe.scores[k] = Math.max(0, Math.min(100, Number(body.scores && body.scores[k]) || 0));
     if(body.ratios && body.ratios[k] != null) safe.ratios[k] = Math.max(0, Math.min(100, Number(body.ratios[k]) || 0));
   });
-  const cacheKey = JSON.stringify(safe);
+  const cacheKey = 'qlog-v2|' + JSON.stringify(safe);
   if(quantumLogCache.has(cacheKey)){
     const hit = quantumLogCache.get(cacheKey);
     return res.json({ success: true, source: 'cache', dimension: dim, state: type, log: hit });

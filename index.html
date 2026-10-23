@@ -1595,7 +1595,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const ctx = getQuantumDimensionContext(dim);
     const fp = (Q.answerFingerprint && state.answers) ? Q.answerFingerprint(state.answers) : '';
     const lang = currentLang();
-    const cacheKey = fp + '|' + dim + '|' + (ctx.type || 'superposition') + '|' + lang;
+    const cacheKey = 'qlog-v2|' + fp + '|' + dim + '|' + (ctx.type || 'superposition') + '|' + lang;
     if(quantumLogCache.has(cacheKey)){
       log.dataset.loaded = '1';
       log.dataset.loading = '';
@@ -3205,15 +3205,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const min = values.length ? Math.min.apply(null, values) : 0;
     const max = values.length ? Math.max.apply(null, values) : 0;
     const spread = max - min;
-    let ladder = avg >= 66 ? 5 : avg >= 53 ? 4 : avg >= 40 ? 3 : avg >= 28 ? 2 : 1;
-    if(ctx.type === 'danger') ladder -= 1;
-    if(ctx.type === 'good') ladder += 1;
-    if(spread > 45) ladder -= 1;
-    if(min < 25) ladder -= 1;
-    ladder = Math.max(1, Math.min(5, Math.round(ladder)));
+    let position = 1 + avg / 25;
+    if(ctx.type === 'good') position += 0.18;
+    if(ctx.type === 'danger') position -= 0.18;
+    if(spread > 45) position -= 0.22;
+    if(min < 25) position -= 0.20;
+    position = Math.max(1.05, Math.min(4.95, position));
+    const ladder = Math.max(1, Math.min(5, Math.round(position)));
     return {
       success: true, dimension: ctx.dimension, type: ctx.type,
-      ladder: ladder, nextLadder: Math.min(5, ladder + 1),
+      ladder: ladder, ladderPosition: Math.round(position * 10) / 10, nextLadder: Math.min(5, ladder + 1),
       guidance: ctx.type === 'good' ? 'clear' : ctx.type === 'danger' ? 'blocked' : (avg >= 50 ? 'forming' : 'weak'),
       stability: spread < 20 ? 'high' : spread < 36 ? 'medium' : 'low',
       avg: Math.round(avg * 10) / 10, min: Math.round(min * 10) / 10,
@@ -3377,7 +3378,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
             + '<div class="qs-step-bar" style="--h:' + heights[i] + 'px"></div>'
             + '<div class="qs-step-label">' + qsEsc(levels[i] || ('n=' + lv)) + '</div></div>';
         }
-        html += '<div class="qs-dot" style="left:' + (((data.ladder - 0.5) / 5) * 100) + '%;bottom:' + (heights[data.ladder - 1] + 20) + 'px"></div>';
+        const pos = Math.max(1, Math.min(5, Number(data.ladderPosition) || data.ladder));
+        const lo = Math.min(5, Math.floor(pos));
+        const hi = Math.min(5, lo + 1);
+        const frac = Math.max(0, Math.min(1, pos - lo));
+        const dotBottom = heights[lo - 1] + (heights[hi - 1] - heights[lo - 1]) * frac + 20;
+        html += '<div class="qs-dot" style="left:' + (((pos - 0.5) / 5) * 100) + '%;bottom:' + dotBottom + 'px"></div>';
         html += '</div><div class="qs-ladder-foot">' + qsEsc(pack.ladder.foot) + '</div>';
         ladder.innerHTML = html;
       }
