@@ -825,6 +825,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
 <div class="onboarding" id="onboarding" aria-hidden="true" role="dialog" aria-live="polite">
   <div class="ob-hole" id="obHole"></div>
+  <div class="ob-finger" id="obFinger" aria-hidden="true"><span class="ob-finger-ring"></span><span class="ob-finger-hand">☝</span></div>
   <div class="ob-card" id="obCard">
     <div class="ob-kicker" id="obKicker">FIRST OBSERVATION</div>
     <div class="ob-step" id="obStep"></div>
@@ -4012,9 +4013,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
      ============================================================ */
   const ONBOARDING_STEPS = [
     { selector: '.quantum-link[data-target="screen-intro"]', placement: 'below' },
-    { selector: '#quantumCanvas', custom: 'orbit', placement: 'below' },
-    { selector: '#quantumCanvas', custom: 'orbit', placement: 'below' },
-    { selector: '#quantumCanvas', custom: 'orbit', placement: 'below' },
+    { selector: '#quantumCanvas', custom: 'orbit', interactive: 'split' },
+    { selector: '#quantumCanvas', custom: 'orbit', interactive: 'nebula' },
+    { selector: '#quantumCanvas', custom: 'orbit' },
     { selector: '.quantum-link[data-target="screen-intro"]', placement: 'below' },
     { selector: '.quantum-link[data-target="screen-contact"]', placement: 'below' },
     { selector: '#btnSettings', placement: 'above' },
@@ -4023,6 +4024,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   let onboardingActive = false;
   let onboardingStep = 0;
   let onboardingPack = null;
+  let onboardingTargetRect = null;
+  let onboardingSuppressClick = 0;
 
   function onboardingData(){
     const lang = currentLang();
@@ -4032,10 +4035,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function onboardingRectForStep(step){
     if(!step) return null;
     if(step.custom === 'orbit'){
-      const size = Math.min(430, window.innerWidth * 0.72, window.innerHeight * 0.58);
+      const size = Math.min(300, window.innerWidth * 0.64, window.innerHeight * 0.34);
       return {
         left: window.innerWidth / 2 - size / 2,
-        top: window.innerHeight * 0.43 - size / 2,
+        top: window.innerHeight * 0.36 - size / 2,
         width: size,
         height: size
       };
@@ -4052,42 +4055,68 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const overlay = $('onboarding');
     const card = $('obCard');
     const hole = $('obHole');
+    const finger = $('obFinger');
     if(!overlay || !card || !hole || !onboardingActive) return;
     const step = ONBOARDING_STEPS[onboardingStep];
     const rect = onboardingRectForStep(step);
+    onboardingTargetRect = rect;
     const pad = 9;
     const cw = Math.min(390, window.innerWidth - 32);
     card.style.width = cw + 'px';
     const ch = card.offsetHeight || 220;
+    const margin = 12;
+    const gap = 18;
     overlay.classList.toggle('no-target', !rect);
-    if(rect){
-      const left = Math.max(8, rect.left - pad);
-      const top = Math.max(8, rect.top - pad);
-      const width = Math.min(window.innerWidth - 16, rect.width + pad * 2);
-      const height = Math.min(window.innerHeight - 16, rect.height + pad * 2);
-      hole.style.left = left + 'px';
-      hole.style.top = top + 'px';
-      hole.style.width = width + 'px';
-      hole.style.height = height + 'px';
+    const final = onboardingStep >= ONBOARDING_STEPS.length - 1;
+    if(rect && !final){
+      const holeLeft = Math.max(4, rect.left - pad);
+      const holeTop = Math.max(4, rect.top - pad);
+      const holeW = Math.min(window.innerWidth - 8, rect.width + pad * 2);
+      const holeH = Math.min(window.innerHeight - 8, rect.height + pad * 2);
+      hole.style.left = holeLeft + 'px';
+      hole.style.top = holeTop + 'px';
+      hole.style.width = holeW + 'px';
+      hole.style.height = holeH + 'px';
       hole.style.display = 'block';
-      let cardLeft = rect.left + rect.width / 2 - cw / 2;
-      let cardTop = rect.bottom + 16;
-      if(cardTop + ch > window.innerHeight - 16) cardTop = rect.top - ch - 16;
-      if(cardTop < 16) cardTop = Math.max(16, (window.innerHeight - ch) / 2);
-      cardLeft = Math.max(16, Math.min(window.innerWidth - cw - 16, cardLeft));
-      card.style.left = cardLeft + 'px';
-      card.style.top = cardTop + 'px';
+      const hx = holeLeft, hy = holeTop, hw = holeW, hh = holeH;
+      const candidates = [
+        { left: rect.left + rect.width / 2 - cw / 2, top: hy + hh + gap },
+        { left: rect.left + rect.width / 2 - cw / 2, top: hy - ch - gap },
+        { left: hx + hw + gap, top: rect.top + rect.height / 2 - ch / 2 },
+        { left: hx - cw - gap, top: rect.top + rect.height / 2 - ch / 2 }
+      ];
+      let placed = null;
+      for(const c of candidates){
+        c.left = Math.max(margin, Math.min(window.innerWidth - cw - margin, c.left));
+        c.top = Math.max(margin, Math.min(window.innerHeight - ch - margin, c.top));
+        const overlapsHole = !(c.left + cw + 10 < hx || c.left > hx + hw + 10 || c.top + ch + 10 < hy || c.top > hy + hh + 10);
+        if(!overlapsHole){ placed = c; break; }
+      }
+      if(!placed){
+        placed = { left: Math.max(margin, (window.innerWidth - cw) / 2), top: Math.max(margin, window.innerHeight - ch - margin) };
+      }
+      card.style.left = placed.left + 'px';
+      card.style.top = placed.top + 'px';
+      if(finger){
+        finger.style.display = 'grid';
+        finger.style.left = (rect.left + rect.width / 2) + 'px';
+        finger.style.top = (rect.top + rect.height / 2) + 'px';
+      }
     } else {
       hole.style.display = 'none';
-      card.style.left = Math.max(16, (window.innerWidth - cw) / 2) + 'px';
-      card.style.top = Math.max(16, (window.innerHeight - ch) / 2) + 'px';
+      card.style.left = Math.max(margin, (window.innerWidth - cw) / 2) + 'px';
+      card.style.top = Math.max(margin, (window.innerHeight - ch) / 2) + 'px';
+      if(finger) finger.style.display = 'none';
     }
   }
 
   function renderOnboarding(){
     if(!onboardingActive || !onboardingPack) return;
+    if(onboardingStep === 1 && window.QuantumSphere && window.QuantumSphere.isSplit && window.QuantumSphere.isSplit()) onboardingStep = 2;
+    if(onboardingStep === 2 && window.QuantumSphere && window.QuantumSphere.isNebula && window.QuantumSphere.isNebula()) onboardingStep = 3;
     const step = onboardingStep;
     const isFinal = step >= ONBOARDING_STEPS.length - 1;
+    onboardingTargetRect = isFinal ? null : onboardingRectForStep(ONBOARDING_STEPS[step]);
     const overlay = $('onboarding');
     if(!overlay) return;
     overlay.classList.toggle('is-final', isFinal);
@@ -4107,7 +4136,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       const item = onboardingPack.steps[step] || onboardingPack.steps[0];
       if($('obTitle')) $('obTitle').textContent = item.title;
       if($('obBody')) $('obBody').textContent = item.body;
-      if($('obHint')) $('obHint').textContent = onboardingPack.hint;
+      if($('obHint')) $('obHint').textContent = item.interactive ? (onboardingPack.hintHold || onboardingPack.hint) : onboardingPack.hint;
     }
     requestAnimationFrame(positionOnboarding);
   }
@@ -4148,15 +4177,42 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     renderOnboarding();
   }
 
-  function bindOnboardingUI(){
-    const overlay = $('onboarding');
-    if(overlay && !overlay._obBound){
-      overlay._obBound = true;
-      overlay.addEventListener('click', e => {
-        if(e.target.closest('button')) return;
-        advanceOnboarding();
-      });
+  function onboardingPointInTarget(x, y){
+    const r = onboardingTargetRect;
+    if(!r) return false;
+    return x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height;
+  }
+
+  function onboardingClickCapture(e){
+    if(!onboardingActive) return;
+    if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
+    if(e.target.closest('#obCard')) return;
+    const step = ONBOARDING_STEPS[onboardingStep];
+    if(step && step.interactive){
+      if(onboardingPointInTarget(e.clientX, e.clientY)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
     }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    advanceOnboarding();
+  }
+
+  function bindOnboardingUI(){
+    document.addEventListener('click', onboardingClickCapture, true);
+    window.addEventListener('qbti:split', () => {
+      if(onboardingActive && onboardingStep === 1){
+        onboardingStep = 2;
+        renderOnboarding();
+      }
+    });
+    window.addEventListener('qbti:nebula-open', () => {
+      if(onboardingActive && onboardingStep === 2){
+        onboardingStep = 3;
+        renderOnboarding();
+      }
+    });
     if($('obDisable')) $('obDisable').addEventListener('click', e => {
       e.stopPropagation();
       closeOnboarding(true);

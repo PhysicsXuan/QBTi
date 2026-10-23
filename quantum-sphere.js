@@ -1012,6 +1012,7 @@
         if(!hasSplit){
           hasSplit = true;
           splitSpheres(releaseShakeAmp);
+          try { window.dispatchEvent(new CustomEvent('qbti:split')); } catch(e){}
         } else {
           /* 进入星云（simple 与 normal 都进入，但渲染简化） */
           soloNebula = true;
