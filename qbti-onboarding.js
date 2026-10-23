@@ -162,5 +162,92 @@
       final: { title: 'Prêt à observer', body: 'Vous pouvez rejouer ce guide depuis les Réglages quand vous voulez. Maintenant, ouvrez votre première sphère quantique.' }
     }
   };
+  const EXTRA = {
+    'zh-CN': {
+      script: { title: '剧本是什么', body: '进入量子球后，AI 会以这个维度为背景生成一段互动剧本。它不是测试，没有标准答案；每次会出现几个选择，你的选择会改变后续走向。' },
+      settings: [
+        { title: '设置在这里', body: '点开右下角设置，我们一项一项看。' },
+        { title: '语言', body: '这里切换界面和问卷语言，选择后立即生效。' },
+        { title: '亮度', body: '拖动滑块调整整体亮度。' },
+        { title: '量子球效果', body: '简洁或常规；也可以在上方调整量子球配色。' },
+        { title: '重新查看新手教程', body: '最后，这里可以重新播放新手引导。' }
+      ]
+    },
+    'zh-TW': {
+      script: { title: '劇本是什麼', body: '進入量子球後，AI 會以這個維度為背景生成一段互動劇本。它不是測驗，沒有標準答案；每次會出現幾個選擇，你的選擇會改變後續走向。' },
+      settings: [
+        { title: '設定在這裡', body: '點開右下角設定，我們一項一項看。' },
+        { title: '語言', body: '這裡切換介面和問卷語言，選擇後立即生效。' },
+        { title: '亮度', body: '拖動滑桿調整整體亮度。' },
+        { title: '量子球效果', body: '簡潔或常規；也可以在上方調整量子球配色。' },
+        { title: '重新查看新手教學', body: '最後，這裡可以重新播放新手引導。' }
+      ]
+    },
+    en: {
+      script: { title: 'What the script is', body: 'After you enter the quantum ball, AI generates an interactive script set in this dimension. It is not a test and has no standard answer; every turn offers a few choices, and your choices change what happens next.' },
+      settings: [
+        { title: 'Settings are here', body: 'Open Settings at the bottom right and we will go through it one item at a time.' },
+        { title: 'Language', body: 'Change the interface and questionnaire language here. It applies immediately.' },
+        { title: 'Brightness', body: 'Drag this slider to adjust the overall brightness.' },
+        { title: 'Quantum ball effects', body: 'Choose Simple or Normal; you can also change the quantum ball colors above.' },
+        { title: 'Replay the new-user guide', body: 'Finally, this button replays the onboarding guide.' }
+      ]
+    },
+    es: {
+      script: { title: 'Qué es el guion', body: 'Al entrar en la bola cuántica, la IA genera un guion interactivo ambientado en esta dimensión. No es un examen y no tiene respuesta estándar; cada turno ofrece varias opciones y tus elecciones cambian lo que ocurre.' },
+      settings: [
+        { title: 'Los ajustes están aquí', body: 'Abre los ajustes abajo a la derecha y los veremos uno por uno.' },
+        { title: 'Idioma', body: 'Cambia aquí el idioma de la interfaz y del cuestionario. Se aplica al instante.' },
+        { title: 'Brillo', body: 'Arrastra este control para ajustar el brillo general.' },
+        { title: 'Efectos de la bola cuántica', body: 'Elige Simple o Normal; también puedes cambiar los colores arriba.' },
+        { title: 'Repetir la guía', body: 'Por último, este botón vuelve a reproducir la guía para nuevos usuarios.' }
+      ]
+    },
+    pt: {
+      script: { title: 'O que é o roteiro', body: 'Ao entrar na bola quântica, a IA gera um roteiro interativo ambientado nesta dimensão. Não é uma prova e não tem resposta padrão; a cada turno aparecem algumas escolhas, e suas escolhas mudam o que acontece.' },
+      settings: [
+        { title: 'As configurações ficam aqui', body: 'Abra as configurações no canto inferior direito e veremos uma por uma.' },
+        { title: 'Idioma', body: 'Altere aqui o idioma da interface e do questionário. Aplica na hora.' },
+        { title: 'Brilho', body: 'Arraste este controle para ajustar o brilho geral.' },
+        { title: 'Efeitos da bola quântica', body: 'Escolha Simples ou Normal; também pode mudar as cores acima.' },
+        { title: 'Repetir o guia', body: 'Por último, este botão reproduz novamente o guia para novos usuários.' }
+      ]
+    },
+    ko: {
+      script: { title: '스크립트란', body: '양자 구에 들어가면 AI가 이 차원을 배경으로 인터랙티브 스크립트를 생성합니다. 시험이 아니고 정답도 없으며, 매 장면 몇 가지 선택지가 나오고 당신의 선택이 이후 전개를 바꿉니다.' },
+      settings: [
+        { title: '설정은 여기', body: '오른쪽 아래 설정을 열고 하나씩 살펴봅시다.' },
+        { title: '언어', body: '여기서 인터페이스와 설문 언어를 바꿉니다. 즉시 적용됩니다.' },
+        { title: '밝기', body: '슬라이더를 움직여 전체 밝기를 조정하세요.' },
+        { title: '양자 구 효과', body: '간단 또는 보통을 고르세요. 위에서 양자 구 색도 바꿀 수 있습니다.' },
+        { title: '초보자 안내 다시 보기', body: '마지막으로 이 버튼은 초보자 안내를 다시 재생합니다.' }
+      ]
+    },
+    ja: {
+      script: { title: '脚本とは', body: '量子球に入ると、AIがこの次元を舞台にインタラクティブな脚本を生成します。テストではなく正解もありません。場面ごとにいくつかの選択肢が出て、選んだ内容で後の展開が変わります。' },
+      settings: [
+        { title: '設定はここ', body: '右下の設定を開いて、一つずつ見ていきましょう。' },
+        { title: '言語', body: 'ここで画面と質問の言語を変えられます。すぐに反映されます。' },
+        { title: '明るさ', body: 'スライダーを動かして全体の明るさを調整します。' },
+        { title: '量子球の効果', body: 'シンプルか通常を選べます。上で量子球の配色も変えられます。' },
+        { title: '初心者ガイドを再表示', body: '最後に、このボタンで初心者ガイドをもう一度再生できます。' }
+      ]
+    },
+    fr: {
+      script: { title: 'Qu’est-ce que le scénario', body: 'En entrant dans la sphère quantique, l’IA génère un scénario interactif dans cette dimension. Ce n’est pas un test et il n’y a pas de bonne réponse ; chaque scène propose quelques choix, et vos choix changent la suite.' },
+      settings: [
+        { title: 'Les réglages sont ici', body: 'Ouvrez les réglages en bas à droite et nous allons les voir un par un.' },
+        { title: 'Langue', body: 'Changez ici la langue de l’interface et du questionnaire. Cela s’applique immédiatement.' },
+        { title: 'Luminosité', body: 'Faites glisser ce curseur pour ajuster la luminosité générale.' },
+        { title: 'Effets de la sphère quantique', body: 'Choisissez Simple ou Normal ; vous pouvez aussi changer les couleurs au-dessus.' },
+        { title: 'Revoir le guide', body: 'Enfin, ce bouton relance le guide du nouvel utilisateur.' }
+      ]
+    }
+  };
+  Object.keys(PACKS).forEach(function(lang){
+    const p = PACKS[lang], e = EXTRA[lang];
+    if(!p || !e) return;
+    p.steps = p.steps.slice(0, 8).concat([e.script], p.steps.slice(8, 10), e.settings);
+  });
   window.QBTI_ONBOARDING = { get(lang){ return PACKS[lang] || PACKS.en; } };
 })();

@@ -27,6 +27,8 @@
 .ob-finger-hand{position:relative;z-index:1;font-size:30px;line-height:1;color:#fff;text-shadow:0 0 12px rgba(80,225,255,.7);transform:translate(5px,3px) rotate(-8deg);animation:obFingerTap 1.8s ease-in-out infinite}
 @keyframes obFingerRing{0%{transform:scale(.7);opacity:.8}100%{transform:scale(1.45);opacity:0}}
 @keyframes obFingerTap{0%,100%{transform:translate(5px,3px) rotate(-8deg) scale(1)}45%{transform:translate(5px,8px) rotate(-8deg) scale(.9)}55%{transform:translate(5px,8px) rotate(-8deg) scale(.9)}}
+.ob-arrow{position:fixed;z-index:3;display:none;transform:translate(-50%,-100%);font-size:30px;line-height:1;color:#8BE7FF;text-shadow:0 0 18px rgba(80,220,255,.7);pointer-events:none;animation:obArrowDrop 1.4s ease-in-out infinite}
+@keyframes obArrowDrop{0%,100%{transform:translate(-50%,-100%) translateY(0)}50%{transform:translate(-50%,-100%) translateY(7px)}}
 @keyframes obFade{from{opacity:0}to{opacity:1}}
 @keyframes obCardIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes obHolePulse{0%,100%{border-color:rgba(126,226,255,.72);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 22px rgba(80,220,255,.28),inset 0 0 18px rgba(80,220,255,.06)}50%{border-color:rgba(190,248,255,.98);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 42px rgba(80,220,255,.55),inset 0 0 26px rgba(80,220,255,.12)}}

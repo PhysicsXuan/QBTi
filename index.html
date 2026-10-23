@@ -53,6 +53,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .history-list{display:flex;flex-direction:column;gap:10px;}
 .history-card{padding:14px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .history-card:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.5);background:rgba(var(--q-r),var(--q-g),var(--q-b),.06);transform:translateX(4px);}
+.history-empty{border:1px dashed rgba(150,180,255,.22);border-radius:16px;padding:22px 20px;background:linear-gradient(135deg,rgba(80,120,255,.035),rgba(255,255,255,.012));text-align:center}
+.he-icon{font-size:24px;color:#8BE7FF;opacity:.8;margin-bottom:6px;text-shadow:0 0 16px rgba(90,220,255,.3)}
+.he-title{font-size:calc(13px * var(--q-fs));font-weight:650;color:#DCE7FF}
+.he-hint{margin-top:5px;font-size:calc(11px * var(--q-fs));color:#7789AD;line-height:1.7}
 .hc-hidden{display:inline-block;margin-top:5px;padding:2px 7px;border-radius:99px;border:1px solid rgba(255,180,90,.32);background:rgba(255,160,80,.08);color:#FFD39A;font-size:calc(9.5px * var(--q-fs));letter-spacing:.04em}
 .hc-sample{border-color:rgba(190,150,255,.35);background:rgba(150,110,255,.09);color:#D9C8FF}
 .admin-sample-box{margin-top:16px;padding:14px;border-radius:14px;border:1px solid rgba(190,150,255,.22);background:rgba(150,110,255,.045)}
@@ -827,6 +831,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 <div class="onboarding" id="onboarding" aria-hidden="true" role="dialog" aria-live="polite">
   <div class="ob-hole" id="obHole"></div>
   <div class="ob-finger" id="obFinger" aria-hidden="true"><span class="ob-finger-ring"></span><span class="ob-finger-hand">☝</span></div>
+  <div class="ob-arrow" id="obArrow" aria-hidden="true">↓</div>
   <div class="ob-card" id="obCard">
     <div class="ob-kicker" id="obKicker">FIRST OBSERVATION</div>
     <div class="ob-step" id="obStep"></div>
@@ -1705,7 +1710,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const section = $('historySection'), listEl = $('historyList');
     if(!section || !listEl) return;
     const history = getAllResultsFromUser();
-    if(history.length === 0){ section.style.display = 'none'; return; }
+    if(history.length === 0){
+      section.style.display = 'block';
+      const t = (window.QBTI_I18N && window.QBTI_I18N.t) ? window.QBTI_I18N.t.bind(window.QBTI_I18N) : function(k){ return k; };
+      listEl.innerHTML = '<div class="history-empty" id="historyEmpty"><div class="he-icon">↳</div><div class="he-title">' + t('history.empty') + '</div><div class="he-hint">' + t('history.emptyHint') + '</div></div>';
+      return;
+    }
     section.style.display = 'block';
     const sorted = history.slice().reverse();
     listEl.innerHTML = sorted.map(entry => {
@@ -4022,14 +4032,19 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     { selector: '.quantum-link[data-target="screen-intro"]', allowNav: true },
     { selector: '#screen-intro .badge' },
     { selector: '#btnStart' },
-    { selector: '#historySection .history-title' },
+    { custom: 'history', scroll: true, arrow: true },
     { selector: '.quantum-link[data-target="screen-home"]', allowNav: true },
     { selector: '#quantumCanvas', custom: 'orbit', interactive: 'split' },
     { custom: 'small-ball', dim: 'PO', interactive: 'nebula' },
     { selector: '.nc-status' },
+    { selector: '#btnNcEnter' },
     { selector: '#btnNcBack', allowAction: true },
     { selector: '.quantum-link[data-target="screen-contact"]' },
-    { selector: '#btnSettings' },
+    { selector: '#btnSettings', allowAction: true },
+    { selector: '#setLang', scroll: true },
+    { selector: '#setBrightness', scroll: true },
+    { selector: '#setEffectsMode', scroll: true },
+    { selector: '#setOnboarding', scroll: true },
     null
   ];
   let onboardingActive = false;
@@ -4047,6 +4062,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   function onboardingRectForStep(step){
     if(!step) return null;
+    if(step.custom === 'history'){
+      const el = $('historyEmpty') || document.querySelector('#historyList .history-card') || document.querySelector('#historySection .history-title');
+      if(el){
+        const r = el.getBoundingClientRect();
+        if(r.width > 2 && r.height > 2) return { left: r.left, top: r.top, width: r.width, height: r.height };
+      }
+      return null;
+    }
     if(step.custom === 'small-ball'){
       const list = (window.QuantumSphere && window.QuantumSphere.getBallRects) ? window.QuantumSphere.getBallRects() : [];
       const ball = list.find(b => b.dim === step.dim) || list[0];
@@ -4057,10 +4080,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       return { left: window.innerWidth / 2 - size / 2, top: window.innerHeight * 0.36 - size / 2, width: size, height: size };
     }
     if(step.custom === 'orbit'){
-      const size = Math.min(300, window.innerWidth * 0.64, window.innerHeight * 0.34);
+      const size = Math.min(300, window.innerWidth * 0.62, window.innerHeight * 0.32);
       return {
         left: window.innerWidth / 2 - size / 2,
-        top: window.innerHeight * 0.36 - size / 2,
+        top: window.innerHeight * 0.48 - size / 2,
         width: size,
         height: size
       };
@@ -4129,16 +4152,30 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
       card.style.left = placed.left + 'px';
       card.style.top = placed.top + 'px';
+      const arrow = $('obArrow');
       if(finger){
-        finger.style.display = 'grid';
-        finger.style.left = (rect.left + rect.width / 2) + 'px';
-        finger.style.top = (rect.top + rect.height / 2) + 'px';
+        if(step && step.arrow){ finger.style.display = 'none'; }
+        else {
+          finger.style.display = 'grid';
+          finger.style.left = (rect.left + rect.width / 2) + 'px';
+          finger.style.top = (rect.top + rect.height / 2) + 'px';
+        }
+      }
+      if(arrow){
+        if(step && step.arrow){
+          arrow.style.display = 'block';
+          arrow.style.left = (rect.left + rect.width / 2) + 'px';
+          arrow.style.top = Math.max(10, rect.top - 16) + 'px';
+        } else {
+          arrow.style.display = 'none';
+        }
       }
     } else {
       hole.style.display = 'none';
       card.style.left = Math.max(margin, (window.innerWidth - cw) / 2) + 'px';
       card.style.top = Math.max(margin, (window.innerHeight - ch) / 2) + 'px';
       if(finger) finger.style.display = 'none';
+      const arrow = $('obArrow'); if(arrow) arrow.style.display = 'none';
     }
   }
 
@@ -4190,6 +4227,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           : (item.interactive ? (onboardingPack.hintHold || onboardingPack.hint) : onboardingPack.hint);
       }
     }
+    const stepDef = ONBOARDING_STEPS[step];
+    if(stepDef && stepDef.scroll && !isFinal){
+      let target = null;
+      if(stepDef.custom === 'history') target = $('historyEmpty') || document.querySelector('#historyList .history-card') || document.querySelector('#historySection .history-title');
+      else if(stepDef.selector) target = document.querySelector(stepDef.selector);
+      if(target){
+        setTimeout(() => {
+          try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e){}
+          setTimeout(positionOnboarding, 360);
+        }, 50);
+      }
+    }
     requestAnimationFrame(positionOnboarding);
     startOnboardingTracking();
   }
@@ -4205,6 +4254,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     stopOnboardingTracking();
     const settingsMask = $('settingsMask');
     if(settingsMask) settingsMask.classList.remove('show');
+    try { renderHistory(); } catch(e){}
     try { goToScreen('screen-home'); } catch(e){}
     if(window.QBTI_FREEDOM_RENDER) window.QBTI_FREEDOM_RENDER.stop();
     if($('nebulaChoice')) $('nebulaChoice').classList.remove('show');

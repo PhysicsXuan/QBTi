@@ -544,6 +544,17 @@
     fr: { 'settings.onboarding': 'Guide du nouvel utilisateur', 'settings.onboardingReplay': 'Rejouer' }
   };
   Object.keys(ONBOARD_SETTINGS_UI).forEach(lang => { if(UI[lang]) Object.assign(UI[lang], ONBOARD_SETTINGS_UI[lang]); });
+  const HISTORY_UI = {
+    'zh-CN': { 'history.empty': '还没有历史观测记录', 'history.emptyHint': '完成第一次 QBTi 后，结果会出现在这里' },
+    'zh-TW': { 'history.empty': '還沒有歷史觀測記錄', 'history.emptyHint': '完成第一次 QBTi 後，結果會出現在這裡' },
+    en: { 'history.empty': 'No observations yet', 'history.emptyHint': 'Your first QBTi result will appear here' },
+    es: { 'history.empty': 'Aún no hay observaciones', 'history.emptyHint': 'Tu primer resultado de QBTi aparecerá aquí' },
+    pt: { 'history.empty': 'Ainda não há observações', 'history.emptyHint': 'Seu primeiro resultado do QBTi aparecerá aqui' },
+    ko: { 'history.empty': '아직 관측 기록이 없습니다', 'history.emptyHint': '첫 QBTi 결과가 여기에 표시됩니다' },
+    ja: { 'history.empty': '観測履歴はまだありません', 'history.emptyHint': '最初の QBTi 結果がここに表示されます' },
+    fr: { 'history.empty': 'Aucune observation pour le moment', 'history.emptyHint': 'Votre premier résultat QBTi apparaîtra ici' }
+  };
+  Object.keys(HISTORY_UI).forEach(lang => { if(UI[lang]) Object.assign(UI[lang], HISTORY_UI[lang]); });
 
   const LANG_PACK = {
     'zh-CN': { q: Q_ZH_CN, opt: OPT_ZH_CN, sfx: SFX_ZH_CN, dim: DIM_ZH_CN, sub: SUB_ZH_CN, fullQuestion: true },
