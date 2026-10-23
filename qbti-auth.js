@@ -1123,20 +1123,46 @@
     }
   }
 
-  function loadQRCodeLib(callback){
+  function loadQRCodeLib(callback, onFail){
     if(window.QRCode) { callback(); return; }
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-    script.onload = callback;
-    document.head.appendChild(script);
+    const urls = [
+      'qrcode.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'
+    ];
+    let index = 0;
+    const next = function(){
+      if(index >= urls.length){
+        if(onFail) onFail();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = urls[index++];
+      script.onload = function(){ if(window.QRCode) callback(); else next(); };
+      script.onerror = next;
+      document.head.appendChild(script);
+    };
+    next();
+  }
+
+  function showQRCodeFallback(box, code, shareUrl){
+    if(!box) return;
+    box.innerHTML = '<div style="text-align:center;color:#111;font-size:12px;line-height:1.6;padding:8px;">'
+      + '<div style="font-size:30px;margin-bottom:6px;">▦</div>'
+      + '<b>二维码加载失败</b><br>'
+      + '请复制邀请码：<br>'
+      + '<span style="font-family:monospace;font-size:16px;font-weight:800;letter-spacing:.12em;">' + escapeHTML(code) + '</span>'
+      + '</div>';
+    try { box.title = shareUrl; } catch(e){}
   }
 
   function showInviteModal(code, expiresAt){
     const old = document.getElementById('qauthInviteMask');
     if(old) old.remove();
 
-    const PARENT_APP_URL = 'https://你的家长端域名.onrender.com';
-    const shareUrl = PARENT_APP_URL + '?code=' + code;
+    const configuredParent = '';
+    const storedParent = (() => { try { return localStorage.getItem('qbti_parent_app_url') || ''; } catch(e){ return ''; } })();
+    const PARENT_APP_URL = (window.QBTI_PARENT_APP_URL || storedParent || configuredParent || 'https://qbti-parent.onrender.com').replace(/\/+$/, '');
+    const shareUrl = PARENT_APP_URL + '/?code=' + encodeURIComponent(code);
 
     const mask = document.createElement('div');
     mask.id = 'qauthInviteMask';
@@ -1163,7 +1189,9 @@
 
     loadQRCodeLib(() => {
       const box = document.getElementById('qrcodeBox');
-      if(box && window.QRCode) {
+      if(!box) return;
+      box.innerHTML = '';
+      try {
         new QRCode(box, {
           text: shareUrl,
           width: 180,
@@ -1172,7 +1200,12 @@
           colorLight : "#ffffff",
           correctLevel : QRCode.CorrectLevel.H
         });
+      } catch(e){
+        showQRCodeFallback(box, code, shareUrl);
       }
+    }, () => {
+      const box = document.getElementById('qrcodeBox');
+      if(box) showQRCodeFallback(box, code, shareUrl);
     });
 
     document.getElementById('qauthInviteCopy').addEventListener('click', async () => {
