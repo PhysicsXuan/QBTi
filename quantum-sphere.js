@@ -305,6 +305,7 @@
     loadPrefsFromStorage();
 
     let globalState = 'default';
+    let iridescentUnlocked = false;
     let dimensionStates = null;
     let fallbackColor = palette[Math.floor(Math.random() * palette.length)];
     let globalColor = [fallbackColor[0], fallbackColor[1], fallbackColor[2]];
@@ -1477,6 +1478,70 @@
         ctx.beginPath(); ctx.arc(tr.x, tr.y, r*0.42, 0, Math.PI*2); ctx.fill();
       }
     }
+    function drawIridescent(t){
+      if(!iridescentUnlocked) return;
+      const simple = effectsMode === 'simple';
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      /* 球体外侧的流光彩晕 */
+      const halo = ctx.createRadialGradient(CX, CY, R * 0.55, CX, CY, R * 1.55);
+      const baseHue = (t * 44) % 360;
+      for(let i = 0; i < 5; i++){
+        const hue = (baseHue + i * 72) % 360;
+        halo.addColorStop(i / 4, 'hsla(' + hue + ',100%,65%,' + (i === 0 ? 0 : 0.055) + ')');
+      }
+      ctx.fillStyle = halo;
+      ctx.beginPath(); ctx.arc(CX, CY, R * 1.55, 0, Math.PI * 2); ctx.fill();
+
+      /* 球体内部的流光彩带 */
+      ctx.beginPath(); ctx.arc(CX, CY, R * 0.985, 0, Math.PI * 2); ctx.clip();
+      const wash = ctx.createLinearGradient(CX - R, CY - R, CX + R, CY + R);
+      for(let i = 0; i < 6; i++){
+        const hue = (baseHue + i * 60) % 360;
+        wash.addColorStop(i / 5, 'hsla(' + hue + ',100%,62%,0.12)');
+      }
+      ctx.fillStyle = wash;
+      ctx.fillRect(CX - R, CY - R, R * 2, R * 2);
+
+      const ribbons = simple ? 2 : 4;
+      for(let i = 0; i < ribbons; i++){
+        const hue = (baseHue + i * 95 + 40) % 360;
+        ctx.strokeStyle = 'hsla(' + hue + ',100%,68%,' + (0.26 + i * 0.040) + ')';
+        ctx.lineWidth = (2.0 + i * 0.7) * DPR;
+        ctx.beginPath();
+        ctx.ellipse(
+          CX, CY,
+          R * (0.74 - i * 0.07),
+          R * (0.28 + i * 0.045),
+          Math.sin(t * 0.22 + i * 1.4) * 0.9,
+          0, Math.PI * 2
+        );
+        ctx.stroke();
+      }
+
+      /* 棱镜边缘 */
+      const segments = simple ? 36 : 72;
+      for(let i = 0; i < segments; i++){
+        const a0 = (i / segments) * Math.PI * 2;
+        const a1 = a0 + (Math.PI * 2 / segments) * 0.72;
+        const hue = (baseHue + i * 7) % 360;
+        ctx.strokeStyle = 'hsla(' + hue + ',100%,70%,0.56)';
+        ctx.lineWidth = 1.5 * DPR;
+        ctx.beginPath(); ctx.arc(CX, CY, R * 0.99, a0, a1); ctx.stroke();
+      }
+
+      /* 环绕的棱镜粒子 */
+      const dots = simple ? 4 : 7;
+      for(let i = 0; i < dots; i++){
+        const a = t * 0.55 + i * Math.PI * 2 / dots;
+        const rr = R * (0.62 + 0.22 * Math.sin(t * 0.37 + i));
+        const hue = (baseHue + i * 51) % 360;
+        ctx.fillStyle = 'hsla(' + hue + ',100%,72%,0.90)';
+        ctx.beginPath(); ctx.arc(CX + Math.cos(a) * rr, CY + Math.sin(a) * rr * 0.42, (1.2 + (i % 2) * 0.8) * DPR, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+
     function drawAura(t){
       if(aura.strength < 0.02) return;
       const r = aura.r * (1 + Math.sin(t*0.9)*0.05);
@@ -2112,6 +2177,7 @@
           drawPulsePoints(t);
           drawOrbitRings(now);
           drawCoreOrbiters();
+          drawIridescent(t);
           drawOutline();
           drawCore(now);
           if(ball.focusAmount > 0.02 && !transitionType){
@@ -2194,6 +2260,7 @@
           drawPulsePoints(t);
           drawOrbitRings(now);
           drawCoreOrbiters();
+          drawIridescent(t);
           drawOutline();
           drawCore(now);
           ctx.restore();
@@ -2253,6 +2320,8 @@
       resize: resize,
       isSplit: function(){ return hasSplit; },
       isNebula: function(){ return soloNebula; },
+      setIridescent: function(v){ iridescentUnlocked = !!v; },
+      isIridescent: function(){ return iridescentUnlocked; },
       getBallRects: function(){
         if(!hasSplit || soloNebula || transitionType) return [];
         const br = safeBaseR();

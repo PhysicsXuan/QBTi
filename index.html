@@ -1274,6 +1274,22 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   let crossDeviceSyncBusy = false;
+
+  function hasHiddenPersonality(){
+    if(state.hiddenResult && state.hiddenResult.obtained) return true;
+    try {
+      return getAllResultsFromUser().some(function(entry){
+        return !!(entry && entry.hiddenResult && entry.hiddenResult.obtained);
+      });
+    } catch(e){ return false; }
+  }
+
+  function refreshHiddenAura(){
+    const on = hasHiddenPersonality();
+    document.documentElement.classList.toggle('hidden-aura', on);
+    if(window.QuantumSphere && window.QuantumSphere.setIridescent) window.QuantumSphere.setIridescent(on);
+  }
+
   function syncAuthHeaders(){
     const token = (window.QAuth && window.QAuth.getSyncToken) ? window.QAuth.getSyncToken() : null;
     return token ? { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token } : null;
@@ -1323,6 +1339,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       try { localStorage.setItem(RESULT_KEY_PREFIX + u.email, JSON.stringify(merged)); } catch(e){}
       renderHistory();
       applyHomepageTheme();
+      refreshHiddenAura();
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
     } finally {
       crossDeviceSyncBusy = false;
@@ -1582,6 +1599,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     applyQuantumStateToSphere(qs, ds);
     renderResult(state.result, state.restoredTs);
     renderQuantumStateBadge(qs, ds);
+    refreshHiddenAura();
     return true;
   }
   function quantumLogUI(){
@@ -2044,6 +2062,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       hidden = window.QBTI_HIDDEN.evaluate(state.hiddenQuiz.answers, state.hiddenUnlockKeys);
     } catch(e){ console.warn('[QBTI hidden] evaluate failed', e); }
     state.hiddenResult = hidden;
+    refreshHiddenAura();
     if(hidden && state.resultTs){
       try { updateHistoryHiddenResult(state.resultTs, hidden); } catch(e){}
     }
@@ -2533,6 +2552,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
     renderAIPanel();
     renderAdminDebug();
+    refreshHiddenAura();
   }
 
   function getCfg(){
@@ -4438,6 +4458,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       refreshAdminUI(info);
       renderAdminDebug();
       applyHomepageTheme();
+      refreshHiddenAura();
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
       if(info.isLoggedIn) syncCrossDevice();
       if(info.isLoggedIn && info.user && info.user.role === 'admin'){
@@ -4449,8 +4470,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       else {
         state.result = null; state.quantumState = null; state.dimStates = null;
         state.validity = null; state.aiReportText = null; state.restoredTs = null;
+        state.hiddenResult = null;
         const section = document.getElementById('historySection');
         if(section) section.style.display = 'none';
+        refreshHiddenAura();
       }
     });
   }
@@ -4470,6 +4493,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   ensureCloudAIConfig();
   seedAdminHiddenSamples();
   maybeStartOnboarding();
+  refreshHiddenAura();
   setInterval(loadServerAIConfig, 60 * 1000);
   applyHomepageTheme();
   window.addEventListener('load', applyHomepageTheme);
