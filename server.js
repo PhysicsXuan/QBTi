@@ -1871,6 +1871,28 @@ app.post('/api/ai/chat', async (req, res) => {
 // 4.8.6 维度物理观测日志（AI 个性化，展开时才生成）
 const quantumLogCache = new Map();
 const quantumLogHits = new Map();
+const QLOG_BURST_WINDOW_MS = 10 * 1000;
+const QLOG_BURST_TOKEN_LIMIT = 20000;
+const QLOG_BURST_LOCK_MS = 10 * 60 * 1000;
+function qlogBurstState(ip){
+  const now = Date.now();
+  let slot = quantumLogHits.get(ip);
+  if(!slot){ slot = { events: [], lockedUntil: 0 }; quantumLogHits.set(ip, slot); }
+  slot.events = (slot.events || []).filter(e => e && e.ts > now - QLOG_BURST_WINDOW_MS);
+  const tokens = slot.events.reduce((sum, e) => sum + (Number(e.tokens) || 0), 0);
+  return { locked: slot.lockedUntil > now || tokens >= QLOG_BURST_TOKEN_LIMIT, tokens: tokens, lockedUntil: slot.lockedUntil || 0 };
+}
+function qlogRecordTokens(ip, tokens){
+  const now = Date.now();
+  let slot = quantumLogHits.get(ip);
+  if(!slot){ slot = { events: [], lockedUntil: 0 }; quantumLogHits.set(ip, slot); }
+  slot.events = (slot.events || []).filter(e => e && e.ts > now - QLOG_BURST_WINDOW_MS);
+  const n = Math.max(0, Number(tokens) || 0);
+  if(n > 0) slot.events.push({ ts: now, tokens: n });
+  const total = slot.events.reduce((sum, e) => sum + (Number(e.tokens) || 0), 0);
+  if(total >= QLOG_BURST_TOKEN_LIMIT) slot.lockedUntil = now + QLOG_BURST_LOCK_MS;
+  return qlogBurstState(ip);
+}
 const QLOG_PHYSICS_ZH = {
   PO: {
     danger: '基态 / 量子反射 / 势垒：低能量不等于没有能量，新刺激需要吸收一份量子才能跃迁；反射是自我保护。',
@@ -1940,7 +1962,7 @@ function qlogPrompt(body, lang){
       'behavior（量子行为）：描述这个状态下独特的生存策略（反射/隧穿/纠缠/自发辐射等），要具体到用户的数据。',
       'leap（跃迁引导）：开放、非说教的温柔邀请；不是建议，不是命令，不替用户决定。',
       '红线：不定义用户、不贴人格标签、不诊断、不评价好坏；不写“你应该/你必须/你需要/建议你”；不出现家长、老师、AI、模型、分数、报告；不写“突然”；不使用空洞鸡汤。',
-      '每段 2-4 句，像观测站日志，有物理意象，但让用户听得懂。',
+      '每段长度由内容决定，不要为了字数截断或硬凑；像观测站日志，有物理意象，但让用户听得懂。',
       '只输出合法 JSON，不要 markdown，不要代码块。结构：{"energy":"...","barrier":"...","behavior":"...","leap":"..."}'
     ].join('\n');
   }
@@ -1957,7 +1979,7 @@ function qlogPrompt(body, lang){
     'behavior: this state’s distinctive survival strategy (reflection/tunneling/entanglement/spontaneous emission), grounded in the user data.',
     'leap: an open, non-preachy, gentle invitation; not advice, not a command, not a decision for the user.',
     'Rules: do not define, label, diagnose or judge; do not use "you should", "you must", "you need to", "I suggest"; do not mention parents, teachers, AI, models, scores or reports; no sudden events; no empty motivational talk.',
-    'Each section 2-4 sentences, like a station log: physical imagery that a user can understand.',
+    'Length is determined by the content; do not truncate or pad to hit a word count. Write like a station log: physical imagery that a user can understand.',
     'Output valid JSON only, no markdown, no code fence. Schema: {"energy":"...","barrier":"...","behavior":"...","leap":"..."}'
   ].join('\n');
 }
@@ -1972,7 +1994,7 @@ function qlogParse(content){
   ['energy', 'barrier', 'behavior', 'leap'].forEach(k => {
     const v = obj && obj[k];
     if(typeof v !== 'string' || v.trim().length < 8) throw new Error('invalid section');
-    out[k] = v.trim().slice(0, 900);
+    out[k] = v.trim();
   });
   return out;
 }
@@ -1997,14 +2019,8 @@ app.post('/api/quantum/log', async (req, res) => {
     const hit = quantumLogCache.get(cacheKey);
     return res.json({ success: true, source: 'cache', dimension: dim, state: type, log: hit });
   }
-  const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || 'unknown').trim();
-  const now = Date.now();
-  const slot = quantumLogHits.get(ip);
-  if(slot && slot.resetAt > now){
-    if(slot.count >= 12) return res.status(429).json({ error: '观测请求过于频繁，请稍后再试', code: 'RATE_LIMIT' });
-    slot.count++;
-  } else {
-    quantumLogHits.set(ip, { count: 1, resetAt: now + 60 * 1000 });
+  if(qlogBurstState('global').locked){
+    return res.status(429).json({ error: '观测站信号暂时中断', code: 'TOKEN_BURST' });
   }
   const cfg = await readAIConfig();
   if(!cfg || !cfg.enabled || !cfg.key) return res.status(503).json({ error: '观测站尚未接入 AI', code: 'NO_AI_CONFIG' });
@@ -2023,7 +2039,6 @@ app.post('/api/quantum/log', async (req, res) => {
           { role: 'user', content: prompt }
         ],
         temperature: Math.min(1.05, Math.max(.4, Number(cfg.temperature) || .85)),
-        max_tokens: Math.min(700, Number(cfg.maxTokens) || 700),
         stream: false
       })
     });
@@ -2034,6 +2049,12 @@ app.post('/api/quantum/log', async (req, res) => {
     }
     const data = await upstream.json();
     const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    const usage = (data && data.usage) || {};
+    const usedTokens = Number(usage.total_tokens) || Math.ceil((prompt.length + String(content || '').length) / 2);
+    const burst = qlogRecordTokens('global', usedTokens);
+    if(burst.locked){
+      return res.status(429).json({ error: '观测站信号暂时中断', code: 'TOKEN_BURST' });
+    }
     const log = qlogParse(content);
     if(!log) return res.status(502).json({ error: '观测站返回格式异常', code: 'AI_BAD_JSON' });
     quantumLogCache.set(cacheKey, log);
