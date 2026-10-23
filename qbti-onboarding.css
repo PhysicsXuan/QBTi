@@ -1,0 +1,27 @@
+.onboarding{position:fixed;inset:0;z-index:600;display:none;background:transparent;cursor:pointer;overflow:hidden}
+.onboarding.show{display:block;animation:obFade .35s ease both}
+.onboarding.no-target{background:rgba(2,4,12,.82);backdrop-filter:blur(3px)}
+.ob-hole{position:fixed;border-radius:18px;border:1px solid rgba(126,226,255,.85);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 28px rgba(80,220,255,.35),inset 0 0 22px rgba(80,220,255,.08);pointer-events:none;transition:left .28s ease,top .28s ease,width .28s ease,height .28s ease;animation:obHolePulse 2.4s ease-in-out infinite}
+.onboarding.no-target .ob-hole{display:none}
+.ob-card{position:fixed;width:min(390px,calc(100vw - 32px));padding:20px 20px 17px;border-radius:18px;border:1px solid rgba(140,190,255,.30);background:radial-gradient(circle at 20% 0%,rgba(92,130,255,.16),transparent 58%),linear-gradient(145deg,rgba(16,23,52,.97),rgba(6,8,22,.98));box-shadow:0 22px 60px rgba(0,0,0,.55),0 0 40px rgba(65,120,255,.10);cursor:default;animation:obCardIn .35s cubic-bezier(.2,.8,.2,1) both}
+.ob-kicker{font-size:10px;letter-spacing:.2em;color:#7FD8FF;text-transform:uppercase;text-shadow:0 0 12px rgba(80,210,255,.35)}
+.ob-step{position:absolute;right:18px;top:19px;font-size:10px;letter-spacing:.1em;color:#7183A8}
+.ob-card h3{margin:10px 0 0;font-size:clamp(19px,3.3vw,25px);line-height:1.3;font-weight:800;color:#fff;letter-spacing:.01em;padding-right:34px}
+.ob-card p{margin:10px 0 0;font-size:13px;line-height:1.8;color:#B7C6E2}
+.ob-hint{margin-top:16px;font-size:10.5px;letter-spacing:.12em;color:#7796C4;animation:obHintBreath 2.6s ease-in-out infinite}
+.ob-dots{display:flex;gap:5px;margin-top:15px}
+.ob-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.14);transition:.25s}
+.ob-dot.active{width:18px;border-radius:99px;background:linear-gradient(90deg,#6FE7FF,#9C8CFF);box-shadow:0 0 12px rgba(100,220,255,.45)}
+.ob-actions{display:none;gap:8px;margin-top:17px}
+.onboarding.is-final .ob-actions{display:flex}
+.onboarding.is-final .ob-hint{display:none}
+.ob-actions button{flex:1;padding:10px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.045);color:#DCE7FF;font:inherit;font-size:12px;font-weight:650;cursor:pointer;transition:.2s}
+.ob-actions button:hover{background:rgba(90,140,255,.16);border-color:rgba(140,190,255,.42)}
+.ob-actions #obDisable{color:#A8B4D0}
+.ob-actions #obDone{background:linear-gradient(135deg,rgba(80,130,255,.9),rgba(130,95,255,.9));border-color:rgba(170,190,255,.35);color:#fff}
+@keyframes obFade{from{opacity:0}to{opacity:1}}
+@keyframes obCardIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes obHolePulse{0%,100%{border-color:rgba(126,226,255,.72);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 22px rgba(80,220,255,.28),inset 0 0 18px rgba(80,220,255,.06)}50%{border-color:rgba(190,248,255,.98);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 42px rgba(80,220,255,.55),inset 0 0 26px rgba(80,220,255,.12)}}
+@keyframes obHintBreath{0%,100%{opacity:.38}50%{opacity:.92}}
+@media(max-width:560px){.ob-card{padding:17px 16px 14px}.ob-card h3{font-size:20px}.ob-card p{font-size:12.5px}}
+@media(prefers-reduced-motion:reduce){.onboarding.show,.ob-card,.ob-hole,.ob-hint{animation:none!important}}

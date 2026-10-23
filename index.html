@@ -374,6 +374,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .settings-val{font-size:calc(12px * var(--q-fs));color:var(--muted);min-width:48px;text-align:right;font-variant-numeric:tabular-nums;}
 .settings-text-input{width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;font:inherit;font-size:calc(12.5px * var(--q-fs));outline:none;}
 .settings-text-input:focus{border-color:var(--q-color);}
+.settings-replay{padding:7px 12px;border-radius:8px;border:1px solid rgba(var(--q-r),var(--q-g),var(--q-b),.35);background:rgba(var(--q-r),var(--q-g),var(--q-b),.08);color:#DCE7FF;font:inherit;font-size:calc(11.5px * var(--q-fs));cursor:pointer;transition:.2s}
+.settings-replay:hover{background:rgba(var(--q-r),var(--q-g),var(--q-b),.18);border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.6);color:#fff}
 .settings-select{appearance:none;-webkit-appearance:none;background-color:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:calc(13px * var(--q-fs));padding:8px 32px 8px 14px;border-radius:10px;font-family:inherit;cursor:pointer;outline:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M2 2l4 4 4-4' stroke='%238B90B8' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 10px center;background-size:12px 8px;min-width:160px;}
 .settings-select:focus{border-color:var(--q-color);}
 .settings-select option{background:#0B0D1C;color:#fff;}
@@ -431,6 +433,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 }
 </style>
 <link rel="stylesheet" href="quantum-status.css">
+<link rel="stylesheet" href="qbti-onboarding.css">
 </head>
 <body>
 
@@ -762,6 +765,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         <select class="settings-select" id="setLang"></select>
       </div>
       <div class="settings-row">
+        <label data-i18n="settings.onboarding">新手引导</label>
+        <button type="button" class="settings-replay" id="setOnboarding" data-i18n="settings.onboardingReplay">重新播放</button>
+      </div>
+      <div class="settings-row">
         <label for="setFontSize" data-i18n="settings.fontSize">字体大小</label>
         <div class="settings-control">
           <input type="range" min="80" max="150" step="1" id="setFontSize" />
@@ -816,10 +823,27 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 })();
 </script>
 
+<div class="onboarding" id="onboarding" aria-hidden="true" role="dialog" aria-live="polite">
+  <div class="ob-hole" id="obHole"></div>
+  <div class="ob-card" id="obCard">
+    <div class="ob-kicker" id="obKicker">FIRST OBSERVATION</div>
+    <div class="ob-step" id="obStep"></div>
+    <h3 id="obTitle"></h3>
+    <p id="obBody"></p>
+    <div class="ob-hint" id="obHint"></div>
+    <div class="ob-dots" id="obDots"></div>
+    <div class="ob-actions">
+      <button type="button" id="obDisable">不再提醒</button>
+      <button type="button" id="obDone">开始探索</button>
+    </div>
+  </div>
+</div>
+
 <script src="qbti-core.js"></script>
 <script src="qbti-i18n.js"></script>
 <script src="qbti-hidden.js"></script>
 <script src="quantum-status-text.js"></script>
+<script src="qbti-onboarding.js"></script>
 <script src="freedom-render.js"></script>
 <script src="qbti-settings.js"></script>
 <script src="quantum-sphere.js"></script>
@@ -3983,9 +4007,186 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
   });
 
+  /* ============================================================
+     新手引导
+     ============================================================ */
+  const ONBOARDING_STEPS = [
+    { selector: '.quantum-link[data-target="screen-intro"]', placement: 'below' },
+    { selector: '#quantumCanvas', custom: 'orbit', placement: 'below' },
+    { selector: '#quantumCanvas', custom: 'orbit', placement: 'below' },
+    { selector: '#quantumCanvas', custom: 'orbit', placement: 'below' },
+    { selector: '.quantum-link[data-target="screen-intro"]', placement: 'below' },
+    { selector: '.quantum-link[data-target="screen-contact"]', placement: 'below' },
+    { selector: '#btnSettings', placement: 'above' },
+    null
+  ];
+  let onboardingActive = false;
+  let onboardingStep = 0;
+  let onboardingPack = null;
+
+  function onboardingData(){
+    const lang = currentLang();
+    return (window.QBTI_ONBOARDING && window.QBTI_ONBOARDING.get) ? window.QBTI_ONBOARDING.get(lang) : null;
+  }
+
+  function onboardingRectForStep(step){
+    if(!step) return null;
+    if(step.custom === 'orbit'){
+      const size = Math.min(430, window.innerWidth * 0.72, window.innerHeight * 0.58);
+      return {
+        left: window.innerWidth / 2 - size / 2,
+        top: window.innerHeight * 0.43 - size / 2,
+        width: size,
+        height: size
+      };
+    }
+    if(!step.selector) return null;
+    const el = document.querySelector(step.selector);
+    if(!el) return null;
+    const r = el.getBoundingClientRect();
+    if(r.width < 2 || r.height < 2) return null;
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  }
+
+  function positionOnboarding(){
+    const overlay = $('onboarding');
+    const card = $('obCard');
+    const hole = $('obHole');
+    if(!overlay || !card || !hole || !onboardingActive) return;
+    const step = ONBOARDING_STEPS[onboardingStep];
+    const rect = onboardingRectForStep(step);
+    const pad = 9;
+    const cw = Math.min(390, window.innerWidth - 32);
+    card.style.width = cw + 'px';
+    const ch = card.offsetHeight || 220;
+    overlay.classList.toggle('no-target', !rect);
+    if(rect){
+      const left = Math.max(8, rect.left - pad);
+      const top = Math.max(8, rect.top - pad);
+      const width = Math.min(window.innerWidth - 16, rect.width + pad * 2);
+      const height = Math.min(window.innerHeight - 16, rect.height + pad * 2);
+      hole.style.left = left + 'px';
+      hole.style.top = top + 'px';
+      hole.style.width = width + 'px';
+      hole.style.height = height + 'px';
+      hole.style.display = 'block';
+      let cardLeft = rect.left + rect.width / 2 - cw / 2;
+      let cardTop = rect.bottom + 16;
+      if(cardTop + ch > window.innerHeight - 16) cardTop = rect.top - ch - 16;
+      if(cardTop < 16) cardTop = Math.max(16, (window.innerHeight - ch) / 2);
+      cardLeft = Math.max(16, Math.min(window.innerWidth - cw - 16, cardLeft));
+      card.style.left = cardLeft + 'px';
+      card.style.top = cardTop + 'px';
+    } else {
+      hole.style.display = 'none';
+      card.style.left = Math.max(16, (window.innerWidth - cw) / 2) + 'px';
+      card.style.top = Math.max(16, (window.innerHeight - ch) / 2) + 'px';
+    }
+  }
+
+  function renderOnboarding(){
+    if(!onboardingActive || !onboardingPack) return;
+    const step = onboardingStep;
+    const isFinal = step >= ONBOARDING_STEPS.length - 1;
+    const overlay = $('onboarding');
+    if(!overlay) return;
+    overlay.classList.toggle('is-final', isFinal);
+    if($('obKicker')) $('obKicker').textContent = onboardingPack.kicker || 'FIRST OBSERVATION';
+    if($('obStep')) $('obStep').textContent = (onboardingPack.stepLabel || 'Step {n} / {total}').replace('{n}', String(step + 1)).replace('{total}', String(ONBOARDING_STEPS.length));
+    const dots = $('obDots');
+    if(dots){
+      dots.innerHTML = ONBOARDING_STEPS.map((_, i) => '<span class="ob-dot ' + (i === step ? 'active' : '') + '"></span>').join('');
+    }
+    if(isFinal){
+      if($('obTitle')) $('obTitle').textContent = onboardingPack.final.title;
+      if($('obBody')) $('obBody').textContent = onboardingPack.final.body;
+      if($('obHint')) $('obHint').textContent = onboardingPack.finalHint || '';
+      if($('obDisable')) $('obDisable').textContent = onboardingPack.disable;
+      if($('obDone')) $('obDone').textContent = onboardingPack.done;
+    } else {
+      const item = onboardingPack.steps[step] || onboardingPack.steps[0];
+      if($('obTitle')) $('obTitle').textContent = item.title;
+      if($('obBody')) $('obBody').textContent = item.body;
+      if($('obHint')) $('obHint').textContent = onboardingPack.hint;
+    }
+    requestAnimationFrame(positionOnboarding);
+  }
+
+  function startOnboarding(force){
+    const s = (window.QBTISettings && window.QBTISettings.get) ? window.QBTISettings.get() : {};
+    if(!force && s.onboardingDisabled) return;
+    onboardingPack = onboardingData();
+    if(!onboardingPack) return;
+    onboardingActive = true;
+    onboardingStep = 0;
+    const settingsMask = $('settingsMask');
+    if(settingsMask) settingsMask.classList.remove('show');
+    try { goToScreen('screen-home'); } catch(e){}
+    if(window.QBTI_FREEDOM_RENDER) window.QBTI_FREEDOM_RENDER.stop();
+    if($('nebulaChoice')) $('nebulaChoice').classList.remove('show');
+    if($('quantumStatus')) $('quantumStatus').classList.remove('show');
+    const overlay = $('onboarding');
+    if(overlay){ overlay.classList.add('show'); overlay.setAttribute('aria-hidden', 'false'); }
+    document.body.style.overflow = 'hidden';
+    renderOnboarding();
+  }
+
+  function closeOnboarding(disable){
+    onboardingActive = false;
+    const overlay = $('onboarding');
+    if(overlay){ overlay.classList.remove('show'); overlay.classList.remove('is-final'); overlay.setAttribute('aria-hidden', 'true'); }
+    document.body.style.overflow = '';
+    if(disable && window.QBTISettings && window.QBTISettings.setOnboardingDisabled){
+      window.QBTISettings.setOnboardingDisabled(true);
+    }
+  }
+
+  function advanceOnboarding(){
+    if(!onboardingActive) return;
+    if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
+    onboardingStep += 1;
+    renderOnboarding();
+  }
+
+  function bindOnboardingUI(){
+    const overlay = $('onboarding');
+    if(overlay && !overlay._obBound){
+      overlay._obBound = true;
+      overlay.addEventListener('click', e => {
+        if(e.target.closest('button')) return;
+        advanceOnboarding();
+      });
+    }
+    if($('obDisable')) $('obDisable').addEventListener('click', e => {
+      e.stopPropagation();
+      closeOnboarding(true);
+    });
+    if($('obDone')) $('obDone').addEventListener('click', e => {
+      e.stopPropagation();
+      closeOnboarding(false);
+    });
+    document.addEventListener('keydown', e => {
+      if(e.key === 'Escape' && onboardingActive) closeOnboarding(false);
+    });
+    window.addEventListener('resize', () => { if(onboardingActive) positionOnboarding(); }, { passive: true });
+  }
+  bindOnboardingUI();
+
+  let onboardingAutoTimer = null;
+  function maybeStartOnboarding(){
+    clearTimeout(onboardingAutoTimer);
+    onboardingAutoTimer = setTimeout(() => {
+      if(onboardingActive) return;
+      const s = (window.QBTISettings && window.QBTISettings.get) ? window.QBTISettings.get() : {};
+      if(s.onboardingDisabled) return;
+      startOnboarding(false);
+    }, 1200);
+  }
+
   if(window.QBTISettings && window.QBTISettings.onChange){
     window.QBTISettings.onChange(function(info){
       if(info.key === 'lang'){
+        if(onboardingActive){ onboardingPack = onboardingData(); renderOnboarding(); }
         renderDimPreview();
         if($('screen-quiz').classList.contains('active')) renderQuestion();
         if($('screen-hidden').classList.contains('active')) renderHiddenQuiz();
@@ -3999,6 +4200,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
       if(info.key === 'adminDebug' || info.key === 'adminForceSimple' || info.key === 'adminMuteSound' || info.key === 'adminDisableHaptic' || info.key === 'reset'){
         renderAdminDebug();
+      }
+      if(info.key === 'onboarding'){
+        startOnboarding(true);
+      }
+      if(info.key === 'onboardingDisabled' && info.settings && info.settings.onboardingDisabled && onboardingActive){
+        closeOnboarding(false);
+      }
+      if(info.key === 'sync' && info.settings && info.settings.onboardingDisabled && onboardingActive){
+        closeOnboarding(false);
       }
     });
   }
@@ -4039,6 +4249,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   loadServerAIConfig();
   ensureCloudAIConfig();
   seedAdminHiddenSamples();
+  maybeStartOnboarding();
   setInterval(loadServerAIConfig, 60 * 1000);
   applyHomepageTheme();
   window.addEventListener('load', applyHomepageTheme);

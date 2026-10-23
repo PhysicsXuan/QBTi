@@ -20,6 +20,7 @@
     sphereTheme: 'last',
     sphereCustomTs: null,
     userCallName: '',
+    onboardingDisabled: false,
     /* 管理员高级设置（仅管理员面板可见，普通用户不会显示） */
     adminDebug: false,
     adminForceSimple: false,
@@ -183,6 +184,7 @@
     const setSphereCustomRow = $('setSphereCustomRow');
     const setSphereHint = $('setSphereHint');
     const setUserCallName = $('setUserCallName');
+    const setOnboarding = $('setOnboarding');
     const groups = {
       effectsMode: $('setEffectsMode'),
       fontWeight: $('setFontWeight'),
@@ -531,6 +533,17 @@
       setUserCallName.addEventListener('blur', saveCallName);
     }
 
+    if(setOnboarding){
+      setOnboarding.addEventListener('click', () => {
+        cur.onboardingDisabled = false;
+        saveSettings(cur);
+        syncUI();
+        const mask = $('settingsMask');
+        if(mask) mask.classList.remove('show');
+        emit('onboarding');
+      });
+    }
+
     function bindGroup(name, onChange){
       const el = groups[name];
       if(!el) return;
@@ -648,6 +661,13 @@
     refreshSphereHistory: () => {
       const mask = $('settingsMask');
       if(mask && mask._refreshSphere) mask._refreshSphere();
+    },
+    setOnboardingDisabled: (disabled) => {
+      cur.onboardingDisabled = !!disabled;
+      saveSettings(cur);
+      const mask = $('settingsMask');
+      if(mask && mask._syncUI) mask._syncUI();
+      emit('onboardingDisabled', !!disabled);
     },
     syncFromServer: syncFromServer,
     pushToServer: pushToServer,

@@ -533,6 +533,17 @@
     }
   };
   Object.keys(FEEDBACK_UI).forEach(lang => { if(UI[lang]) Object.assign(UI[lang], FEEDBACK_UI[lang]); });
+  const ONBOARD_SETTINGS_UI = {
+    'zh-CN': { 'settings.onboarding': '新手引导', 'settings.onboardingReplay': '重新播放' },
+    'zh-TW': { 'settings.onboarding': '新手引導', 'settings.onboardingReplay': '重新播放' },
+    en: { 'settings.onboarding': 'New user guide', 'settings.onboardingReplay': 'Replay' },
+    es: { 'settings.onboarding': 'Guía para nuevos usuarios', 'settings.onboardingReplay': 'Repetir' },
+    pt: { 'settings.onboarding': 'Guia para novos usuários', 'settings.onboardingReplay': 'Repetir' },
+    ko: { 'settings.onboarding': '초보자 안내', 'settings.onboardingReplay': '다시 보기' },
+    ja: { 'settings.onboarding': '初めての方へ', 'settings.onboardingReplay': '再生' },
+    fr: { 'settings.onboarding': 'Guide du nouvel utilisateur', 'settings.onboardingReplay': 'Rejouer' }
+  };
+  Object.keys(ONBOARD_SETTINGS_UI).forEach(lang => { if(UI[lang]) Object.assign(UI[lang], ONBOARD_SETTINGS_UI[lang]); });
 
   const LANG_PACK = {
     'zh-CN': { q: Q_ZH_CN, opt: OPT_ZH_CN, sfx: SFX_ZH_CN, dim: DIM_ZH_CN, sub: SUB_ZH_CN, fullQuestion: true },
