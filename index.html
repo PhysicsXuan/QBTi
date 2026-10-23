@@ -103,6 +103,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 #resultQuantumCanvas{display:block;width:100%;height:100%;}
 @media(max-width:600px){.result-orbs-stage{height:150px;margin-top:0}}
 .result-hero{text-align:center;padding:22px 0 12px}
+.result-theme-chip{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:5px 10px;border-radius:999px;border:1px solid rgba(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255),.26);background:rgba(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255),.07);color:#C7DBF7;font-size:calc(10.5px * var(--q-fs));letter-spacing:.06em}
+.result-theme-chip::before{content:'';width:5px;height:5px;border-radius:50%;background:rgb(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255));box-shadow:0 0 10px rgba(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255),.7)}
 .type-portrait{width:min(280px,72vw);height:210px;margin:0 auto 14px;display:flex;align-items:flex-end;justify-content:center;position:relative}
 .type-portrait::before{content:'';position:absolute;width:190px;height:38px;bottom:4px;border-radius:50%;background:radial-gradient(ellipse,rgba(var(--q-r),var(--q-g),var(--q-b),.30),rgba(var(--q-r),var(--q-g),var(--q-b),0) 70%);filter:blur(8px);}
 .type-portrait img{position:relative;z-index:1;width:100%;height:100%;object-fit:contain;display:block;filter:drop-shadow(0 14px 24px rgba(0,0,0,.32));}
@@ -272,6 +274,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
 .gear{position:fixed;right:20px;bottom:20px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:calc(16px * var(--q-fs));transition:.25s;backdrop-filter:blur(8px);}
 .gear:hover{color:var(--txt);border-color:var(--q-color);transform:rotate(45deg)}
+.quantum-theme-badge{position:absolute;z-index:6;left:24px;bottom:24px;display:none;align-items:center;gap:8px;padding:7px 11px;border-radius:999px;border:1px solid rgba(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255),.28);background:linear-gradient(120deg,rgba(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255),.10),rgba(255,255,255,.025));color:#DDEBFF;font-size:calc(10.5px * var(--q-fs));letter-spacing:.06em;backdrop-filter:blur(8px);pointer-events:none;box-shadow:0 0 24px rgba(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255),.10)}
+.quantum-theme-badge.show{display:inline-flex}
+.qt-dot{width:5px;height:5px;border-radius:50%;background:rgb(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255));box-shadow:0 0 10px rgba(var(--theme-r,120),var(--theme-g,180),var(--theme-b,255),.8)}
+.quantum-theme-badge.hidden-theme{border-color:rgba(255,220,140,.28);color:#FFE8BA}
+.quantum-theme-badge.hidden-theme .qt-dot{background:#FFD06A;box-shadow:0 0 12px rgba(255,200,90,.9)}
+@media(max-width:600px){.quantum-theme-badge{left:14px;bottom:14px;font-size:calc(9.5px * var(--q-fs))}}
 .settings-btn{position:fixed;right:20px;bottom:72px;z-index:150;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(12,14,28,.85);color:var(--muted);cursor:pointer;display:grid;place-items:center;font-size:calc(16px * var(--q-fs));transition:.25s;backdrop-filter:blur(8px);padding:0;font-family:inherit;}
 .settings-btn:hover{color:var(--txt);border-color:var(--q-color);transform:rotate(45deg)}
 
@@ -460,6 +468,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         <canvas id="quantumCanvas"></canvas>
       </div>
       <div class="quantum-hint" aria-hidden="true" data-i18n="home.hint">按住量子球以开始</div>
+      <div class="quantum-theme-badge" id="quantumThemeBadge" aria-hidden="true"><span class="qt-dot"></span><span id="quantumThemeName"></span></div>
     </div>
   </section>
 
@@ -527,6 +536,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       <div class="type-portrait"><img id="rTypeImage" src="" alt="portrait"></div>
       <div class="code" id="rCode">—</div>
       <div class="type-name" id="rTypeName">—</div>
+      <div class="result-theme-chip" id="rThemeChip" style="display:none;"></div>
       <p class="r-tagline" id="rTagline"></p>
       <div id="hiddenPersonality" style="display:none;"></div>
     </div>
@@ -851,6 +861,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 <script src="qbti-hidden.js"></script>
 <script src="quantum-status-text.js"></script>
 <script src="qbti-onboarding.js"></script>
+<script src="qbti-themes.js"></script>
 <script src="freedom-render.js"></script>
 <script src="qbti-settings.js"></script>
 <script src="quantum-sphere.js"></script>
@@ -1288,6 +1299,55 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const on = hasHiddenPersonality();
     document.documentElement.classList.toggle('hidden-aura', on);
     if(window.QuantumSphere && window.QuantumSphere.setIridescent) window.QuantumSphere.setIridescent(on);
+    refreshPersonalityTheme();
+  }
+
+  function currentPersonalityContext(){
+    if(state.result){
+      return {
+        code: state.result.letters.join(''),
+        suffix: state.result.suffix ? state.result.suffix.letter : '',
+        hiddenKey: state.hiddenResult && state.hiddenResult.obtained ? state.hiddenResult.key : ''
+      };
+    }
+    try {
+      const list = getAllResultsFromUser();
+      if(!list.length) return null;
+      const latest = list.slice().sort(function(a,b){ return Number(b.ts) - Number(a.ts); })[0];
+      if(!latest) return null;
+      return {
+        code: latest.code || '',
+        suffix: latest.suffix || '',
+        hiddenKey: latest.hiddenResult && latest.hiddenResult.obtained ? latest.hiddenResult.key : ''
+      };
+    } catch(e){ return null; }
+  }
+
+  function refreshPersonalityTheme(){
+    const ctx = currentPersonalityContext();
+    const theme = (ctx && window.QBTI_THEMES) ? window.QBTI_THEMES.get(ctx.code, ctx.suffix, ctx.hiddenKey) : null;
+    window.QBTI_CURRENT_THEME = theme;
+    if(window.QuantumSphere && window.QuantumSphere.setPersonalityTheme) window.QuantumSphere.setPersonalityTheme(theme);
+    if(theme){
+      const p = theme.primary || [120, 180, 255];
+      document.documentElement.style.setProperty('--theme-r', p[0]);
+      document.documentElement.style.setProperty('--theme-g', p[1]);
+      document.documentElement.style.setProperty('--theme-b', p[2]);
+    }
+    const badge = $('quantumThemeBadge');
+    const name = $('quantumThemeName');
+    const zh = currentLang() === 'zh-CN' || currentLang() === 'zh-TW';
+    const themeText = theme ? ((zh ? (theme.hidden ? '隐藏限定 · ' : '限定主题 · ') : (theme.hidden ? 'HIDDEN LIMITED · ' : 'LIMITED THEME · ')) + theme.name) : '';
+    if(badge && name){
+      badge.classList.toggle('show', !!theme);
+      badge.classList.toggle('hidden-theme', !!(theme && theme.hidden));
+      name.textContent = themeText;
+    }
+    const chip = $('rThemeChip');
+    if(chip){
+      chip.textContent = themeText;
+      chip.style.display = theme ? 'inline-flex' : 'none';
+    }
   }
 
   function syncAuthHeaders(){
@@ -4426,6 +4486,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   if(window.QBTISettings && window.QBTISettings.onChange){
     window.QBTISettings.onChange(function(info){
       if(info.key === 'lang'){
+        refreshPersonalityTheme();
         if(onboardingActive){ onboardingPack = onboardingData(); renderOnboarding(); }
         renderDimPreview();
         if($('screen-quiz').classList.contains('active')) renderQuestion();
@@ -4437,6 +4498,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
       if(info.key === 'sphereTheme' || info.key === 'sphereCustom' || info.key === 'reset' || info.key === 'sync'){
         applyHomepageTheme();
+        refreshPersonalityTheme();
       }
       if(info.key === 'adminDebug' || info.key === 'adminForceSimple' || info.key === 'adminMuteSound' || info.key === 'adminDisableHaptic' || info.key === 'reset'){
         renderAdminDebug();

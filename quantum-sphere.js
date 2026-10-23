@@ -306,6 +306,7 @@
 
     let globalState = 'default';
     let iridescentUnlocked = false;
+    let personalityTheme = null;
     let dimensionStates = null;
     let fallbackColor = palette[Math.floor(Math.random() * palette.length)];
     let globalColor = [fallbackColor[0], fallbackColor[1], fallbackColor[2]];
@@ -344,6 +345,16 @@
     }
     function colorForBall(ball, idx){
       if(!hasSplit) return globalColor;
+      if(personalityTheme && personalityTheme.primary){
+        const p = personalityTheme.primary, q = personalityTheme.secondary || p, a = personalityTheme.accent || p;
+        const owned = [
+          p,
+          q,
+          a,
+          [Math.round((p[0]+a[0])/2), Math.round((p[1]+a[1])/2), Math.round((p[2]+a[2])/2)]
+        ];
+        return owned[idx % owned.length];
+      }
       if(dimensionStates){
         const dimId = ball._dim || DIM_IDS[idx] || null;
         if(dimId && dimensionStates[dimId]){
@@ -1478,6 +1489,31 @@
         ctx.beginPath(); ctx.arc(tr.x, tr.y, r*0.42, 0, Math.PI*2); ctx.fill();
       }
     }
+    function drawThemeHalo(t){
+      if(!personalityTheme) return;
+      const p = personalityTheme.primary || [120, 180, 255];
+      const q = personalityTheme.secondary || p;
+      const a = personalityTheme.accent || p;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(CX, CY, R * 0.72, CX, CY, R * 1.55);
+      g.addColorStop(0, 'rgba(' + p[0] + ',' + p[1] + ',' + p[2] + ',0)');
+      g.addColorStop(0.58, 'rgba(' + p[0] + ',' + p[1] + ',' + p[2] + ',0.055)');
+      g.addColorStop(0.82, 'rgba(' + q[0] + ',' + q[1] + ',' + q[2] + ',0.10)');
+      g.addColorStop(0.94, 'rgba(' + a[0] + ',' + a[1] + ',' + a[2] + ',0.055)');
+      g.addColorStop(1, 'rgba(' + a[0] + ',' + a[1] + ',' + a[2] + ',0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(CX, CY, R * 1.55, 0, Math.PI * 2); ctx.fill();
+      ctx.setLineDash([4 * DPR, 12 * DPR]);
+      ctx.strokeStyle = 'rgba(' + q[0] + ',' + q[1] + ',' + q[2] + ',0.32)';
+      ctx.lineWidth = 1.0 * DPR;
+      ctx.beginPath(); ctx.arc(CX, CY, R * 1.16, t * 0.18, t * 0.18 + Math.PI * 1.65); ctx.stroke();
+      ctx.setLineDash([2 * DPR, 9 * DPR]);
+      ctx.strokeStyle = 'rgba(' + a[0] + ',' + a[1] + ',' + a[2] + ',0.26)';
+      ctx.beginPath(); ctx.arc(CX, CY, R * 1.26, -t * 0.13, -t * 0.13 + Math.PI * 1.25); ctx.stroke();
+      ctx.restore();
+    }
+
     function drawIridescent(t){
       if(!iridescentUnlocked) return;
       const simple = effectsMode === 'simple';
@@ -1539,6 +1575,119 @@
         ctx.fillStyle = 'hsla(' + hue + ',100%,72%,0.90)';
         ctx.beginPath(); ctx.arc(CX + Math.cos(a) * rr, CY + Math.sin(a) * rr * 0.42, (1.2 + (i % 2) * 0.8) * DPR, 0, Math.PI * 2); ctx.fill();
       }
+      ctx.restore();
+    }
+
+    function drawIridescentWireframe(t){
+      if(!iridescentUnlocked) return;
+      const base = (t * 42) % 360;
+      const simple = effectsMode === 'simple';
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      /* 边界：整圈分段流彩 */
+      const edgeSegments = simple ? 36 : 72;
+      for(let i = 0; i < edgeSegments; i++){
+        const a0 = (i / edgeSegments) * Math.PI * 2;
+        const a1 = a0 + (Math.PI * 2 / edgeSegments) * 0.76;
+        ctx.strokeStyle = 'hsla(' + ((base + i * 5) % 360) + ',100%,72%,0.56)';
+        ctx.lineWidth = 1.6 * DPR;
+        ctx.beginPath(); ctx.arc(CX, CY, R * 0.995, a0, a1); ctx.stroke();
+      }
+
+      ctx.beginPath(); ctx.arc(CX, CY, R * 0.985, 0, Math.PI * 2); ctx.clip();
+
+      /* 纬线 */
+      latPhis.forEach(function(phi, li){
+        if(simple && li % 2) return;
+        const cp = Math.cos(phi), sp = Math.sin(phi);
+        const pts = [];
+        for(let i = 0; i <= 80; i++){
+          const th = i / 80 * Math.PI * 2;
+          pts.push(project(cp * Math.cos(th), sp, cp * Math.sin(th)));
+        }
+        const hue = (base + li * 31) % 360;
+        for(let i = 0; i < pts.length - 1; i++){
+          const a = pts[i], b = pts[i+1];
+          if(a.z < 0 || b.z < 0) continue;
+          const depth = ((a.z + b.z) / 2 + 1) / 2;
+          ctx.strokeStyle = 'hsla(' + ((hue + i * 2) % 360) + ',100%,68%,' + (0.12 + depth * 0.20).toFixed(3) + ')';
+          ctx.lineWidth = (0.55 + depth * 0.55) * DPR;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      });
+
+      /* 经线 */
+      lonThetas.forEach(function(theta, li){
+        if(simple && li % 2) return;
+        const ct = Math.cos(theta), st = Math.sin(theta);
+        const pts = [];
+        for(let i = 0; i <= 64; i++){
+          const ph = -Math.PI / 2 + i / 64 * Math.PI;
+          const cp = Math.cos(ph), sp = Math.sin(ph);
+          pts.push(project(cp * ct, sp, cp * st));
+        }
+        const hue = (base + 160 + li * 17) % 360;
+        for(let i = 0; i < pts.length - 1; i++){
+          const a = pts[i], b = pts[i+1];
+          if(a.z < 0 || b.z < 0) continue;
+          const depth = ((a.z + b.z) / 2 + 1) / 2;
+          ctx.strokeStyle = 'hsla(' + ((hue + i * 3) % 360) + ',100%,68%,' + (0.09 + depth * 0.16).toFixed(3) + ')';
+          ctx.lineWidth = (0.45 + depth * 0.5) * DPR;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      });
+
+      /* 节点之间的连线 */
+      nodeLinks.forEach(function(link, li){
+        if(simple && li % 2) return;
+        const a = nodes[link.a], b = nodes[link.b];
+        if(!a || !b) return;
+        const pa = project(Math.cos(a.phi) * Math.cos(a.theta), Math.sin(a.phi), Math.cos(a.phi) * Math.sin(a.theta));
+        const pb = project(Math.cos(b.phi) * Math.cos(b.theta), Math.sin(b.phi), Math.cos(b.phi) * Math.sin(b.theta));
+        if(pa.z < -0.1 && pb.z < -0.1) return;
+        const hue = (base + 230 + li * 11) % 360;
+        const depth = ((pa.z + pb.z) / 2 + 1) / 2;
+        ctx.strokeStyle = 'hsla(' + hue + ',100%,72%,' + (0.10 + depth * 0.16).toFixed(3) + ')';
+        ctx.lineWidth = (0.45 + depth * 0.4) * DPR;
+        ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+      });
+      nodes.forEach(function(n, ni){
+        const p = project(Math.cos(n.phi) * Math.cos(n.theta), Math.sin(n.phi), Math.cos(n.phi) * Math.sin(n.theta));
+        if(p.z < -0.05) return;
+        const depth = (p.z + 1) / 2;
+        const hue = (base + ni * 23) % 360;
+        ctx.fillStyle = 'hsla(' + hue + ',100%,72%,' + (0.28 + depth * 0.45).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, (0.7 + depth * 1.1) * DPR, 0, Math.PI * 2); ctx.fill();
+      });
+
+      /* 内部电路线 */
+      circuits.forEach(function(c, ci){
+        if(simple && ci % 2) return;
+        const proj = c.pts.map(function(p){ return project(p.x, p.y, p.z); });
+        const hue = (base + 60 + ci * 19) % 360;
+        for(let i = 0; i < proj.length - 1; i++){
+          const a = proj[i], b = proj[i+1];
+          if((a.z + b.z) / 2 < -0.05) continue;
+          const depth = ((a.z + b.z) / 2 + 1) / 2;
+          ctx.strokeStyle = 'hsla(' + ((hue + i * 8) % 360) + ',100%,72%,' + (0.14 + depth * 0.24).toFixed(3) + ')';
+          ctx.lineWidth = (0.55 + depth * 0.55) * DPR;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+        }
+      });
+
+      /* 量子点 */
+      pulsePoints.forEach(function(pp, pi){
+        if(simple && pi % 2) return;
+        const theta = lonThetas[pp.lon], phi = latPhis[pp.lat];
+        const cp = Math.cos(phi), sp = Math.sin(phi);
+        const p = project(cp * Math.cos(theta), sp, cp * Math.sin(theta));
+        if(p.z < -0.02) return;
+        const depth = (p.z + 1) / 2;
+        const hue = (base + 300 + pi * 13) % 360;
+        ctx.fillStyle = 'hsla(' + hue + ',100%,76%,' + (0.26 + depth * 0.42).toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, (0.9 + depth * 1.2) * DPR, 0, Math.PI * 2); ctx.fill();
+      });
       ctx.restore();
     }
 
@@ -2165,6 +2314,7 @@
           ctx.translate(effCx, effCy);
           ctx.scale(breathS, breathS);
           ctx.translate(-CX, -CY);
+          drawThemeHalo(t);
           drawSphereFill();
           drawPulseRings(t);
           drawInnerBands(t);
@@ -2179,6 +2329,7 @@
           drawCoreOrbiters();
           drawIridescent(t);
           drawOutline();
+          drawIridescentWireframe(t);
           drawCore(now);
           if(ball.focusAmount > 0.02 && !transitionType){
             drawFocusRing(t, ball.focusAmount * vis.visAlpha, ball.focusPing);
@@ -2248,6 +2399,7 @@
           ctx.translate(CX, CY + breathY);
           ctx.scale(breathS, breathS);
           ctx.translate(-CX, -CY);
+          drawThemeHalo(t);
           drawSphereFill();
           drawPulseRings(t);
           drawInnerBands(t);
@@ -2262,6 +2414,7 @@
           drawCoreOrbiters();
           drawIridescent(t);
           drawOutline();
+          drawIridescentWireframe(t);
           drawCore(now);
           ctx.restore();
         }
@@ -2321,6 +2474,17 @@
       isSplit: function(){ return hasSplit; },
       isNebula: function(){ return soloNebula; },
       setIridescent: function(v){ iridescentUnlocked = !!v; },
+      setPersonalityTheme: function(theme){
+        personalityTheme = theme || null;
+        if(!soloNebula){
+          if(theme && theme.primary) applyColor(theme.primary[0], theme.primary[1], theme.primary[2]);
+          else {
+            const c = QUANTUM_COLORS[globalState] || fallbackColor;
+            applyColor(c[0], c[1], c[2]);
+          }
+        }
+        return true;
+      },
       isIridescent: function(){ return iridescentUnlocked; },
       getBallRects: function(){
         if(!hasSplit || soloNebula || transitionType) return [];
@@ -2361,7 +2525,10 @@
         const c = QUANTUM_COLORS[state];
         if(!c) return false;
         globalState = state;
-        if (!soloNebula) applyGlobalColor(c);
+        if (!soloNebula){
+          if(personalityTheme && personalityTheme.primary) applyColor(personalityTheme.primary[0], personalityTheme.primary[1], personalityTheme.primary[2]);
+          else applyGlobalColor(c);
+        }
         try { localStorage.setItem(STATE_STORAGE_KEY, state); } catch(e){}
         return true;
       },
