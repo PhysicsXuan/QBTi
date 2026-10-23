@@ -53,6 +53,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .history-list{display:flex;flex-direction:column;gap:10px;}
 .history-card{padding:14px 18px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .history-card:hover{border-color:rgba(var(--q-r),var(--q-g),var(--q-b),.5);background:rgba(var(--q-r),var(--q-g),var(--q-b),.06);transform:translateX(4px);}
+.hc-hidden{display:inline-block;margin-top:5px;padding:2px 7px;border-radius:99px;border:1px solid rgba(255,180,90,.32);background:rgba(255,160,80,.08);color:#FFD39A;font-size:calc(9.5px * var(--q-fs));letter-spacing:.04em}
+.hc-sample{border-color:rgba(190,150,255,.35);background:rgba(150,110,255,.09);color:#D9C8FF}
+.admin-sample-box{margin-top:16px;padding:14px;border-radius:14px;border:1px solid rgba(190,150,255,.22);background:rgba(150,110,255,.045)}
+.admin-sample-title{font-size:11px;letter-spacing:.14em;color:#C8B6FF;text-transform:uppercase;margin-bottom:10px}
+.admin-sample-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.admin-sample-btn{display:flex;flex-direction:column;gap:2px;padding:10px 11px;border-radius:10px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.025);color:#fff;text-align:left;font:inherit;cursor:pointer;transition:.2s}
+.admin-sample-btn:hover{border-color:rgba(190,150,255,.55);background:rgba(150,110,255,.12)}
+.admin-sample-btn b{font-size:12px;font-weight:700}
+.admin-sample-btn span{font-size:10px;color:#9FAAC8}
+@media(max-width:520px){.admin-sample-grid{grid-template-columns:1fr}}
 .hc-left{display:flex;align-items:center;gap:14px;}
 .hc-code{font-size:calc(16px * var(--q-fs));font-weight:800;color:#fff;letter-spacing:.04em;}
 .hc-name{font-size:calc(14px * var(--q-fs));color:var(--muted);font-weight:500;}
@@ -642,6 +652,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     <button class="btn sm" id="btnTestCfg" style="width:100%">测试连接</button>
     <div class="test-result" id="testResult"></div>
     <button class="btn sm" id="btnAdminFeedback" type="button" style="width:100%;margin-top:10px;">📨 查看投诉与反馈</button>
+    <div class="admin-sample-box" id="adminSampleBox">
+      <div class="admin-sample-title">隐藏人格报告样本</div>
+      <div class="admin-sample-grid" id="adminSampleGrid"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn sm ghost" id="btnCancelCfg">取消</button>
       <button class="btn sm primary" id="btnSaveCfg">保存</button>
@@ -1532,8 +1546,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         durationStr = `${m > 0 ? m + 'm ' : ''}${s}s`;
       }
       const nameObj = Q.TYPE_NAMES[entry.code] || '';
+      let hiddenBadge = '';
+      if(entry.hiddenResult && entry.hiddenResult.obtained && window.QBTI_HIDDEN){
+        const hp = window.QBTI_HIDDEN.get(currentLang());
+        const ht = hp.types[entry.hiddenResult.key];
+        if(ht){
+          hiddenBadge = '<span class="hc-hidden ' + (entry.adminSample ? 'hc-sample' : '') + '">' + (entry.adminSample ? 'ADMIN SAMPLE · ' : '') + ht.name + '</span>';
+        }
+      }
       return `<div class="history-card" data-ts="${entry.ts}">
-        <div class="hc-left"><div class="hc-code">${code}</div><div class="hc-name">${nameObj}</div></div>
+        <div class="hc-left"><div class="hc-code">${code}</div><div class="hc-name">${nameObj}${hiddenBadge}</div></div>
         <div class="hc-right"><div class="hc-time">${formatTime(entry.ts)}</div><div class="hc-duration">${durationStr}</div></div>
       </div>`;
     }).join('');
@@ -1545,6 +1567,117 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       });
     });
   }
+  function adminSampleAnswers(seed){
+    const answers = {}, timings = {};
+    Q.QUESTIONS.forEach((q, i) => {
+      answers[q.id] = ((i * 7 + seed * 11) % 5) + 1;
+      timings[q.id] = 7 + (i % 4) + seed;
+    });
+    return { answers, timings };
+  }
+
+  function buildAdminHiddenSample(key, idx){
+    const H = window.QBTI_HIDDEN;
+    if(!H) return null;
+    const seed = idx + 1;
+    const { answers, timings } = adminSampleAnswers(seed);
+    const res = Q.computeResult(answers);
+    let qs = null, ds = null;
+    try { if(Q.analyzeQuantumState) qs = Q.analyzeQuantumState(res); } catch(e){}
+    try {
+      if(Q.analyzeDimensionStates){
+        const raw = Q.analyzeDimensionStates(res);
+        ds = { PO: raw.PO.type, II: raw.II.type, LA: raw.LA.type, UR: raw.UR.type };
+      }
+    } catch(e){}
+    let validity = null;
+    try { validity = Q.analyzeResponseValidity(answers, timings); } catch(e){}
+    let aiReport = null;
+    try {
+      if(Q.localStudentReport) aiReport = Q.localStudentReport(res, validity);
+      else if(Q.localReport) aiReport = Q.localReport(res, validity);
+    } catch(e){}
+    const traitIdx = H.TRAITS.indexOf(key);
+    const hiddenAnswers = [];
+    for(let i = 0; i < 10; i++) hiddenAnswers.push(i < 7 ? traitIdx : (traitIdx + 1 + (i % 3)) % 4);
+    const scores = { freedom: 0, madman: 0, einstein: 0, jerry: 0 };
+    hiddenAnswers.forEach(v => { const k = H.TRAITS[v]; if(k) scores[k]++; });
+    const ts = Date.UTC(2026, 9, 1) + (idx + 1) * 1000;
+    return {
+      ts: ts,
+      answers: Object.assign({}, answers),
+      timings: Object.assign({}, timings),
+      code: res.letters.join(''),
+      suffix: res.suffix.letter,
+      quantumState: qs ? qs.type : null,
+      dimStates: ds,
+      hiddenResult: { key: key, obtained: true, scores: scores, answers: hiddenAnswers },
+      adminSample: key,
+      aiReport: aiReport,
+      aiReportSource: aiReport ? 'local' : null,
+      aiReportLang: aiReport ? currentLang() : null
+    };
+  }
+
+  function seedAdminHiddenSamples(){
+    if(!isAdmin() || !window.QAuth || !window.QAuth.getCurrentUser) return;
+    const u = window.QAuth.getCurrentUser();
+    if(!u || !u.email || !window.QBTI_HIDDEN) return;
+    const key = RESULT_KEY_PREFIX + u.email;
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem(key) || '[]'); if(!Array.isArray(history)) history = []; } catch(e){ history = []; }
+    const added = [];
+    ['freedom', 'madman', 'einstein', 'jerry'].forEach((type, i) => {
+      if(history.some(h => h && h.adminSample === type)) return;
+      const entry = buildAdminHiddenSample(type, i);
+      if(entry){ history.push(entry); added.push(entry); }
+    });
+    if(!added.length) return;
+    try { localStorage.setItem(key, JSON.stringify(history.slice(-500))); } catch(e){}
+    renderHistory();
+    renderAdminSampleGrid();
+    try { syncAdminSamples(added); } catch(e){}
+  }
+
+  function renderAdminSampleGrid(){
+    const host = $('adminSampleGrid');
+    if(!host || !window.QBTI_HIDDEN) return;
+    const u = (window.QAuth && window.QAuth.getCurrentUser) ? window.QAuth.getCurrentUser() : null;
+    if(!u || !u.email || !isAdmin()){ host.innerHTML = ''; return; }
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem(RESULT_KEY_PREFIX + u.email) || '[]'); } catch(e){}
+    const pack = window.QBTI_HIDDEN.get(currentLang());
+    host.innerHTML = ['freedom', 'madman', 'einstein', 'jerry'].map(key => {
+      const entry = history.find(h => h && h.adminSample === key);
+      const type = pack.types[key];
+      if(!entry || !type) return '';
+      return '<button type="button" class="admin-sample-btn" data-admin-sample="' + key + '"><b>' + escapeHTML(type.name) + '</b><span>ADMIN SAMPLE · ' + escapeHTML(type.subtitle) + '</span></button>';
+    }).join('');
+    host.querySelectorAll('[data-admin-sample]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.adminSample;
+        const entry = history.find(h => h && h.adminSample === key);
+        if(!entry) return;
+        $('modalMask').classList.remove('show');
+        restoreFromHistory(entry);
+        goToScreen('screen-result');
+      });
+    });
+  }
+
+  async function syncAdminSamples(entries){
+    if(!entries || !entries.length) return;
+    const headers = syncAuthHeaders();
+    if(!headers) return;
+    try {
+      await fetch('/api/student/history/sync', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({ records: entries })
+      });
+    } catch(e){}
+  }
+
   function updateRestoreBanner(){ renderHistory(); }
   $('qTotal').textContent = Q.QUESTIONS.length;
 
@@ -1781,111 +1914,193 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           </svg>
       </div>`;
     if(key === 'madman') return `
-      <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
-        <defs>
-          <radialGradient id="mdGlow"><stop stop-color="#d04dff" stop-opacity=".55"/><stop offset="1" stop-color="#d04dff" stop-opacity="0"/></radialGradient>
-          <linearGradient id="mdHair" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#35104f"/><stop offset="1" stop-color="#0b0314"/></linearGradient>
-        </defs>
-        <circle cx="345" cy="165" r="150" fill="url(#mdGlow)"/>
-        <g class="hp-spin-slow" fill="none" stroke="#d26bff" opacity=".3">
-          <circle cx="345" cy="170" r="135" stroke-dasharray="2 14"/>
-          <circle cx="345" cy="170" r="110" stroke-dasharray="8 20"/>
-          <path d="M80 310 Q260 80 520 250" stroke-dasharray="3 10"/>
-        </g>
-        <g class="hp-float">
-          <path d="M270 300 Q250 250 268 205 L258 150 L232 92 L278 126 L282 70 L310 122 L342 62 L338 130 L400 96 L372 156 L420 178 L366 200 L390 268 L338 240 L330 300 Z" fill="url(#mdHair)" stroke="#b84cff" stroke-width="2.5"/>
-          <path d="M286 190 Q345 150 398 190 Q390 262 342 286 Q300 272 286 190 Z" fill="#17061f" stroke="#c56bff" stroke-width="2"/>
-          <path d="M305 215 L330 224 L310 232 Z" fill="#ff5bd8" class="hp-pulse"/>
-          <path d="M365 215 L390 224 L370 232 Z" fill="#ff5bd8" class="hp-pulse" style="animation-delay:.4s"/>
-          <path d="M316 250 Q345 270 378 250" fill="none" stroke="#ff9df2" stroke-width="4" stroke-linecap="round"/>
-          <path d="M322 252 L332 240 L342 254 L352 240 L362 254 L372 240" fill="none" stroke="#f4d7ff" stroke-width="2"/>
-          <path d="M270 190 Q210 170 190 220 Q230 214 258 238" fill="none" stroke="#c56bff" stroke-width="3"/>
-          <path d="M400 190 Q460 170 482 220 Q440 214 410 238" fill="none" stroke="#c56bff" stroke-width="3"/>
-        </g>
-        <g fill="#e5a8ff" font-family="Georgia,serif" class="hp-pulse">
-          <text x="110" y="120" font-size="34">∞</text>
-          <text x="420" y="100" font-size="26">Σ</text>
-          <text x="445" y="300" font-size="38">?</text>
-          <text x="100" y="290" font-size="24">√-1</text>
-        </g>
-        <g fill="#d9a0ff">
-          <circle class="hp-spark" cx="170" cy="180" r="2.5" style="animation-delay:.2s"/>
-          <circle class="hp-spark" cx="450" cy="190" r="3" style="animation-delay:.8s"/>
-          <circle class="hp-spark" cx="390" cy="315" r="2" style="animation-delay:1.3s"/>
-        </g>
-      </svg>`;
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 360">
+  <defs>
+    <radialGradient id="mbg" cx="66%" cy="42%" r="60%">
+      <stop offset="0" stop-color="#6d1f9b" stop-opacity=".55"/>
+      <stop offset=".55" stop-color="#2b0a45" stop-opacity=".25"/>
+      <stop offset="1" stop-color="#08030f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mhair" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#3a0d57"/><stop offset=".55" stop-color="#16051f"/><stop offset="1" stop-color="#050108"/>
+    </linearGradient>
+    <linearGradient id="mface" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#2a0a3f"/><stop offset=".6" stop-color="#12041b"/><stop offset="1" stop-color="#050108"/>
+    </linearGradient>
+    <linearGradient id="mcoat" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#1d0730"/><stop offset="1" stop-color="#050108"/>
+    </linearGradient>
+    <linearGradient id="mrim" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#d35cff" stop-opacity="0"/><stop offset=".6" stop-color="#d35cff" stop-opacity=".85"/><stop offset="1" stop-color="#ff8ee8" stop-opacity=".2"/>
+    </linearGradient>
+    <filter id="mglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="520" height="360" fill="url(#mbg)"/>
+  <g fill="none" stroke="#b14cff" opacity=".22">
+    <circle cx="364" cy="170" r="145" stroke-dasharray="2 14"/>
+    <circle cx="364" cy="170" r="122" stroke-dasharray="1 20"/>
+    <path d="M140 300 Q300 80 500 220" stroke-dasharray="3 12"/>
+    <path d="M180 70 Q360 130 470 50" stroke-dasharray="1 18"/>
+  </g>
+  <g class="hp-float">
+    <path d="M230 360 L268 252 Q282 222 315 214 L408 214 Q448 224 464 264 L502 360 Z" fill="url(#mcoat)" stroke="#a63bdb" stroke-width="1.4"/>
+    <path d="M300 360 L320 260 L360 245 L405 265 L420 360 Z" fill="#0a0210" stroke="#8f36c4" stroke-width="1"/>
+    <path d="M304 228 L318 196 L350 190 L382 202 L392 232 L370 248 L330 248 Z" fill="url(#mface)" stroke="#c36cff" stroke-width="1"/>
+    <path d="M296 118 Q328 70 354 92 L366 60 L378 104 L404 70 L404 112 L440 92 L424 136 L458 140 L420 166 L446 184 L404 194 L414 218 L382 208 L374 240 L348 214 L330 244 L314 208 L286 222 L296 190 L266 190 L292 166 L264 142 L302 142 L278 112 Z" fill="url(#mhair)" stroke="#b24cff" stroke-width="1.5" filter="url(#mglow)"/>
+    <path d="M300 146 Q326 128 352 138 Q382 148 390 176 Q398 210 374 232 Q350 254 322 238 Q296 222 294 194 Q292 168 300 146 Z" fill="url(#mface)" stroke="#d17bff" stroke-width="1"/>
+    <path d="M300 176 L330 170 L326 188 L302 192 Z" fill="#ff7be7" filter="url(#mglow)"/>
+    <path d="M356 170 L386 176 L382 192 L358 188 Z" fill="#ff7be7" filter="url(#mglow)"/>
+    <circle cx="316" cy="180" r="3" fill="#fff"/><circle cx="370" cy="180" r="3" fill="#fff"/>
+    <path d="M310 206 Q338 198 368 208 Q362 228 338 234 Q318 232 310 206 Z" fill="#17031f" stroke="#e58cff" stroke-width="1.2"/>
+    <path d="M314 208 L324 210 L320 220 L312 216 Z M330 210 L340 210 L336 221 L328 218 Z M346 210 L356 211 L352 222 L344 219 Z M360 209 L368 212 L362 222 L356 219 Z" fill="#f4d8ff"/>
+    <path d="M306 190 Q318 214 342 220" stroke="#ff9cf0" stroke-width="1" fill="none" opacity=".5"/>
+    <path d="M282 220 Q250 232 240 270 Q236 300 254 314 L276 292 Q260 278 270 254 L292 240 Z" fill="#150522" stroke="#b24cff" stroke-width="1.2"/>
+    <path d="M250 286 Q242 274 248 264 M262 300 Q252 288 258 276 M236 296 Q226 284 232 272" stroke="#d68bff" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M270 236 Q240 246 224 276" stroke="#9c4cd0" stroke-width="1" fill="none" opacity=".7"/>
+    <path d="M400 228 Q438 246 454 288" stroke="#9c4cd0" stroke-width="1" fill="none" opacity=".6"/>
+  </g>
+  <g fill="#e6b5ff" font-family="Georgia,serif" opacity=".8">
+    <text x="96" y="92" font-size="30">∞</text>
+    <text x="430" y="70" font-size="22">Σ</text>
+    <text x="444" y="316" font-size="34">?</text>
+    <text x="78" y="300" font-size="18">√-1</text>
+  </g>
+  <path d="M296 92 Q350 54 410 84" fill="none" stroke="#ff8ce8" stroke-width="2" opacity=".45" stroke-dasharray="18 10"/>
+</svg>
+      `;
     if(key === 'einstein') return `
-      <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
-        <defs>
-          <radialGradient id="egGlow"><stop stop-color="#ffbb66" stop-opacity=".45"/><stop offset="1" stop-color="#ffbb66" stop-opacity="0"/></radialGradient>
-          <linearGradient id="egHair" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff7e7"/><stop offset="1" stop-color="#b8b4c9"/></linearGradient>
-        </defs>
-        <circle cx="340" cy="165" r="155" fill="url(#egGlow)"/>
-        <g class="hp-spin-slow" fill="none" stroke="#ffd18a" opacity=".28">
-          <ellipse cx="335" cy="180" rx="170" ry="58" stroke-dasharray="4 12" transform="rotate(-18 335 180)"/>
-          <ellipse cx="335" cy="180" rx="120" ry="42" stroke-dasharray="1 14" transform="rotate(22 335 180)"/>
-        </g>
-        <g class="hp-float">
-          <circle cx="330" cy="178" r="72" fill="#f2c9a4" stroke="#6e4121" stroke-width="2"/>
-          <path d="M265 150 Q242 92 288 104 Q282 64 318 92 Q330 48 356 88 Q390 58 398 106 Q440 98 414 150 Q406 122 382 132 Q370 98 346 122 Q330 92 312 124 Q292 100 282 132 Q262 118 265 150 Z" fill="url(#egHair)" stroke="#e6e0ef" stroke-width="2"/>
-          <path d="M278 175 Q305 165 322 176" fill="none" stroke="#5b3520" stroke-width="4" stroke-linecap="round"/>
-          <path d="M340 176 Q365 165 388 178" fill="none" stroke="#5b3520" stroke-width="4" stroke-linecap="round"/>
-          <circle cx="303" cy="181" r="5" fill="#1a0d06"/>
-          <circle cx="365" cy="181" r="5" fill="#1a0d06"/>
-          <path d="M290 205 Q330 198 374 208 Q370 218 330 216 Q300 218 290 205 Z" fill="#e8e4ef" stroke="#958eaa" stroke-width="1.5"/>
-          <path d="M300 224 Q330 218 362 224" fill="none" stroke="#8a4a3b" stroke-width="3" stroke-linecap="round"/>
-          <path class="hp-tongue" d="M322 229 Q338 228 344 246 Q338 260 326 248 Q318 240 322 229 Z" fill="#ff7180" stroke="#b23d50" stroke-width="1.5"/>
-        </g>
-        <g fill="#ffe2ad" font-family="Georgia,serif" opacity=".9">
-          <text x="90" y="110" font-size="26">E=mc²</text>
-          <text x="430" y="130" font-size="22">∂</text>
-          <text x="70" y="295" font-size="20">Gμν</text>
-          <text x="430" y="300" font-size="26">π</text>
-        </g>
-        <g fill="#ffd79a">
-          <circle class="hp-spark" cx="180" cy="230" r="2.5" style="animation-delay:.4s"/>
-          <circle class="hp-spark" cx="470" cy="220" r="3" style="animation-delay:1s"/>
-          <circle class="hp-spark" cx="390" cy="80" r="2" style="animation-delay:1.5s"/>
-        </g>
-      </svg>`;
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 360">
+  <defs>
+    <radialGradient id="ebg" cx="67%" cy="42%" r="60%">
+      <stop offset="0" stop-color="#ffc879" stop-opacity=".42"/>
+      <stop offset=".55" stop-color="#7b4a17" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#0b0502" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="eskin" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffe0bd"/><stop offset=".5" stop-color="#e9b98e"/><stop offset="1" stop-color="#a96f42"/>
+    </linearGradient>
+    <linearGradient id="ehair" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#fffdf4"/><stop offset=".65" stop-color="#d7d2cd"/><stop offset="1" stop-color="#8b8588"/>
+    </linearGradient>
+    <linearGradient id="eshirt" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#283349"/><stop offset="1" stop-color="#0b1020"/>
+    </linearGradient>
+    <linearGradient id="echalk" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffe6b0"/><stop offset="1" stop-color="#d7943a"/>
+    </linearGradient>
+    <filter id="eglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="520" height="360" fill="url(#ebg)"/>
+  <g fill="none" stroke="#ffcf85" opacity=".22">
+    <ellipse cx="346" cy="178" rx="174" ry="62" transform="rotate(-17 346 178)" stroke-dasharray="3 12"/>
+    <ellipse cx="346" cy="178" rx="124" ry="44" transform="rotate(23 346 178)" stroke-dasharray="1 16"/>
+    <path d="M120 310 Q300 90 500 260" stroke-dasharray="2 12"/>
+  </g>
+  <g class="hp-float">
+    <path d="M220 360 L252 280 Q268 246 306 238 L398 238 Q436 250 456 292 L486 360 Z" fill="url(#eshirt)" stroke="#d8a25c" stroke-width="1.2"/>
+    <path d="M318 252 L322 214 L380 210 L392 246 L366 270 L334 270 Z" fill="#b97c4d" stroke="#6e4025" stroke-width="1"/>
+    <path d="M274 132 Q286 86 334 70 Q386 54 420 92 Q452 126 442 184 Q432 238 390 262 Q348 282 310 256 Q274 228 270 186 Q268 156 274 132 Z" fill="url(#eskin)" stroke="#8c5532" stroke-width="1.2"/>
+    <path d="M270 136 Q238 84 286 96 Q280 52 322 78 Q330 28 360 72 Q386 34 402 84 Q446 60 434 116 Q470 110 444 154 Q464 180 430 190 Q438 230 408 226 Q410 266 380 244 Q366 280 342 250 Q322 278 306 244 Q280 258 282 220 Q248 216 264 190 Q236 170 264 154 Z" fill="url(#ehair)" stroke="#fffaf0" stroke-width="1.3"/>
+    <path d="M290 170 Q314 160 334 172" fill="none" stroke="#5c3522" stroke-width="4" stroke-linecap="round"/>
+    <path d="M352 172 Q376 160 400 174" fill="none" stroke="#5c3522" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="316" cy="185" rx="12" ry="9" fill="#fff8ee"/>
+    <ellipse cx="378" cy="185" rx="12" ry="9" fill="#fff8ee"/>
+    <circle cx="318" cy="187" r="4.4" fill="#2a160c"/><circle cx="376" cy="187" r="4.4" fill="#2a160c"/>
+    <circle cx="316" cy="184" r="1.5" fill="#fff"/><circle cx="374" cy="184" r="1.5" fill="#fff"/>
+    <path d="M338 194 Q344 214 332 220" fill="none" stroke="#b47a51" stroke-width="2"/>
+    <path d="M292 212 Q316 202 348 208 Q380 202 404 214 Q398 226 348 222 Q310 226 292 212 Z" fill="#e9e4dc" stroke="#8e8a86" stroke-width="1.2"/>
+    <path d="M310 226 Q344 220 382 228" stroke="#7b4434" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path class="hp-tongue" d="M334 232 Q348 228 356 244 Q358 264 342 270 Q326 266 326 248 Q326 238 334 232 Z" fill="#ff7180" stroke="#a82d46" stroke-width="1.3"/>
+    <path d="M310 246 Q330 260 354 252" stroke="#8d5136" stroke-width="2" fill="none" opacity=".5"/>
+    <path d="M278 152 Q286 178 300 194" stroke="#fff4e0" stroke-width="2" fill="none" opacity=".35"/>
+    <path d="M416 154 Q416 186 402 208" stroke="#fff4e0" stroke-width="2" fill="none" opacity=".25"/>
+    <path d="M250 300 Q268 278 280 304 M438 300 Q420 278 410 308" stroke="#c79558" stroke-width="1.4" fill="none" opacity=".5"/>
+  </g>
+  <g fill="#ffe1a2" font-family="Georgia,serif" opacity=".82">
+    <text x="76" y="86" font-size="24">E=mc²</text>
+    <text x="420" y="80" font-size="20">∂</text>
+    <text x="66" y="300" font-size="17">Gμν = 8πTμν</text>
+    <text x="430" y="310" font-size="24">π</text>
+    <text x="108" y="184" font-size="13">λ</text>
+    <text x="404" y="210" font-size="12">iℏ∂ψ</text>
+  </g>
+  <g fill="#ffd08a" opacity=".8">
+    <circle cx="160" cy="240" r="2" class="hp-spark"/>
+    <circle cx="448" cy="246" r="2.3" class="hp-spark"/>
+    <circle cx="378" cy="46" r="2" class="hp-spark"/>
+    <circle cx="234" cy="110" r="1.8" class="hp-spark"/>
+  </g>
+</svg>
+      `;
     if(key === 'jerry') return `
-      <svg viewBox="0 0 520 360" class="hp-svg" aria-hidden="true">
-        <defs>
-          <radialGradient id="jgGlow"><stop stop-color="#ffae4d" stop-opacity=".45"/><stop offset="1" stop-color="#ffae4d" stop-opacity="0"/></radialGradient>
-          <linearGradient id="jgFur" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#c77a35"/><stop offset="1" stop-color="#7a3f16"/></linearGradient>
-          <linearGradient id="jgCheese" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe28a"/><stop offset="1" stop-color="#e2a324"/></linearGradient>
-        </defs>
-        <circle cx="345" cy="180" r="150" fill="url(#jgGlow)"/>
-        <g class="hp-spin-slow" fill="none" stroke="#ffc46b" opacity=".28">
-          <circle cx="330" cy="190" r="140" stroke-dasharray="3 16"/>
-          <path d="M110 260 Q240 150 470 230" stroke-dasharray="2 12"/>
-        </g>
-        <g class="hp-float">
-          <circle cx="252" cy="122" r="48" fill="url(#jgFur)" stroke="#3b1a08" stroke-width="3"/>
-          <circle cx="408" cy="122" r="48" fill="url(#jgFur)" stroke="#3b1a08" stroke-width="3"/>
-          <circle cx="252" cy="122" r="26" fill="#e7a275"/>
-          <circle cx="408" cy="122" r="26" fill="#e7a275"/>
-          <path d="M265 148 Q330 100 395 150 Q410 214 372 262 Q330 296 288 262 Q248 218 265 148 Z" fill="url(#jgFur)" stroke="#3b1a08" stroke-width="3"/>
-          <path d="M290 220 Q330 196 372 220 Q368 266 330 280 Q292 266 290 220 Z" fill="#f4d6ad"/>
-          <path d="M300 185 Q316 172 332 186" fill="none" stroke="#3b1a08" stroke-width="3" stroke-linecap="round"/>
-          <path d="M350 186 Q366 172 382 186" fill="none" stroke="#3b1a08" stroke-width="3" stroke-linecap="round"/>
-          <circle cx="316" cy="190" r="6" fill="#1b0c05"/>
-          <circle cx="366" cy="190" r="6" fill="#1b0c05"/>
-          <circle cx="341" cy="218" r="8" fill="#251108"/>
-          <path d="M316 238 Q340 252 364 238" fill="none" stroke="#5a2410" stroke-width="3" stroke-linecap="round"/>
-          <path d="M292 230 L232 218 M292 242 L228 246 M388 230 L448 216 M388 242 L452 248" stroke="#5a2410" stroke-width="2" stroke-linecap="round"/>
-          <path d="M395 262 Q450 300 410 330 Q380 344 364 322" fill="none" stroke="#a85a24" stroke-width="8" stroke-linecap="round"/>
-          <g transform="translate(402 238) rotate(-12)">
-            <path d="M0 0 L58 0 L76 38 L18 38 Z" fill="url(#jgCheese)" stroke="#8a5a0c" stroke-width="3"/>
-            <circle cx="20" cy="16" r="5" fill="#c58a1a"/><circle cx="42" cy="25" r="4" fill="#c58a1a"/><circle cx="56" cy="9" r="3.5" fill="#c58a1a"/>
-          </g>
-        </g>
-        <g fill="#ffd89a">
-          <circle class="hp-spark" cx="170" cy="160" r="2.5" style="animation-delay:.3s"/>
-          <circle class="hp-spark" cx="450" cy="270" r="3" style="animation-delay:1.1s"/>
-          <circle class="hp-spark" cx="390" cy="70" r="2" style="animation-delay:1.6s"/>
-        </g>
-      </svg>`;
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 360">
+  <defs>
+    <radialGradient id="jbg" cx="66%" cy="42%" r="60%">
+      <stop offset="0" stop-color="#ffb052" stop-opacity=".38"/>
+      <stop offset=".55" stop-color="#7b3c0c" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#0c0502" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="jfur" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#e6a15d"/><stop offset=".45" stop-color="#b76b2c"/><stop offset="1" stop-color="#6b3410"/>
+    </linearGradient>
+    <linearGradient id="jear" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#f4bd84"/><stop offset=".55" stop-color="#c57a3d"/><stop offset="1" stop-color="#7b3b14"/>
+    </linearGradient>
+    <linearGradient id="jmuzzle" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#ffe9c9"/><stop offset="1" stop-color="#e9b983"/>
+    </linearGradient>
+    <linearGradient id="jcheese" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff0a8"/><stop offset=".5" stop-color="#ffd35d"/><stop offset="1" stop-color="#d58b16"/>
+    </linearGradient>
+    <filter id="jglow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="520" height="360" fill="url(#jbg)"/>
+  <g fill="none" stroke="#ffc46b" opacity=".22">
+    <circle cx="350" cy="180" r="146" stroke-dasharray="3 14"/>
+    <circle cx="350" cy="180" r="112" stroke-dasharray="1 18"/>
+    <path d="M130 300 Q300 100 498 250" stroke-dasharray="2 12"/>
+  </g>
+  <g class="hp-float">
+    <path d="M218 360 L250 286 Q266 252 306 242 L400 242 Q440 252 460 294 L492 360 Z" fill="#2a170c" stroke="#b8752f" stroke-width="1.3"/>
+    <circle cx="278" cy="118" r="58" fill="url(#jear)" stroke="#4e2410" stroke-width="2.4"/>
+    <circle cx="414" cy="112" r="58" fill="url(#jear)" stroke="#4e2410" stroke-width="2.4"/>
+    <circle cx="278" cy="118" r="33" fill="#e9b284" opacity=".7"/>
+    <circle cx="414" cy="112" r="33" fill="#e9b284" opacity=".7"/>
+    <path d="M294 152 Q318 112 356 108 Q398 104 424 142 Q454 184 432 230 Q410 278 366 292 Q320 304 294 266 Q268 224 274 186 Q278 166 294 152 Z" fill="url(#jfur)" stroke="#4e2410" stroke-width="2.2"/>
+    <path d="M308 220 Q332 196 366 196 Q404 196 424 224 Q418 278 372 292 Q324 294 308 246 Z" fill="url(#jmuzzle)" stroke="#a96c38" stroke-width="1.2"/>
+    <path d="M250 300 Q270 284 284 306 M438 300 Q420 284 408 306" stroke="#d18b43" stroke-width="2" fill="none" opacity=".6"/>
+    <path d="M306 176 Q326 162 346 178" fill="none" stroke="#3a1a09" stroke-width="4" stroke-linecap="round"/>
+    <path d="M374 176 Q394 162 414 178" fill="none" stroke="#3a1a09" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="334" cy="184" rx="14" ry="12" fill="#fff7e4"/><ellipse cx="390" cy="184" rx="14" ry="12" fill="#fff7e4"/>
+    <circle cx="336" cy="186" r="5" fill="#2a1408"/><circle cx="388" cy="186" r="5" fill="#2a1408"/>
+    <circle cx="334" cy="183" r="1.8" fill="#fff"/><circle cx="386" cy="183" r="1.8" fill="#fff"/>
+    <path d="M360 198 Q372 208 366 224 Q356 232 346 224 Q340 210 348 198 Z" fill="#2a1408"/>
+    <path d="M324 240 Q350 226 380 240" fill="none" stroke="#6b3414" stroke-width="3" stroke-linecap="round"/>
+    <path d="M330 246 Q350 258 374 246" fill="none" stroke="#7b3b16" stroke-width="2" opacity=".7"/>
+    <path d="M312 222 L240 208 M310 236 L240 240 M400 222 L466 204 M400 236 L470 240" stroke="#5f3217" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+    <path d="M414 260 Q468 300 430 334 Q402 352 382 322" fill="none" stroke="#a85a24" stroke-width="9" stroke-linecap="round"/>
+    <path d="M414 260 Q468 300 430 334 Q402 352 382 322" fill="none" stroke="#e0a25a" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+    <g transform="translate(410 232) rotate(-13)">
+      <path d="M0 0 L70 0 L91 42 L20 42 Z" fill="url(#jcheese)" stroke="#8a5a0c" stroke-width="2.5"/>
+      <circle cx="24" cy="18" r="6" fill="#c58a1a"/><circle cx="50" cy="28" r="4.5" fill="#c58a1a"/><circle cx="68" cy="10" r="4" fill="#c58a1a"/>
+    </g>
+    <path d="M280 160 Q270 132 286 112" stroke="#f4c58a" stroke-width="1.4" fill="none" opacity=".5"/>
+    <path d="M410 150 Q428 126 416 100" stroke="#f4c58a" stroke-width="1.4" fill="none" opacity=".4"/>
+  </g>
+  <g fill="#ffd88b">
+    <circle cx="174" cy="206" r="2" class="hp-spark"/>
+    <circle cx="456" cy="170" r="2.4" class="hp-spark"/>
+    <circle cx="382" cy="54" r="1.8" class="hp-spark"/>
+    <circle cx="236" cy="112" r="1.8" class="hp-spark"/>
+  </g>
+</svg>
+      `;
     return '';
   }
 
@@ -3380,6 +3595,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       const ok = await window.QAuth.checkAdminPolicy();
       if(!ok) return;
     }
+    seedAdminHiddenSamples();
+    renderAdminSampleGrid();
     const cfg = getCfg();
     let cloud = null;
     try {
@@ -3634,6 +3851,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(info.isLoggedIn) syncCrossDevice();
       if(info.isLoggedIn && info.user && info.user.role === 'admin'){
         ensureCloudAIConfig();
+        seedAdminHiddenSamples();
         syncAdminHistoryToServer();
       }
       if(info.isLoggedIn){ updateRestoreBanner(); }
@@ -3659,6 +3877,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   refreshAdminUI();
   loadServerAIConfig();
   ensureCloudAIConfig();
+  seedAdminHiddenSamples();
   setInterval(loadServerAIConfig, 60 * 1000);
   applyHomepageTheme();
   window.addEventListener('load', applyHomepageTheme);

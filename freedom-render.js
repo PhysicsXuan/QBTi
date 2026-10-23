@@ -453,9 +453,9 @@
     ctx.restore();
 
     /* mecha is fitted so the full body stays visible */
-    const mechaScale = Math.min(cssW / VW, cssH / VH) * 0.94;
+    const mechaScale = Math.min(cssW / VW, cssH / VH) * 1.22;
     ctx.save();
-    ctx.translate(cssW * 0.57, cssH * 0.50);
+    ctx.translate(cssW * 0.57, cssH * 0.45);
     ctx.scale(mechaScale, mechaScale);
     ctx.translate(-VW / 2, -VH / 2);
     drawMecha(t);
