@@ -191,6 +191,28 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .dsc-seg-letter{font-size:calc(14px * var(--q-fs));font-weight:800}
 .dsc-seg-pct{font-size:calc(12.5px * var(--q-fs));font-weight:700}
 .dsc-seg.small .dsc-seg-pct{display:none}
+.quantum-log{margin-top:16px;border-radius:13px;border:1px solid rgba(120,150,255,.15);background:radial-gradient(circle at 20% 0%,rgba(80,110,255,.10),transparent 55%),linear-gradient(135deg,rgba(8,12,30,.72),rgba(12,8,24,.78));overflow:hidden;transition:border-color .25s,box-shadow .25s}
+.quantum-log.open{border-color:rgba(130,190,255,.34);box-shadow:0 0 30px rgba(60,120,255,.07)}
+.quantum-log-toggle{width:100%;display:flex;align-items:center;gap:9px;padding:11px 13px;border:0;background:transparent;color:#AFC3E8;font:inherit;font-size:calc(11.5px * var(--q-fs));text-align:left;cursor:pointer;letter-spacing:.03em}
+.quantum-log-toggle:hover{color:#E7F4FF;background:rgba(90,140,255,.06)}
+.ql-glyph{width:18px;height:18px;border-radius:50%;border:1px solid rgba(130,205,255,.35);display:grid;place-items:center;color:#7FE7FF;font-size:10px;flex-shrink:0;box-shadow:0 0 14px rgba(90,210,255,.18)}
+.ql-chevron{margin-left:auto;color:#7185AC;font-size:14px;transition:.25s}
+.quantum-log.open .ql-chevron{transform:rotate(45deg);color:#BFE8FF}
+.quantum-log-body{max-height:0;opacity:0;overflow:hidden;transition:max-height .5s ease,opacity .35s ease;padding:0 14px}
+.quantum-log.open .quantum-log-body{max-height:900px;opacity:1;padding:0 14px 14px}
+.ql-loading{display:flex;align-items:center;gap:8px;padding:6px 0 10px;color:#8FA6CB;font-size:calc(11.5px * var(--q-fs));letter-spacing:.03em}
+.ql-loading .spinner{width:12px;height:12px;margin:0}
+.ql-line{position:relative;padding:10px 0 10px 18px;border-top:1px solid rgba(255,255,255,.06);font-size:calc(13px * var(--q-fs));line-height:1.9;color:#C9D6EE}
+.ql-line:first-child{border-top:0}
+.ql-line::before{content:'▶';position:absolute;left:0;top:12px;font-size:8px;color:#6FDBFF;opacity:.8}
+.ql-tag{display:inline-block;margin-right:8px;color:#8BE7FF;font-size:calc(10px * var(--q-fs));letter-spacing:.05em;font-weight:700;white-space:nowrap}
+.ql-text{color:#C9D6EE}
+.ql-cursor{display:inline-block;width:5px;height:1em;margin-left:2px;vertical-align:-2px;background:#8BE7FF;animation:qlBlink .8s step-end infinite}
+.ql-error{padding:8px 0 12px;color:#FF9BB5;font-size:calc(12px * var(--q-fs));line-height:1.7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.ql-retry{padding:6px 10px;border-radius:8px;border:1px solid rgba(150,190,255,.3);background:rgba(90,140,255,.10);color:#C8E5FF;font:inherit;font-size:calc(10.5px * var(--q-fs));cursor:pointer}
+@keyframes qlBlink{50%{opacity:0}}
+@media(max-width:600px){.quantum-log-body,.quantum-log.open .quantum-log-body{padding-left:10px;padding-right:10px}.ql-line{font-size:calc(12.5px * var(--q-fs))}}
+
 .dsc-seg.tiny .dsc-seg-letter,.dsc-seg.tiny .dsc-seg-pct{display:none}
 .dsc-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px}
 .dsc-leg{display:inline-flex;align-items:center;gap:6px;font-size:calc(12px * var(--q-fs));color:var(--muted)}
@@ -819,6 +841,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     aiRequestId: 0, resultTs: null, restoredTs: null,
     hiddenUnlockKeys: [], hiddenQuiz: null, hiddenResult: null
   };
+  const quantumLogCache = new Map();
   function escapeHTML(value){
     return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -1530,6 +1553,128 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     renderQuantumStateBadge(qs, ds);
     return true;
   }
+  function quantumLogUI(){
+    const pack = statusPack();
+    return (pack && pack.ui && pack.ui.log) || {
+      title: '点击展开：当前维度的物理观测日志',
+      loading: '观测站正在读取这一维度的能级、势垒和行为…',
+      error: '观测站信号暂时中断',
+      retry: '重新连接',
+      tags: ['能级观测', '势垒描述', '量子行为', '跃迁引导']
+    };
+  }
+
+  function attachQuantumLogs(){
+    const host = $('dimStacks');
+    if(!host) return;
+    host.querySelectorAll('.quantum-log-toggle').forEach(btn => {
+      if(btn._qlBound) return;
+      btn._qlBound = true;
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const log = btn.closest('.quantum-log');
+        if(log) toggleQuantumLog(log);
+      });
+    });
+  }
+
+  function toggleQuantumLog(log){
+    const open = log.classList.toggle('open');
+    log.querySelector('.ql-chevron').textContent = open ? '＋' : '＋';
+    if(open && !log.dataset.loaded) loadQuantumLog(log);
+  }
+
+  async function loadQuantumLog(log){
+    if(!log || log.dataset.loading === '1') return;
+    const dim = log.dataset.dim;
+    if(!dim) return;
+    log.dataset.loading = '1';
+    const ui = quantumLogUI();
+    const body = log.querySelector('.quantum-log-body');
+    const ctx = getQuantumDimensionContext(dim);
+    const fp = (Q.answerFingerprint && state.answers) ? Q.answerFingerprint(state.answers) : '';
+    const lang = currentLang();
+    const cacheKey = fp + '|' + dim + '|' + (ctx.type || 'superposition') + '|' + lang;
+    if(quantumLogCache.has(cacheKey)){
+      log.dataset.loaded = '1';
+      log.dataset.loading = '';
+      renderQuantumLog(log, quantumLogCache.get(cacheKey));
+      return;
+    }
+    if(body) body.innerHTML = '<div class="ql-loading"><span class="spinner"></span>' + escapeHTML(ui.loading) + '</div>';
+    try {
+      const res = await fetch('/api/quantum/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dimension: dim,
+          type: ctx.type || 'superposition',
+          scores: ctx.scores,
+          ratios: ctx.ratios,
+          lead: ctx.lead,
+          gap: ctx.gap,
+          lang: lang
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || !data.success || !data.log) throw new Error((data && data.code) || 'QLOG_FAILED');
+      quantumLogCache.set(cacheKey, data.log);
+      if(quantumLogCache.size > 240){
+        const first = quantumLogCache.keys().next().value;
+        if(first) quantumLogCache.delete(first);
+      }
+      log.dataset.loaded = '1';
+      log.dataset.loading = '';
+      renderQuantumLog(log, data.log);
+    } catch(err){
+      log.dataset.loading = '';
+      if(body){
+        body.innerHTML = '<div class="ql-error"><span>' + escapeHTML(ui.error) + '</span><button type="button" class="ql-retry">' + escapeHTML(ui.retry) + '</button></div>';
+        const retry = body.querySelector('.ql-retry');
+        if(retry) retry.addEventListener('click', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          loadQuantumLog(log);
+        });
+      }
+    }
+  }
+
+  function renderQuantumLog(log, data){
+    const ui = quantumLogUI();
+    const body = log.querySelector('.quantum-log-body');
+    if(!body) return;
+    const keys = ['energy', 'barrier', 'behavior', 'leap'];
+    const token = (log._qlToken || 0) + 1;
+    log._qlToken = token;
+    body.innerHTML = '';
+    keys.forEach((key, i) => {
+      const row = document.createElement('div');
+      row.className = 'ql-line';
+      const tag = document.createElement('span');
+      tag.className = 'ql-tag';
+      tag.textContent = '[' + (ui.tags[i] || key) + ']';
+      const text = document.createElement('span');
+      text.className = 'ql-text';
+      const cursor = document.createElement('span');
+      cursor.className = 'ql-cursor';
+      row.appendChild(tag);
+      row.appendChild(text);
+      row.appendChild(cursor);
+      body.appendChild(row);
+      const full = String(data[key] || '').trim();
+      if(!full){ text.textContent = '—'; cursor.remove(); return; }
+      let n = 0;
+      const timer = setInterval(() => {
+        if(!log.isConnected || log._qlToken !== token){ clearInterval(timer); return; }
+        n = Math.min(full.length, n + 2);
+        text.textContent = full.slice(0, n);
+        if(n >= full.length){ clearInterval(timer); cursor.remove(); }
+      }, 10 + i * 2);
+    });
+  }
+
   function renderHistory(){
     const section = $('historySection'), listEl = $('historyList');
     if(!section || !listEl) return;
@@ -2305,8 +2450,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         const isLead = l === info.lead;
         return '<span class="dsc-leg ' + (isLead?'lead':'') + '"><span class="dsc-dot" style="background:' + colors[l] + '"></span><span class="dsc-leg-name">' + l + ' ' + subName + '</span></span>';
       }).join('');
-      return '<div class="dim-stack-card"><div class="dsc-head"><div><div class="dsc-title">' + dimName + '</div><div class="dsc-en">' + d.en + '</div></div><div class="dsc-lead"><span class="dsc-lead-letter" style="background:' + colors[info.lead] + ';">' + info.lead + '</span><span class="dsc-gap ' + stab.cls + '">' + info.gap + '% · ' + stab.text + '</span></div></div><div class="dsc-bar">' + segments + '</div><div class="dsc-legend">' + legend + '</div></div>';
+      const logCtx = getQuantumDimensionContext(d.id);
+      const logPack = statusPack();
+      const logUI = (logPack && logPack.ui && logPack.ui.log) || { title: '点击展开：当前维度的物理观测日志', tags: ['能级观测','势垒描述','量子行为','跃迁引导'] };
+      const logMarkup = '<div class="quantum-log" data-dim="' + d.id + '" data-state="' + escapeHTML(logCtx.type) + '">'
+        + '<button type="button" class="quantum-log-toggle"><span class="ql-glyph">⌁</span><span>' + escapeHTML(logUI.title) + '</span><span class="ql-chevron">＋</span></button>'
+        + '<div class="quantum-log-body"></div></div>';
+      return '<div class="dim-stack-card"><div class="dsc-head"><div><div class="dsc-title">' + dimName + '</div><div class="dsc-en">' + d.en + '</div></div><div class="dsc-lead"><span class="dsc-lead-letter" style="background:' + colors[info.lead] + ';">' + info.lead + '</span><span class="dsc-gap ' + stab.cls + '">' + info.gap + '% · ' + stab.text + '</span></div></div><div class="dsc-bar">' + segments + '</div><div class="dsc-legend">' + legend + '</div>' + logMarkup + '</div>';
     }).join('');
+    attachQuantumLogs();
 
     const maxSuf = Math.max.apply(null, Q.SUFFIXES.map(sf => res.suffixRatio[sf.letter]));
     $('vectorGrid').innerHTML = Q.SUFFIXES.map(sf => {

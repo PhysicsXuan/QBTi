@@ -1868,7 +1868,189 @@ app.post('/api/ai/chat', async (req, res) => {
   }
 });
 
-// 4.9 跨设备同步：历史问卷// 4.9 跨设备同步：历史问卷
+// 4.8.6 维度物理观测日志（AI 个性化，展开时才生成）
+const quantumLogCache = new Map();
+const quantumLogHits = new Map();
+const QLOG_PHYSICS_ZH = {
+  PO: {
+    danger: '基态 / 量子反射 / 势垒：低能量不等于没有能量，新刺激需要吸收一份量子才能跃迁；反射是自我保护。',
+    good: '激发态 / 自发辐射 / 低势垒：对外界高敏，吸收光子后会把热情发散出去；高能级也容易耗散。',
+    superposition: '基态与激发态的叠加 / 干涉：门内和门外同时存在，尚未被观测锁定；不要提前坍缩。'
+  },
+  II: {
+    danger: '退相干 / 热力学死寂 / 隧穿：曾经共振的事情失去相位，行动缺少反馈；用最小能量穿过必须完成的任务。',
+    good: '超导态 / 量子纠缠 / 同频共振：找到目标后进入低电阻状态，和问题彼此牵连；注意能量燃烧。',
+    superposition: '纠缠与退相干的叠加 / 相位漂移：既想投入又想抽离，两种频率同时存在；先观察干涉。'
+  },
+  LA: {
+    danger: '观测者效应 / 静摩擦 / 薛定谔的任务：没有外部观测者时波函数弥散，启动需要很大能量；任务停在做了和没做之间。',
+    good: '内部观测者 / 势能 / 量子隧穿：能自己维持波函数稳定，把阻力转成势能，遇到硬墙会找低耗能路径。',
+    superposition: '自我观测与外部观测的叠加 / 概率云：自主和等待指令同时存在，观测方式决定它往哪边聚拢。'
+  },
+  UR: {
+    danger: '未观测恐惧 / 概率深渊 / 强制坍缩：害怕未知，提前把结果坍缩成最坏版本；确定性痛苦换取安全感。',
+    good: '绝对不确定性 / 量子韧性 / 能级跃迁：把风险当成碰撞实验，受撞后反而跳到更高能级；注意低熵休息。',
+    superposition: '概率云 / 未坍缩 / 多种结果并存：既想冲进去又想退一步，未知还没有被强行观测；保留模糊。'
+  }
+};
+const QLOG_PHYSICS_EN = {
+  PO: {
+    danger: 'ground state / quantum reflection / barrier: low energy is not no energy; a new stimulus needs one quantum to jump, and reflection protects the system.',
+    good: 'excited state / spontaneous emission / low barrier: high sensitivity, absorbs photons and radiates enthusiasm; high levels also dissipate.',
+    superposition: 'ground-excited superposition / interference: inside and outside the door coexist; do not collapse it early.'
+  },
+  II: {
+    danger: 'decoherence / thermodynamic stillness / tunneling: old resonance loses phase and action lacks feedback; minimum energy through required tasks.',
+    good: 'superconducting state / entanglement / resonance: a low-resistance sprint when a goal resonates; watch for burning out.',
+    superposition: 'entanglement-decoherence superposition / phase drift: wanting to invest and withdraw at once; observe the interference.'
+  },
+  LA: {
+    danger: 'observer effect / static friction / Schrödinger task: without an external observer the wavefunction spreads; starting costs energy; the task sits between done and not done.',
+    good: 'internal observer / potential energy / tunneling: sustains its own wavefunction, converts resistance into potential, finds low-energy paths.',
+    superposition: 'self-observation vs external observation / probability cloud: autonomy and waiting-for-instructions coexist; observation decides where it gathers.'
+  },
+  UR: {
+    danger: 'fear of the unobserved / probability abyss / forced collapse: collapses to the worst outcome early; certain pain buys safety.',
+    good: 'absolute uncertainty / quantum resilience / level jump: treats risk as a collision experiment; after impact it jumps higher; needs low-entropy rest.',
+    superposition: 'probability cloud / uncollapsed / many outcomes: wanting to enter and step back; keep the ambiguity alive.'
+  }
+};
+function qlogSafe(v, max){ return String(v == null ? '' : v).replace(/[\r\n]+/g, ' ').slice(0, max || 200); }
+function qlogPrompt(body, lang){
+  const dim = body.dimension;
+  const state = body.type;
+  const zh = String(lang).indexOf('zh') === 0;
+  const target = zh ? (lang === 'zh-TW' ? '繁體中文' : '简体中文') : (DIALOGUE_LANG_NAMES[lang] || 'English');
+  const lens = (zh ? QLOG_PHYSICS_ZH : QLOG_PHYSICS_EN)[dim][state];
+  const scores = body.scores && typeof body.scores === 'object' ? Object.keys(body.scores).slice(0, 6).map(k => k + '=' + (Number(body.scores[k]) || 0)).join(' / ') : '';
+  const lead = qlogSafe(body.lead, 8);
+  const gap = Number(body.gap) || 0;
+  const ratios = body.ratios && typeof body.ratios === 'object' ? Object.keys(body.ratios).slice(0, 6).map(k => k + '=' + (Number(body.ratios[k]) || 0) + '%').join(' / ') : '';
+  if(zh){
+    return [
+      '你是一座量子观测站的导航日志撰写者，不是心理测评报告。',
+      '输出语言：' + target + '。全部内容使用该语言；JSON 字段名保持英文；不要输出中文（简体中文/繁体中文目标除外）。',
+      '用户维度：' + dim + '；当前维度状态：' + state + '（danger=危险/未坍缩，superposition=叠加/未定，good=良好/方向清晰）。',
+      '用户数据：子维度分数 ' + (scores || '未知') + '；内部占比 ' + (ratios || '未知') + '；主导子维度 ' + (lead || '未知') + '；差值 ' + gap + '%。',
+      '物理透镜（可以使用，但必须根据用户数据重新组织，不能逐字照抄）：' + lens,
+      '状态规则：danger 要先帮助用户看见方向，不急着给答案；superposition 必须保留两种以上可能、写出干涉/相位/未坍缩，不要第一段就逼用户选边；good 要围绕最强子维度放大优势，并说明高能级的耗散风险。',
+      '写四段，且只写四段：',
+      'energy（能级观测）：描述当前能量状态（基态/激发态/超导态/退相干/叠加等），解释为什么现在是这个样子。',
+      'barrier（势垒描述）：点出当前真实阻力；不需要克服，先允许它存在。',
+      'behavior（量子行为）：描述这个状态下独特的生存策略（反射/隧穿/纠缠/自发辐射等），要具体到用户的数据。',
+      'leap（跃迁引导）：开放、非说教的温柔邀请；不是建议，不是命令，不替用户决定。',
+      '红线：不定义用户、不贴人格标签、不诊断、不评价好坏；不写“你应该/你必须/你需要/建议你”；不出现家长、老师、AI、模型、分数、报告；不写“突然”；不使用空洞鸡汤。',
+      '每段 2-4 句，像观测站日志，有物理意象，但让用户听得懂。',
+      '只输出合法 JSON，不要 markdown，不要代码块。结构：{"energy":"...","barrier":"...","behavior":"...","leap":"..."}'
+    ].join('\n');
+  }
+  return [
+    'You write navigation logs for a quantum observation station. This is not a psychological assessment report.',
+    'OUTPUT LANGUAGE: ' + target + '. Write every value in that language; keep JSON keys in English; do not write Chinese unless the target is Chinese.',
+    'Dimension: ' + dim + '; state: ' + state + ' (danger = not yet collapsed, superposition = undecided, good = clear direction).',
+    'User data: subdimension scores ' + (scores || 'unknown') + '; internal ratios ' + (ratios || 'unknown') + '; leading subdimension ' + (lead || 'unknown') + '; gap ' + gap + '%.',
+    'Physics lens (use it, but rewrite for this user; do not copy verbatim): ' + lens,
+    'State rules: danger should help the user see a direction without rushing an answer; superposition must keep two or more possibilities alive with interference/phase/uncollapsed language and must not force a choice in the first paragraph; good should amplify the strongest subdimension and name the dissipation risk of high energy.',
+    'Write exactly four sections:',
+    'energy: the current energy state (ground/excited/superconducting/decoherent/superposition) and why it is like this now.',
+    'barrier: the real current resistance; it does not need to be overcome, allow it to exist first.',
+    'behavior: this state’s distinctive survival strategy (reflection/tunneling/entanglement/spontaneous emission), grounded in the user data.',
+    'leap: an open, non-preachy, gentle invitation; not advice, not a command, not a decision for the user.',
+    'Rules: do not define, label, diagnose or judge; do not use "you should", "you must", "you need to", "I suggest"; do not mention parents, teachers, AI, models, scores or reports; no sudden events; no empty motivational talk.',
+    'Each section 2-4 sentences, like a station log: physical imagery that a user can understand.',
+    'Output valid JSON only, no markdown, no code fence. Schema: {"energy":"...","barrier":"...","behavior":"...","leap":"..."}'
+  ].join('\n');
+}
+function qlogParse(content){
+  let text = String(content || '').trim();
+  text = text.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
+  const start = text.indexOf('{'), end = text.lastIndexOf('}');
+  if(start >= 0 && end > start) text = text.slice(start, end + 1);
+  let obj;
+  try { obj = JSON.parse(text); } catch(e){ return null; }
+  const out = {};
+  ['energy', 'barrier', 'behavior', 'leap'].forEach(k => {
+    const v = obj && obj[k];
+    if(typeof v !== 'string' || v.trim().length < 8) throw new Error('invalid section');
+    out[k] = v.trim().slice(0, 900);
+  });
+  return out;
+}
+
+app.post('/api/quantum/log', async (req, res) => {
+  const body = req.body || {};
+  const dim = String(body.dimension || '').toUpperCase();
+  const dims = { PO: ['X','C','A'], II: ['P','M','I'], LA: ['I','D','E'], UR: ['T','H','R'] };
+  if(!dims[dim]) return res.status(400).json({ error: '维度不正确' });
+  const type = ['good','danger','superposition'].includes(body.type) ? body.type : 'superposition';
+  const lang = DIALOGUE_LANG_NAMES[body.lang] ? body.lang : 'zh-CN';
+  const safe = {
+    dimension: dim, type: type, lang: lang,
+    scores: {}, ratios: {}, lead: qlogSafe(body.lead, 8), gap: Math.max(0, Math.min(100, Number(body.gap) || 0))
+  };
+  dims[dim].forEach(k => {
+    safe.scores[k] = Math.max(0, Math.min(100, Number(body.scores && body.scores[k]) || 0));
+    if(body.ratios && body.ratios[k] != null) safe.ratios[k] = Math.max(0, Math.min(100, Number(body.ratios[k]) || 0));
+  });
+  const cacheKey = JSON.stringify(safe);
+  if(quantumLogCache.has(cacheKey)){
+    const hit = quantumLogCache.get(cacheKey);
+    return res.json({ success: true, source: 'cache', dimension: dim, state: type, log: hit });
+  }
+  const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || 'unknown').trim();
+  const now = Date.now();
+  const slot = quantumLogHits.get(ip);
+  if(slot && slot.resetAt > now){
+    if(slot.count >= 12) return res.status(429).json({ error: '观测请求过于频繁，请稍后再试', code: 'RATE_LIMIT' });
+    slot.count++;
+  } else {
+    quantumLogHits.set(ip, { count: 1, resetAt: now + 60 * 1000 });
+  }
+  const cfg = await readAIConfig();
+  if(!cfg || !cfg.enabled || !cfg.key) return res.status(503).json({ error: '观测站尚未接入 AI', code: 'NO_AI_CONFIG' });
+  const prompt = qlogPrompt(safe, lang);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
+  try {
+    const upstream = await fetch(cfg.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: cfg.model || 'deepseek-chat',
+        messages: [
+          { role: 'system', content: 'You are a quantum observation station log writer. Output strict JSON only. Never diagnose, label or command the user.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: Math.min(1.05, Math.max(.4, Number(cfg.temperature) || .85)),
+        max_tokens: Math.min(700, Number(cfg.maxTokens) || 700),
+        stream: false
+      })
+    });
+    if(!upstream.ok){
+      const txt = await upstream.text().catch(() => '');
+      console.warn('[量子日志] upstream', upstream.status, txt.slice(0, 120));
+      return res.status(502).json({ error: '观测站信号中断', code: 'AI_BAD_RESPONSE' });
+    }
+    const data = await upstream.json();
+    const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    const log = qlogParse(content);
+    if(!log) return res.status(502).json({ error: '观测站返回格式异常', code: 'AI_BAD_JSON' });
+    quantumLogCache.set(cacheKey, log);
+    if(quantumLogCache.size > 300){
+      const first = quantumLogCache.keys().next().value;
+      if(first) quantumLogCache.delete(first);
+    }
+    res.json({ success: true, source: 'ai', dimension: dim, state: type, log: log });
+  } catch (err){
+    console.warn('[量子日志] failed', err.message);
+    res.status(502).json({ error: '观测站信号中断', code: 'AI_LOG_FAILED' });
+  } finally {
+    clearTimeout(timer);
+  }
+});
+
+// 4.9 跨设备同步：历史问卷
 app.get('/api/student/history', requireSyncAuth, async (req, res) => {
   try {
     const r = await pool.query(
