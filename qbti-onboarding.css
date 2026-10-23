@@ -1,9 +1,11 @@
-.onboarding{position:fixed;inset:0;z-index:600;display:none;background:transparent;cursor:pointer;overflow:hidden}
+.onboarding{position:fixed;inset:0;z-index:600;display:none;background:transparent;cursor:default;overflow:hidden;pointer-events:none}
 .onboarding.show{display:block;animation:obFade .35s ease both}
 .onboarding.no-target{background:rgba(2,4,12,.82);backdrop-filter:blur(3px)}
+.onboarding.is-final{pointer-events:auto;background:rgba(2,4,12,.82);backdrop-filter:blur(3px)}
+.onboarding.is-final .ob-finger{display:none}
 .ob-hole{position:fixed;border-radius:18px;border:1px solid rgba(126,226,255,.85);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 28px rgba(80,220,255,.35),inset 0 0 22px rgba(80,220,255,.08);pointer-events:none;transition:left .28s ease,top .28s ease,width .28s ease,height .28s ease;animation:obHolePulse 2.4s ease-in-out infinite}
 .onboarding.no-target .ob-hole{display:none}
-.ob-card{position:fixed;width:min(390px,calc(100vw - 32px));padding:20px 20px 17px;border-radius:18px;border:1px solid rgba(140,190,255,.30);background:radial-gradient(circle at 20% 0%,rgba(92,130,255,.16),transparent 58%),linear-gradient(145deg,rgba(16,23,52,.97),rgba(6,8,22,.98));box-shadow:0 22px 60px rgba(0,0,0,.55),0 0 40px rgba(65,120,255,.10);cursor:default;animation:obCardIn .35s cubic-bezier(.2,.8,.2,1) both}
+.ob-card{position:fixed;z-index:4;pointer-events:none;width:min(390px,calc(100vw - 32px));padding:20px 20px 17px;border-radius:18px;border:1px solid rgba(140,190,255,.30);background:radial-gradient(circle at 20% 0%,rgba(92,130,255,.16),transparent 58%),linear-gradient(145deg,rgba(16,23,52,.97),rgba(6,8,22,.98));box-shadow:0 22px 60px rgba(0,0,0,.55),0 0 40px rgba(65,120,255,.10);cursor:default;animation:obCardIn .35s cubic-bezier(.2,.8,.2,1) both}
 .ob-kicker{font-size:10px;letter-spacing:.2em;color:#7FD8FF;text-transform:uppercase;text-shadow:0 0 12px rgba(80,210,255,.35)}
 .ob-step{position:absolute;right:18px;top:19px;font-size:10px;letter-spacing:.1em;color:#7183A8}
 .ob-card h3{margin:10px 0 0;font-size:clamp(19px,3.3vw,25px);line-height:1.3;font-weight:800;color:#fff;letter-spacing:.01em;padding-right:34px}
@@ -15,10 +17,16 @@
 .ob-actions{display:none;gap:8px;margin-top:17px}
 .onboarding.is-final .ob-actions{display:flex}
 .onboarding.is-final .ob-hint{display:none}
-.ob-actions button{flex:1;padding:10px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.045);color:#DCE7FF;font:inherit;font-size:12px;font-weight:650;cursor:pointer;transition:.2s}
+.ob-actions button{pointer-events:auto;flex:1;padding:10px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.045);color:#DCE7FF;font:inherit;font-size:12px;font-weight:650;cursor:pointer;transition:.2s}
 .ob-actions button:hover{background:rgba(90,140,255,.16);border-color:rgba(140,190,255,.42)}
 .ob-actions #obDisable{color:#A8B4D0}
 .ob-actions #obDone{background:linear-gradient(135deg,rgba(80,130,255,.9),rgba(130,95,255,.9));border-color:rgba(170,190,255,.35);color:#fff}
+.ob-finger{position:fixed;z-index:3;width:70px;height:70px;transform:translate(-50%,-50%);display:grid;place-items:center;pointer-events:none;filter:drop-shadow(0 0 16px rgba(80,225,255,.45))}
+.ob-finger-ring{position:absolute;width:58px;height:58px;border-radius:50%;border:1px solid rgba(155,245,255,.85);box-shadow:0 0 22px rgba(80,225,255,.45),inset 0 0 18px rgba(80,225,255,.10);animation:obFingerRing 2s ease-out infinite}
+.ob-finger-ring::after{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(155,245,255,.25);animation:obFingerRing 2s ease-out .7s infinite}
+.ob-finger-hand{position:relative;z-index:1;font-size:30px;line-height:1;color:#fff;text-shadow:0 0 12px rgba(80,225,255,.7);transform:translate(5px,3px) rotate(-8deg);animation:obFingerTap 1.8s ease-in-out infinite}
+@keyframes obFingerRing{0%{transform:scale(.7);opacity:.8}100%{transform:scale(1.45);opacity:0}}
+@keyframes obFingerTap{0%,100%{transform:translate(5px,3px) rotate(-8deg) scale(1)}45%{transform:translate(5px,8px) rotate(-8deg) scale(.9)}55%{transform:translate(5px,8px) rotate(-8deg) scale(.9)}}
 @keyframes obFade{from{opacity:0}to{opacity:1}}
 @keyframes obCardIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes obHolePulse{0%,100%{border-color:rgba(126,226,255,.72);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 22px rgba(80,220,255,.28),inset 0 0 18px rgba(80,220,255,.06)}50%{border-color:rgba(190,248,255,.98);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 42px rgba(80,220,255,.55),inset 0 0 26px rgba(80,220,255,.12)}}

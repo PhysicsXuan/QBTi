@@ -2253,6 +2253,13 @@
       resize: resize,
       isSplit: function(){ return hasSplit; },
       isNebula: function(){ return soloNebula; },
+      forceSplit: function(){
+        if(hasSplit || soloNebula || transitionType) return false;
+        hasSplit = true;
+        splitSpheres(0);
+        try { window.dispatchEvent(new CustomEvent('qbti:split')); } catch(e){}
+        return true;
+      },
       goBack: function(){
         if (transitionType) return;
         if (soloNebula) {

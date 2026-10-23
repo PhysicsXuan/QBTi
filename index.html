@@ -4026,6 +4026,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   let onboardingPack = null;
   let onboardingTargetRect = null;
   let onboardingSuppressClick = 0;
+  let onboardingPointerDown = false;
 
   function onboardingData(){
     const lang = currentLang();
@@ -4115,6 +4116,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(onboardingStep === 1 && window.QuantumSphere && window.QuantumSphere.isSplit && window.QuantumSphere.isSplit()) onboardingStep = 2;
     if(onboardingStep === 2 && window.QuantumSphere && window.QuantumSphere.isNebula && window.QuantumSphere.isNebula()) onboardingStep = 3;
     const step = onboardingStep;
+    onboardingPointerDown = false;
     const isFinal = step >= ONBOARDING_STEPS.length - 1;
     onboardingTargetRect = isFinal ? null : onboardingRectForStep(ONBOARDING_STEPS[step]);
     const overlay = $('onboarding');
@@ -4148,6 +4150,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(!onboardingPack) return;
     onboardingActive = true;
     onboardingStep = 0;
+    onboardingPointerDown = false;
     const settingsMask = $('settingsMask');
     if(settingsMask) settingsMask.classList.remove('show');
     try { goToScreen('screen-home'); } catch(e){}
@@ -4162,6 +4165,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   function closeOnboarding(disable){
     onboardingActive = false;
+    onboardingPointerDown = false;
     const overlay = $('onboarding');
     if(overlay){ overlay.classList.remove('show'); overlay.classList.remove('is-final'); overlay.setAttribute('aria-hidden', 'true'); }
     document.body.style.overflow = '';
@@ -4199,8 +4203,44 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     advanceOnboarding();
   }
 
+  function onboardingPointerDownCapture(e){
+    if(!onboardingActive) return;
+    if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
+    if(e.target.closest('#obCard')) return;
+    const step = ONBOARDING_STEPS[onboardingStep];
+    if(step && step.interactive){
+      if(e.target.closest('#quantumCanvas') || onboardingPointInTarget(e.clientX, e.clientY)){
+        onboardingPointerDown = true;
+      }
+    }
+  }
+
+  function onboardingPointerUpCapture(e){
+    if(!onboardingActive) return;
+    if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
+    if(e.target.closest('#obCard')) return;
+    const step = ONBOARDING_STEPS[onboardingStep];
+    if(!step || step.interactive !== 'split') return;
+    const wasDown = onboardingPointerDown;
+    onboardingPointerDown = false;
+    if(wasDown && (e.target.closest('#quantumCanvas') || onboardingPointInTarget(e.clientX, e.clientY))){
+      onboardingSuppressClick = performance.now() + 450;
+      setTimeout(() => {
+        if(!onboardingActive || onboardingStep !== 1) return;
+        if(window.QuantumSphere && window.QuantumSphere.forceSplit) window.QuantumSphere.forceSplit();
+        if(onboardingActive && onboardingStep === 1){
+          onboardingStep = 2;
+          renderOnboarding();
+        }
+      }, 140);
+    }
+  }
+
   function bindOnboardingUI(){
     document.addEventListener('click', onboardingClickCapture, true);
+    document.addEventListener('pointerdown', onboardingPointerDownCapture, true);
+    document.addEventListener('pointerup', onboardingPointerUpCapture, true);
+    document.addEventListener('pointercancel', () => { onboardingPointerDown = false; }, true);
     window.addEventListener('qbti:split', () => {
       if(onboardingActive && onboardingStep === 1){
         onboardingStep = 2;
