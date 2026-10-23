@@ -8,7 +8,8 @@
       statusLabel: '查看量子态状况',
       statusDesc: '先看它现在处在哪个能级',
       enterLabel: '进入量子球',
-      enterDesc: '生成一段这个维度的引导剧本'
+      enterDesc: '生成一段这个维度的引导剧本',
+      backLabel: '返回量子球'
     },
     ui: {
       kicker: 'QUANTUM STATE OBSERVATION',
@@ -142,7 +143,8 @@
       statusLabel: 'View quantum state',
       statusDesc: 'See which energy level it is on',
       enterLabel: 'Enter the quantum ball',
-      enterDesc: 'Generate a guided script for this dimension'
+      enterDesc: 'Generate a guided script for this dimension',
+      backLabel: 'Back to the quantum balls'
     },
     ui: {
       kicker: 'QUANTUM STATE OBSERVATION',

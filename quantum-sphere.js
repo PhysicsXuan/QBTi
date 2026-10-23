@@ -2253,6 +2253,17 @@
       resize: resize,
       isSplit: function(){ return hasSplit; },
       isNebula: function(){ return soloNebula; },
+      getBallRects: function(){
+        if(!hasSplit || soloNebula || transitionType) return [];
+        const br = safeBaseR();
+        return balls.map(function(b){
+          const v = computeBallVisual(b);
+          const x = (BASE_CX + v.visOx * br) / DPR;
+          const y = (BASE_CY + v.visOy * br) / DPR;
+          const r = (br * v.visScale) / DPR;
+          return { dim: b.dim, x: x, y: y, r: r, left: x - r, top: y - r, width: r * 2, height: r * 2 };
+        });
+      },
       forceSplit: function(){
         if(hasSplit || soloNebula || transitionType) return false;
         hasSplit = true;

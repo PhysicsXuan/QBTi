@@ -614,6 +614,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
           <span class="nc-desc" id="ncEnterDesc">生成一段这个维度的剧本</span>
         </button>
       </div>
+      <button class="nc-back" id="btnNcBack" type="button"><span class="nc-back-arrow">←</span><span id="ncBackLabel">返回量子球</span></button>
     </div>
   </div>
 
@@ -3500,6 +3501,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if($('ncStatusDesc')) $('ncStatusDesc').textContent = c.statusDesc;
     if($('ncEnterLabel')) $('ncEnterLabel').textContent = c.enterLabel;
     if($('ncEnterDesc')) $('ncEnterDesc').textContent = c.enterDesc;
+    if($('ncBackLabel')) $('ncBackLabel').textContent = c.backLabel || '返回量子球';
     const el = $('nebulaChoice');
     if(el){ el.classList.add('show'); el.setAttribute('aria-hidden', 'false'); }
   }
@@ -3525,6 +3527,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       e.stopPropagation();
       hideNebulaChoice();
       openNebulaDialogue({ dim: nebulaChoiceDim });
+    });
+    if($('btnNcBack')) $('btnNcBack').addEventListener('click', e => {
+      e.stopPropagation();
+      hideNebulaChoice();
+      if(window.QuantumSphere && window.QuantumSphere.goBack) window.QuantumSphere.goBack();
     });
     if($('qsClose')) $('qsClose').addEventListener('click', e => { e.stopPropagation(); closeQuantumStatus(); });
     const status = $('quantumStatus');
@@ -4012,13 +4019,17 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
      新手引导
      ============================================================ */
   const ONBOARDING_STEPS = [
-    { selector: '.quantum-link[data-target="screen-intro"]', placement: 'below' },
+    { selector: '.quantum-link[data-target="screen-intro"]', allowNav: true },
+    { selector: '#screen-intro .badge' },
+    { selector: '#btnStart' },
+    { selector: '#historySection .history-title' },
+    { selector: '.quantum-link[data-target="screen-home"]', allowNav: true },
     { selector: '#quantumCanvas', custom: 'orbit', interactive: 'split' },
-    { selector: '#quantumCanvas', custom: 'orbit', interactive: 'nebula' },
-    { selector: '#quantumCanvas', custom: 'orbit' },
-    { selector: '.quantum-link[data-target="screen-intro"]', placement: 'below' },
-    { selector: '.quantum-link[data-target="screen-contact"]', placement: 'below' },
-    { selector: '#btnSettings', placement: 'above' },
+    { custom: 'small-ball', dim: 'PO', interactive: 'nebula' },
+    { selector: '.nc-status' },
+    { selector: '#btnNcBack', allowAction: true },
+    { selector: '.quantum-link[data-target="screen-contact"]' },
+    { selector: '#btnSettings' },
     null
   ];
   let onboardingActive = false;
@@ -4027,6 +4038,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   let onboardingTargetRect = null;
   let onboardingSuppressClick = 0;
   let onboardingPointerDown = false;
+  let onboardingTrackRaf = 0;
 
   function onboardingData(){
     const lang = currentLang();
@@ -4035,6 +4047,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   function onboardingRectForStep(step){
     if(!step) return null;
+    if(step.custom === 'small-ball'){
+      const list = (window.QuantumSphere && window.QuantumSphere.getBallRects) ? window.QuantumSphere.getBallRects() : [];
+      const ball = list.find(b => b.dim === step.dim) || list[0];
+      if(ball){
+        return { left: ball.left - 8, top: ball.top - 8, width: ball.width + 16, height: ball.height + 16, ball: true };
+      }
+      const size = Math.min(240, window.innerWidth * 0.5, window.innerHeight * 0.28);
+      return { left: window.innerWidth / 2 - size / 2, top: window.innerHeight * 0.36 - size / 2, width: size, height: size };
+    }
     if(step.custom === 'orbit'){
       const size = Math.min(300, window.innerWidth * 0.64, window.innerHeight * 0.34);
       return {
@@ -4045,7 +4066,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       };
     }
     if(!step.selector) return null;
-    const el = document.querySelector(step.selector);
+    let el = document.querySelector(step.selector);
+    if(step.selector && step.selector.indexOf('#historySection') === 0){
+      const h = $('historySection');
+      if(!h || h.style.display === 'none' || h.offsetParent === null){
+        el = document.querySelector('#screen-intro .badge') || document.querySelector('#screen-intro .hero');
+      }
+    }
     if(!el) return null;
     const r = el.getBoundingClientRect();
     if(r.width < 2 || r.height < 2) return null;
@@ -4096,6 +4123,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(!placed){
         placed = { left: Math.max(margin, (window.innerWidth - cw) / 2), top: Math.max(margin, window.innerHeight - ch - margin) };
       }
+      if(step && step.custom === 'small-ball'){
+        placed.left = Math.max(margin, (window.innerWidth - cw) / 2);
+        placed.top = Math.max(margin, window.innerHeight - ch - 24);
+      }
       card.style.left = placed.left + 'px';
       card.style.top = placed.top + 'px';
       if(finger){
@@ -4111,10 +4142,25 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
   }
 
+  function stopOnboardingTracking(){
+    if(onboardingTrackRaf){ cancelAnimationFrame(onboardingTrackRaf); onboardingTrackRaf = 0; }
+  }
+  function startOnboardingTracking(){
+    stopOnboardingTracking();
+    const step = ONBOARDING_STEPS[onboardingStep];
+    if(!step || step.custom !== 'small-ball') return;
+    const tick = () => {
+      if(!onboardingActive || onboardingStep !== 6) { onboardingTrackRaf = 0; return; }
+      positionOnboarding();
+      onboardingTrackRaf = requestAnimationFrame(tick);
+    };
+    onboardingTrackRaf = requestAnimationFrame(tick);
+  }
+
   function renderOnboarding(){
     if(!onboardingActive || !onboardingPack) return;
-    if(onboardingStep === 1 && window.QuantumSphere && window.QuantumSphere.isSplit && window.QuantumSphere.isSplit()) onboardingStep = 2;
-    if(onboardingStep === 2 && window.QuantumSphere && window.QuantumSphere.isNebula && window.QuantumSphere.isNebula()) onboardingStep = 3;
+    if(onboardingStep === 5 && window.QuantumSphere && window.QuantumSphere.isSplit && window.QuantumSphere.isSplit()) onboardingStep = 6;
+    if(onboardingStep === 6 && window.QuantumSphere && window.QuantumSphere.isNebula && window.QuantumSphere.isNebula()) onboardingStep = 7;
     const step = onboardingStep;
     onboardingPointerDown = false;
     const isFinal = step >= ONBOARDING_STEPS.length - 1;
@@ -4138,9 +4184,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       const item = onboardingPack.steps[step] || onboardingPack.steps[0];
       if($('obTitle')) $('obTitle').textContent = item.title;
       if($('obBody')) $('obBody').textContent = item.body;
-      if($('obHint')) $('obHint').textContent = item.interactive ? (onboardingPack.hintHold || onboardingPack.hint) : onboardingPack.hint;
+      if($('obHint')){
+        $('obHint').textContent = (item.allowNav || item.allowAction)
+          ? (onboardingPack.hintTarget || onboardingPack.hint)
+          : (item.interactive ? (onboardingPack.hintHold || onboardingPack.hint) : onboardingPack.hint);
+      }
     }
     requestAnimationFrame(positionOnboarding);
+    startOnboardingTracking();
   }
 
   function startOnboarding(force){
@@ -4151,6 +4202,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     onboardingActive = true;
     onboardingStep = 0;
     onboardingPointerDown = false;
+    stopOnboardingTracking();
     const settingsMask = $('settingsMask');
     if(settingsMask) settingsMask.classList.remove('show');
     try { goToScreen('screen-home'); } catch(e){}
@@ -4166,6 +4218,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function closeOnboarding(disable){
     onboardingActive = false;
     onboardingPointerDown = false;
+    stopOnboardingTracking();
     const overlay = $('onboarding');
     if(overlay){ overlay.classList.remove('show'); overlay.classList.remove('is-final'); overlay.setAttribute('aria-hidden', 'true'); }
     document.body.style.overflow = '';
@@ -4192,6 +4245,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
     if(e.target.closest('#obCard')) return;
     const step = ONBOARDING_STEPS[onboardingStep];
+    if(step && (step.allowNav || step.allowAction)){
+      const hit = step.selector && e.target.closest(step.selector);
+      if(hit){
+        setTimeout(() => { if(onboardingActive) advanceOnboarding(); }, 120);
+        return;
+      }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
     if(step && step.interactive){
       if(onboardingPointInTarget(e.clientX, e.clientY)) return;
       e.preventDefault();
@@ -4209,6 +4272,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(e.target.closest('#obCard')) return;
     const step = ONBOARDING_STEPS[onboardingStep];
     if(step && step.interactive){
+      if(step.interactive === 'nebula'){
+        if(!onboardingPointInTarget(e.clientX, e.clientY)){
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          return;
+        }
+        onboardingPointerDown = true;
+        return;
+      }
       if(e.target.closest('#quantumCanvas') || onboardingPointInTarget(e.clientX, e.clientY)){
         onboardingPointerDown = true;
       }
@@ -4226,10 +4298,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(wasDown && (e.target.closest('#quantumCanvas') || onboardingPointInTarget(e.clientX, e.clientY))){
       onboardingSuppressClick = performance.now() + 450;
       setTimeout(() => {
-        if(!onboardingActive || onboardingStep !== 1) return;
+        if(!onboardingActive || onboardingStep !== 5) return;
         if(window.QuantumSphere && window.QuantumSphere.forceSplit) window.QuantumSphere.forceSplit();
-        if(onboardingActive && onboardingStep === 1){
-          onboardingStep = 2;
+        if(onboardingActive && onboardingStep === 5){
+          onboardingStep = 6;
           renderOnboarding();
         }
       }, 140);
@@ -4242,16 +4314,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     document.addEventListener('pointerup', onboardingPointerUpCapture, true);
     document.addEventListener('pointercancel', () => { onboardingPointerDown = false; }, true);
     window.addEventListener('qbti:split', () => {
-      if(onboardingActive && onboardingStep === 1){
-        onboardingStep = 2;
+      if(onboardingActive && onboardingStep === 5){
+        onboardingStep = 6;
         renderOnboarding();
       }
     });
-    window.addEventListener('qbti:nebula-open', () => {
-      if(onboardingActive && onboardingStep === 2){
-        onboardingStep = 3;
-        renderOnboarding();
-      }
+    window.addEventListener('qbti:nebula-open', (e) => {
+      if(!onboardingActive || onboardingStep !== 6) return;
+      const step = ONBOARDING_STEPS[6];
+      const dim = e && e.detail && e.detail.dim;
+      if(step && step.dim && dim && step.dim !== dim) return;
+      onboardingStep = 7;
+      renderOnboarding();
     });
     if($('obDisable')) $('obDisable').addEventListener('click', e => {
       e.stopPropagation();

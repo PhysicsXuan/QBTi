@@ -16,7 +16,10 @@
 .nc-label{font-size:calc(15px * var(--q-fs));font-weight:750;letter-spacing:.03em}
 .nc-desc{font-size:calc(11px * var(--q-fs));line-height:1.5;color:#8995B5}
 @keyframes ncIn{from{opacity:0;transform:scale(.97) translateY(8px)}to{opacity:1;transform:none}}
-@media(max-width:620px){.nebula-choice{padding:14px}.nebula-choice-card{padding:24px 20px}.nc-actions{grid-template-columns:1fr}.nebula-choice-card h2{font-size:26px}}
+.nc-back{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:9px 12px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:rgba(255,255,255,.025);color:#93A4C6;font:inherit;font-size:calc(11.5px * var(--q-fs));cursor:pointer;transition:.2s}
+.nc-back:hover{color:#EAF5FF;border-color:rgba(140,190,255,.38);background:rgba(80,130,255,.10)}
+.nc-back-arrow{font-size:15px;line-height:1}
+@media(max-width:620px){.nebula-choice{padding:14px}.nebula-choice-card{padding:24px 20px}.nc-actions{grid-template-columns:1fr}.nebula-choice-card h2{font-size:26px}.nc-back{width:100%;justify-content:center}}
 
 .quantum-status{position:fixed;inset:0;z-index:450;display:none;overflow-y:auto;overflow-x:hidden;background:radial-gradient(circle at 68% 20%,rgba(46,72,170,.30),transparent 42%),radial-gradient(circle at 22% 76%,rgba(150,48,180,.16),transparent 42%),#040611;color:#E9EEFF;cursor:pointer}
 .quantum-status.show{display:block;animation:qsFadeIn .45s ease both}
