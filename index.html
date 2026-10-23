@@ -399,6 +399,51 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .settings-seg button:disabled:hover{color:var(--muted);}
 .settings-note{font-size:calc(11.5px * var(--q-fs));color:var(--muted);line-height:1.7;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);margin-bottom:18px;}
 .settings-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;}
+/* 最高权限控制台 */
+.admin-console-mask{position:fixed;inset:0;z-index:720;background:rgba(2,4,12,.86);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.admin-console-mask.show{display:flex}
+.admin-console{width:min(860px,100%);max-height:92vh;overflow-y:auto;border-radius:22px;border:1px solid rgba(255,190,80,.28);background:radial-gradient(circle at 85% 0%,rgba(255,190,80,.10),transparent 55%),#080B18;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.65)}
+.ac-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.ac-kicker{font-size:10px;letter-spacing:.18em;color:#FFD98A}
+.ac-head h3{margin:6px 0 0;color:#fff;font-size:22px}
+.ac-head p{margin:6px 0 0;color:#96A1BE;font-size:12px;line-height:1.6}
+.ac-close{width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#B9C3DD;font-size:18px;cursor:pointer;flex-shrink:0}
+.ac-section{margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.07)}
+.ac-section-title{display:flex;align-items:center;gap:10px;color:#FFD98A;font-size:12px;font-weight:800;letter-spacing:.12em;margin-bottom:12px}
+.ac-section-title span{margin-left:auto;color:#71809F;font-size:10px;font-weight:500;letter-spacing:.04em}
+.ac-feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.ac-feature{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border-radius:11px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.025)}
+.ac-feature b{display:block;color:#E8EEFF;font-size:12px}
+.ac-feature small{display:block;color:#71809F;font-size:10px;margin-top:2px}
+.ac-toggle{min-width:58px;padding:5px 9px;border-radius:99px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#8492B1;font:inherit;font-size:10px;font-weight:800;letter-spacing:.08em;cursor:pointer}
+.ac-toggle.on{border-color:rgba(110,235,175,.5);background:rgba(80,210,145,.14);color:#A9F4C9}
+.ac-toggle.off{border-color:rgba(255,110,130,.35);background:rgba(255,80,110,.10);color:#FFB0C0}
+.ac-search,.ac-ban-add{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px}
+.ac-search input,.ac-ban-add input{flex:1;min-width:150px;padding:9px 11px;border-radius:9px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);color:#fff;font:inherit;font-size:12px;outline:none}
+.ac-search input:focus,.ac-ban-add input:focus{border-color:rgba(255,190,80,.5)}
+.ac-search button,.ac-ban-add button{padding:9px 13px;border-radius:9px;border:1px solid rgba(255,190,80,.28);background:rgba(255,190,80,.08);color:#FFE0A0;font:inherit;font-size:11.5px;cursor:pointer}
+.ac-users{max-height:280px;overflow-y:auto;margin-top:6px;padding-right:3px}
+.ac-user{display:flex;align-items:center;gap:12px;padding:10px 11px;border-radius:10px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);margin-bottom:7px}
+.ac-user-main{min-width:0;flex:1}
+.ac-user-main b{display:block;color:#E5ECFF;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-user-main span{display:block;color:#71809F;font-size:10px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-user-badge{font-size:9px;font-weight:800;padding:3px 7px;border-radius:99px;white-space:nowrap}
+.ac-user-badge.ok{background:rgba(90,220,160,.12);color:#9DF3C3}
+.ac-user-badge.banned{background:rgba(255,80,110,.13);color:#FFA6B8}
+.ac-user button{padding:6px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#C9D4EA;font:inherit;font-size:10.5px;cursor:pointer;white-space:nowrap}
+.ac-user button:hover{border-color:rgba(255,190,80,.4);color:#fff}
+.ac-empty{padding:18px;text-align:center;color:#71809F;font-size:12px}
+.ac-toast{font-size:11px;color:#FFD98A;min-height:14px;margin-top:8px;white-space:pre-wrap}
+.ban-screen{position:fixed;inset:0;z-index:900;display:none;place-items:center;padding:24px;background:rgba(2,3,9,.94);backdrop-filter:blur(12px)}
+.ban-screen.show{display:grid}
+.ban-card{max-width:440px;text-align:center;padding:34px 26px;border-radius:22px;border:1px solid rgba(255,90,120,.25);background:linear-gradient(150deg,rgba(35,8,18,.94),rgba(9,8,20,.96));box-shadow:0 30px 90px rgba(0,0,0,.6)}
+.ban-icon{font-size:34px;margin-bottom:10px}
+.ban-card h2{color:#fff;font-size:23px;margin:0 0 10px}
+.ban-card p{color:#CDB7C2;font-size:13px;line-height:1.8;margin:0}
+.ban-card .ban-sub{margin-top:10px;color:#8D8298;font-size:11.5px}
+.feature-toast{position:fixed;z-index:800;left:50%;bottom:34px;transform:translate(-50%,20px);padding:10px 16px;border-radius:999px;border:1px solid rgba(255,190,80,.3);background:rgba(20,16,8,.94);color:#FFE1A8;font-size:12px;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
+.feature-toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:620px){.admin-console{padding:18px}.ac-feature-grid{grid-template-columns:1fr}.ac-head h3{font-size:19px}}
 /* 管理员高级权限 */
 .admin-group{border:1px solid rgba(255,190,80,.28);background:rgba(255,190,80,.045);border-radius:14px;padding:16px;margin-top:6px}
 .admin-title{color:#FFD98A;justify-content:space-between}
@@ -838,6 +883,48 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 })();
 </script>
 
+
+<div class="admin-console-mask" id="adminConsoleMask">
+  <div class="admin-console">
+    <div class="ac-head">
+      <div>
+        <div class="ac-kicker">SUPER ADMIN · FULL CONTROL</div>
+        <h3>最高权限控制台</h3>
+        <p>全服功能开关与用户黑名单。所有变更立即写入服务器。</p>
+      </div>
+      <button type="button" class="ac-close" id="acClose">×</button>
+    </div>
+    <div class="ac-section">
+      <div class="ac-section-title">全服功能开关 <span id="acFeatureStatus"></span></div>
+      <div class="ac-feature-grid" id="acFeatures"></div>
+    </div>
+    <div class="ac-section">
+      <div class="ac-section-title">用户黑名单 <span id="acUserStatus"></span></div>
+      <div class="ac-search">
+        <input id="acUserSearch" type="text" placeholder="搜索邮箱或用户名" />
+        <button type="button" id="acUserSearchBtn">搜索</button>
+      </div>
+      <div class="ac-ban-add">
+        <input id="acBanEmail" type="email" placeholder="要禁用的邮箱" />
+        <input id="acBanReason" type="text" maxlength="200" placeholder="原因（可选）" />
+        <button type="button" id="acBanBtn">加入黑名单</button>
+      </div>
+      <div class="ac-users" id="acUsers"></div>
+    </div>
+  </div>
+</div>
+
+<div class="ban-screen" id="banScreen" aria-hidden="true">
+  <div class="ban-card">
+    <div class="ban-icon">⛔</div>
+    <h2>账号已被禁用</h2>
+    <p id="banReasonText">该账号已被管理员停用，所有功能暂时不可使用。</p>
+    <p class="ban-sub">如需恢复，请联系管理员。</p>
+  </div>
+</div>
+
+<div class="feature-toast" id="featureToast"></div>
+
 <div class="onboarding" id="onboarding" aria-hidden="true" role="dialog" aria-live="polite">
   <div class="ob-hole" id="obHole"></div>
   <div class="ob-finger" id="obFinger" aria-hidden="true"><span class="ob-finger-ring"></span><span class="ob-finger-hand">☝</span></div>
@@ -884,6 +971,217 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     hiddenUnlockKeys: [], hiddenQuiz: null, hiddenResult: null
   };
   const quantumLogCache = new Map();
+  const DEFAULT_FEATURE_FLAGS = { quiz: true, explanation: true, story: true, report: true, feedback: true };
+  let FEATURE_FLAGS = Object.assign({}, DEFAULT_FEATURE_FLAGS);
+  const FEATURE_LABELS = {
+    quiz: ['QBTi 问卷', 'QBTi questionnaire', '开启后学生可以开始 40 题问卷'],
+    explanation: ['量子态解释', 'Quantum explanation', 'AI 解释日志与量子态报告'],
+    story: ['剧情 / 量子对话', 'Story / quantum dialogue', '进入量子球生成互动剧本'],
+    report: ['AI 报告', 'AI report', '生成 QBTi AI 报告'],
+    feedback: ['联系我们 / 反馈', 'Contact / feedback', '学生提交反馈与投诉']
+  };
+
+  function featureOn(key){ return FEATURE_FLAGS[key] !== false; }
+
+  function showFeatureNotice(key){
+    const el = $('featureToast');
+    if(!el) return;
+    const zh = currentLang() === 'zh-CN' || currentLang() === 'zh-TW';
+    const label = (FEATURE_LABELS[key] || ['该功能','This feature'])[zh ? 0 : 1];
+    el.textContent = zh ? ('管理员已关闭「' + label + '」') : ('This feature is disabled by the administrator: ' + label);
+    el.classList.add('show');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  async function loadFeatureFlags(){
+    try {
+      const res = await fetch('/api/features', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if(res.ok && data && data.features){
+        FEATURE_FLAGS = Object.assign({}, DEFAULT_FEATURE_FLAGS, data.features);
+        window.QBTI_FEATURES = Object.assign({}, FEATURE_FLAGS);
+        document.body.classList.toggle('feature-quiz-off', !featureOn('quiz'));
+        document.body.classList.toggle('feature-story-off', !featureOn('story'));
+      }
+    } catch(e){}
+  }
+
+  function showBanScreen(reason){
+    const el = $('banScreen');
+    if(!el) return;
+    const reasonEl = $('banReasonText');
+    if(reasonEl){
+      reasonEl.textContent = reason
+        ? ('原因：' + reason + '。所有功能暂时不可使用。')
+        : '该账号已被管理员停用，所有功能暂时不可使用。';
+    }
+    el.classList.add('show');
+    el.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function hideBanScreen(){
+    const el = $('banScreen');
+    if(el){ el.classList.remove('show'); el.setAttribute('aria-hidden', 'true'); }
+    if(!onboardingActive) document.body.style.overflow = '';
+  }
+
+  async function loadAccountStatus(){
+    const token = (window.QAuth && window.QAuth.getSyncToken) ? window.QAuth.getSyncToken() : null;
+    if(!token){ hideBanScreen(); return; }
+    try {
+      const res = await fetch('/api/student/account-status', {
+        headers: { 'Authorization': 'Bearer ' + token },
+        cache: 'no-store'
+      });
+      const data = await res.json().catch(() => ({}));
+      if(res.ok && data && data.banned){ showBanScreen(data.reason || ''); }
+      else hideBanScreen();
+    } catch(e){}
+  }
+
+  function adminToken(){
+    try { return (window.QAuth && window.QAuth.getAdminToken) ? window.QAuth.getAdminToken() : null; } catch(e){ return null; }
+  }
+
+  async function adminRequest(path, options){
+    const token = adminToken();
+    if(!token) throw new Error('管理员登录已过期');
+    const res = await fetch(path, Object.assign({}, options || {}, {
+      headers: Object.assign({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, (options && options.headers) || {})
+    }));
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.success) throw new Error(data.error || '请求失败');
+    return data;
+  }
+
+  function renderAdminFeatures(features){
+    const host = $('acFeatures');
+    if(!host) return;
+    host.innerHTML = Object.keys(FEATURE_LABELS).map(function(key){
+      const label = FEATURE_LABELS[key];
+      const on = features[key] !== false;
+      return '<div class="ac-feature"><div><b>' + escapeHTML(label[0]) + '</b><small>' + escapeHTML(label[2]) + '</small></div>'
+        + '<button type="button" class="ac-toggle ' + (on ? 'on' : 'off') + '" data-feature="' + key + '">' + (on ? 'ON' : 'OFF') + '</button></div>';
+    }).join('');
+    host.querySelectorAll('.ac-toggle').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        const key = btn.dataset.feature;
+        const next = !(features[key] !== false);
+        btn.disabled = true;
+        try {
+          const data = await adminRequest('/api/admin/features', {
+            method: 'POST',
+            body: JSON.stringify({ [key]: next })
+          });
+          renderAdminFeatures(data.features);
+          FEATURE_FLAGS = Object.assign({}, DEFAULT_FEATURE_FLAGS, data.features);
+          window.QBTI_FEATURES = Object.assign({}, FEATURE_FLAGS);
+          const st = $('acFeatureStatus'); if(st) st.textContent = '已更新';
+        } catch(e){
+          const st = $('acFeatureStatus'); if(st) st.textContent = e.message;
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  function renderAdminUsers(users){
+    const host = $('acUsers');
+    if(!host) return;
+    if(!users || !users.length){
+      host.innerHTML = '<div class="ac-empty">没有匹配的用户</div>';
+      return;
+    }
+    host.innerHTML = users.map(function(u){
+      const name = u.username || u.email;
+      return '<div class="ac-user">'
+        + '<div class="ac-user-main"><b>' + escapeHTML(name) + '</b><span>' + escapeHTML(u.email) + '</span></div>'
+        + '<span class="ac-user-badge ' + (u.banned ? 'banned' : 'ok') + '">' + (u.banned ? '已禁用' : '正常') + '</span>'
+        + '<button type="button" data-email="' + escapeHTML(u.email) + '" data-banned="' + (u.banned ? '1' : '0') + '">' + (u.banned ? '解禁' : '禁用') + '</button>'
+        + '</div>';
+    }).join('');
+    host.querySelectorAll('button[data-email]').forEach(function(btn){
+      btn.addEventListener('click', async function(){
+        const email = btn.dataset.email;
+        const isBanned = btn.dataset.banned === '1';
+        const action = isBanned ? '恢复' : '禁用';
+        if(!confirm('确定要' + action + '用户 ' + email + ' 的所有功能吗？')) return;
+        btn.disabled = true;
+        try {
+          await adminRequest('/api/admin/users/' + encodeURIComponent(email) + '/ban', {
+            method: 'POST',
+            body: JSON.stringify({ banned: !isBanned, reason: isBanned ? '' : '管理员手动禁用' })
+          });
+          await refreshAdminUsers();
+        } catch(e){
+          const st = $('acUserStatus'); if(st) st.textContent = e.message;
+          btn.disabled = false;
+        }
+      });
+    });
+  }
+
+  async function refreshAdminUsers(){
+    const search = $('acUserSearch') ? $('acUserSearch').value.trim() : '';
+    const status = $('acUserStatus'); if(status) status.textContent = '读取中…';
+    try {
+      const data = await adminRequest('/api/admin/users?search=' + encodeURIComponent(search));
+      renderAdminUsers(data.users || []);
+      if(status) status.textContent = '共 ' + (data.users || []).length + ' 位';
+    } catch(e){
+      if(status) status.textContent = e.message;
+    }
+  }
+
+  async function openAdminConsole(){
+    if(!window.QAuth || !window.QAuth.isAdmin || !window.QAuth.isAdmin()) return;
+    const mask = $('adminConsoleMask');
+    if(!mask) return;
+    mask.classList.add('show');
+    const fs = $('acFeatureStatus'); if(fs) fs.textContent = '读取中…';
+    try {
+      const [features, users] = await Promise.all([
+        adminRequest('/api/admin/features'),
+        adminRequest('/api/admin/users')
+      ]);
+      renderAdminFeatures(features.features || DEFAULT_FEATURE_FLAGS);
+      renderAdminUsers(users.users || []);
+      if(fs) fs.textContent = '立即生效';
+      const us = $('acUserStatus'); if(us) us.textContent = '共 ' + (users.users || []).length + ' 位';
+    } catch(e){
+      if(fs) fs.textContent = e.message;
+    }
+  }
+
+  function bindAdminConsole(){
+    const mask = $('adminConsoleMask');
+    if(!mask || mask._bound) return;
+    mask._bound = true;
+    if($('acClose')) $('acClose').addEventListener('click', () => mask.classList.remove('show'));
+    mask.addEventListener('click', e => { if(e.target === mask) mask.classList.remove('show'); });
+    if($('acUserSearchBtn')) $('acUserSearchBtn').addEventListener('click', refreshAdminUsers);
+    if($('acUserSearch')) $('acUserSearch').addEventListener('keydown', e => { if(e.key === 'Enter') refreshAdminUsers(); });
+    if($('acBanBtn')) $('acBanBtn').addEventListener('click', async function(){
+      const email = $('acBanEmail') ? $('acBanEmail').value.trim() : '';
+      const reason = $('acBanReason') ? $('acBanReason').value.trim() : '';
+      if(!email) return;
+      if(!confirm('确定要禁用 ' + email + ' 的所有功能吗？')) return;
+      try {
+        await adminRequest('/api/admin/users/' + encodeURIComponent(email) + '/ban', {
+          method: 'POST', body: JSON.stringify({ banned: true, reason: reason || '管理员手动禁用' })
+        });
+        if($('acBanEmail')) $('acBanEmail').value = '';
+        if($('acBanReason')) $('acBanReason').value = '';
+        await refreshAdminUsers();
+      } catch(e){
+        const us = $('acUserStatus'); if(us) us.textContent = e.message;
+      }
+    });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') mask.classList.remove('show'); });
+  }
+  bindAdminConsole();
   function escapeHTML(value){
     return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -1101,6 +1399,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   $('btnSubmitFeedback').addEventListener('click', async () => {
+    if(!featureOn('feedback')){ showFeatureNotice('feedback'); return; }
     const status = $('fbStatus');
     const btn = $('btnSubmitFeedback');
     const contentEl = $('fbContent');
@@ -1695,6 +1994,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   async function loadQuantumLog(log){
+    if(!featureOn('explanation')){ showFeatureNotice('explanation'); return; }
     if(!log || log.dataset.loading === '1') return;
     const dim = log.dataset.dim;
     if(!dim) return;
@@ -2632,7 +2932,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
   function saveCfg(cfg){ localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
 
-  async function callAPI(prompt, systemOverride, temperatureOverride, maxTokensOverride){
+  async function callAPI(prompt, systemOverride, temperatureOverride, maxTokensOverride, purpose){
     if(!serverAIConfig || !serverAIConfig.enabled) await loadServerAIConfig();
     const cfg = getCfg();
     const useServer = !!(serverAIConfig && serverAIConfig.enabled && serverAIConfig.hasKey);
@@ -2674,7 +2974,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     };
     const endpoint = useServer ? '/api/ai/chat' : cfg.url;
     const headers = useServer
-      ? { 'Content-Type': 'application/json' }
+      ? { 'Content-Type': 'application/json', 'X-QBTI-Purpose': purpose || '' }
       : directHeaders;
     const requestBody = useServer
       ? { prompt: prompt, system: systemContent, temperature: temperature, max_tokens: maxTokens }
@@ -3068,7 +3368,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     let script = null;
     let aiErr = null;
     try {
-      const raw = await callAPI(prompt, systemPrompt, 0.9, 2600);
+      const raw = await callAPI(prompt, systemPrompt, 0.9, 2600, 'story');
       script = normalizeDialogue(raw, dim);
     } catch(e){
       aiErr = e;
@@ -3081,7 +3381,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if(!script && canRetry){
       try {
         const retryPrompt = buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger) + '\n\n上一次输出不是合法 JSON 或缺少必要段落。请压缩到 600-800 字，只输出合法 JSON，确保所有括号和引号闭合。';
-        const raw2 = await callAPI(retryPrompt, systemPrompt, 0.75, 2600);
+        const raw2 = await callAPI(retryPrompt, systemPrompt, 0.75, 2600, 'story');
         script = normalizeDialogue(raw2, dim);
       } catch(e2){
         aiErr = e2;
@@ -3551,6 +3851,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   function openQuantumStatus(dim){
+    if(!featureOn('explanation')){ showFeatureNotice('explanation'); return; }
     const pack = statusPack();
     if(!pack) return;
     qsState.open = true;
@@ -3610,11 +3911,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
     if($('btnNcStatus')) $('btnNcStatus').addEventListener('click', e => {
       e.stopPropagation();
+      if(!featureOn('explanation')){ showFeatureNotice('explanation'); return; }
       hideNebulaChoice();
       openQuantumStatus(nebulaChoiceDim);
     });
     if($('btnNcEnter')) $('btnNcEnter').addEventListener('click', e => {
       e.stopPropagation();
+      if(!featureOn('story')){ showFeatureNotice('story'); return; }
       hideNebulaChoice();
       openNebulaDialogue({ dim: nebulaChoiceDim });
     });
@@ -3642,6 +3945,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   bindQuantumStatusUI();
 
   async function openNebulaDialogue(detail){
+    if(!featureOn('story')){ showFeatureNotice('story'); return; }
     const home = document.getElementById('screen-home');
     if(!home || !home.classList.contains('active')) return;
     if(window.QuantumSphere && window.QuantumSphere.isNebula && !window.QuantumSphere.isNebula()) return;
@@ -3762,6 +4066,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   });
 
   $('btnAI').addEventListener('click', async () => {
+    if(!featureOn('report')){ showFeatureNotice('report'); return; }
     if(!state.result || state.aiLoading) return;
 
     /* 已有报告：只做冷却，防止连点；不向用户提示 API 消耗 */
@@ -3783,7 +4088,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const validity = state.validity || Q.analyzeResponseValidity(state.answers, state.timings);
     state.validity = validity;
     try {
-      const text = await callAPI(buildLocalizedPrompt(state.result, validity));
+      const text = await callAPI(buildLocalizedPrompt(state.result, validity), null, null, null, 'report');
       if(reqId !== state.aiRequestId) return;
       state.aiReportText = text;
       state.aiReportSource = 'ai';
@@ -3817,6 +4122,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   });
 
   $('btnStart').addEventListener('click', () => {
+    if(!featureOn('quiz')){ showFeatureNotice('quiz'); return; }
     state.idx = 0; state.answers = {}; state.timings = {}; state.questionShownAt = {};
     state.validity = null; state.result = null; state.aiReportText = null; state.aiReportSource = null;
     state.aiReportLang = null; state.aiError = null; state.aiLoading = false; state.lastAiAt = 0; state.resultTs = null;
@@ -3827,6 +4133,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   });
 
   $('btnRestart').addEventListener('click', () => {
+    if(!featureOn('quiz')){ showFeatureNotice('quiz'); return; }
     const I18N = window.QBTI_I18N;
     const msg = (I18N && I18N.current !== 'zh-CN') ? 'Restart? The quantum sphere will be overwritten, history preserved.' : '重新开始？量子球会被新结果覆盖，历史记录仍保留。';
     if(!confirm(msg)) return;
@@ -4506,6 +4813,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(info.key === 'onboarding'){
         startOnboarding(true);
       }
+      if(info.key === 'adminPrivilege'){
+        openAdminConsole();
+      }
       if(info.key === 'onboardingDisabled' && info.settings && info.settings.onboardingDisabled && onboardingActive){
         closeOnboarding(false);
       }
@@ -4521,6 +4831,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       renderAdminDebug();
       applyHomepageTheme();
       refreshHiddenAura();
+      loadAccountStatus();
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
       if(info.isLoggedIn) syncCrossDevice();
       if(info.isLoggedIn && info.user && info.user.role === 'admin'){
@@ -4556,6 +4867,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   seedAdminHiddenSamples();
   maybeStartOnboarding();
   refreshHiddenAura();
+  loadFeatureFlags();
+  loadAccountStatus();
+  setInterval(loadFeatureFlags, 60 * 1000);
+  setInterval(loadAccountStatus, 60 * 1000);
+  window.addEventListener('focus', loadAccountStatus);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) loadAccountStatus(); });
   setInterval(loadServerAIConfig, 60 * 1000);
   applyHomepageTheme();
   window.addEventListener('load', applyHomepageTheme);

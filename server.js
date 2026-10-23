@@ -170,6 +170,13 @@ async function initDB() {
       "expiresAt" BIGINT NOT NULL
     );`,
     `CREATE INDEX IF NOT EXISTS idx_student_sessions_email ON student_sessions(email);`,
+    `CREATE TABLE IF NOT EXISTS student_bans (
+      email VARCHAR(255) PRIMARY KEY,
+      username VARCHAR(100),
+      reason TEXT,
+      "bannedAt" BIGINT,
+      "updatedBy" VARCHAR(255)
+    );`,
     `CREATE TABLE IF NOT EXISTS account_settings (
       "studentEmail" VARCHAR(255) PRIMARY KEY,
       settings JSONB,
@@ -283,6 +290,9 @@ async function resolveSyncEmail(req){
 async function requireSyncAuth(req, res, next){
   const email = await resolveSyncEmail(req);
   if(!email) return res.status(401).json({ error: '登录已过期，请重新登录', code: 'SYNC_AUTH' });
+  if(await isStudentBanned(email)){
+    return res.status(403).json({ error: '该账号已被管理员禁用', code: 'USER_BANNED' });
+  }
   req.syncEmail = email;
   return next();
 }
@@ -568,6 +578,57 @@ app.post('/api/verify-code', (req, res) => {
   res.json({ success: true });
 });
 
+/* ---------- 全服功能开关 / 用户黑名单 ---------- */
+const DEFAULT_FEATURE_FLAGS = {
+  quiz: true,
+  explanation: true,
+  story: true,
+  report: true,
+  feedback: true
+};
+const FEATURE_KEYS = Object.keys(DEFAULT_FEATURE_FLAGS);
+async function readFeatureFlags(){
+  try {
+    const r = await pool.query('SELECT config FROM app_config WHERE id = $1', ['features']);
+    const raw = r.rows[0] && r.rows[0].config ? r.rows[0].config : {};
+    const out = Object.assign({}, DEFAULT_FEATURE_FLAGS);
+    FEATURE_KEYS.forEach(k => { if(typeof raw[k] === 'boolean') out[k] = raw[k]; });
+    return out;
+  } catch(e){
+    return Object.assign({}, DEFAULT_FEATURE_FLAGS);
+  }
+}
+async function writeFeatureFlags(patch, updatedBy){
+  const current = await readFeatureFlags();
+  const next = Object.assign({}, current);
+  FEATURE_KEYS.forEach(k => { if(patch && typeof patch[k] === 'boolean') next[k] = patch[k]; });
+  await pool.query(
+    `INSERT INTO app_config (id, config, "updatedAt", "updatedBy")
+     VALUES ('features', $1, $2, $3)
+     ON CONFLICT (id) DO UPDATE SET config = EXCLUDED.config, "updatedAt" = EXCLUDED."updatedAt", "updatedBy" = EXCLUDED."updatedBy"`,
+    [JSON.stringify(next), Date.now(), updatedBy || 'administrator']
+  );
+  return next;
+}
+async function isStudentBanned(email){
+  const e = String(email || '').toLowerCase().trim();
+  if(!e || e === 'administrator@qbti.local') return false;
+  try {
+    const r = await pool.query('SELECT email FROM student_bans WHERE LOWER(email) = $1', [e]);
+    return r.rows.length > 0;
+  } catch(e){ return false; }
+}
+async function resolveSessionEmailAllowBanned(req){
+  const token = studentAdminTokenFromReq(req);
+  if(!token) return null;
+  const admin = studentAdminTokens.get(token);
+  if(admin && admin.expires > Date.now()) return 'administrator@qbti.local';
+  try {
+    const r = await pool.query('SELECT email FROM student_sessions WHERE token = $1 AND "expiresAt" > $2', [token, Date.now()]);
+    return r.rows[0] ? String(r.rows[0].email).toLowerCase() : null;
+  } catch(e){ return null; }
+}
+
 /* ============================================================
    学生账户（服务器侧，支持跨设备登录）
    ============================================================ */
@@ -597,6 +658,9 @@ app.post('/api/student/register', async (req, res) => {
   }
   if (uname.toLowerCase() === 'administrator' || emailLower === 'administrator@qbti.local') {
     return res.status(400).json({ error: '该账号为系统保留', code: 'BAD_REQUEST' });
+  }
+  if(await isStudentBanned(emailLower)){
+    return res.status(403).json({ error: '该账号已被管理员禁用', code: 'USER_BANNED' });
   }
 
   const checked = checkCode('email:' + emailLower, code);
@@ -676,6 +740,9 @@ app.post('/api/student/login', async (req, res) => {
 
     const user = result.rows[0];
     if (!user) return res.status(404).json({ error: '账号不存在', code: 'NOT_FOUND' });
+    if(await isStudentBanned(user.email)){
+      return res.status(403).json({ error: '该账号已被管理员禁用', code: 'USER_BANNED' });
+    }
     if (!user.passwordHash) {
       return res.status(409).json({ error: '该账号是旧版账号，请先用邮箱验证设置密码', code: 'NEED_PASSWORD_SETUP' });
     }
@@ -724,6 +791,9 @@ app.post('/api/student/reset-password', async (req, res) => {
     if (existing.rows.length === 0) {
       return res.status(404).json({ error: '该邮箱未注册学生账号', code: 'NOT_FOUND' });
     }
+    if(await isStudentBanned(emailLower)){
+      return res.status(403).json({ error: '该账号已被管理员禁用', code: 'USER_BANNED' });
+    }
 
     const salt = genSalt();
     const passwordHash = hashStudentPassword(pw, salt);
@@ -765,6 +835,7 @@ app.post('/api/student/delete-account', async (req, res) => {
       await client.query('DELETE FROM admin_quiz_records WHERE "studentEmail" = $1', [emailLower]);
       await client.query('DELETE FROM quiz_records WHERE "studentEmail" = $1', [emailLower]);
       await client.query('DELETE FROM account_settings WHERE "studentEmail" = $1', [emailLower]);
+      await client.query('DELETE FROM student_bans WHERE LOWER(email) = $1', [emailLower]);
       await client.query('DELETE FROM student_sessions WHERE LOWER(email) = $1', [emailLower]);
       await client.query('DELETE FROM student_emails WHERE LOWER(email) = $1', [emailLower]);
       await client.query('COMMIT');
@@ -847,6 +918,8 @@ app.get('/api/admin/policy', async (req, res) => {
 
 // 4.6 投诉与反馈（所有人可提交）
 app.post('/api/feedback', async (req, res) => {
+  const featureFlags = await readFeatureFlags();
+  if(!featureFlags.feedback) return res.status(403).json({ error: '反馈功能已被管理员关闭', code: 'FEATURE_DISABLED' });
   const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || 'unknown').trim();
   const now = Date.now();
   const last = feedbackCooldowns.get(ip) || 0;
@@ -1677,6 +1750,8 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
 }
 
 app.post('/api/dialogue/prompt', async (req, res) => {
+  const featureFlags = await readFeatureFlags();
+  if(!featureFlags.story) return res.status(403).json({ error: '剧情功能已被管理员关闭', code: 'FEATURE_DISABLED' });
   const body = req.body || {};
   const dimension = String(body.dimension || '').toUpperCase();
   if(!DIALOGUE_BLUEPRINTS[dimension]) return res.status(400).json({ error: '维度不正确' });
@@ -1704,7 +1779,9 @@ app.post('/api/dialogue/prompt', async (req, res) => {
 });
 
 // 4.8.4 量子态状况（第五维度前的小球观测，确定性分析，不消耗 AI Token）
-app.post('/api/quantum/status', (req, res) => {
+app.post('/api/quantum/status', async (req, res) => {
+  const featureFlags = await readFeatureFlags();
+  if(!featureFlags.explanation) return res.status(403).json({ error: '量子态解释已被管理员关闭', code: 'FEATURE_DISABLED' });
   const body = req.body || {};
   const dim = String(body.dimension || '').toUpperCase();
   const dims = { PO: ['X', 'C', 'A'], II: ['P', 'M', 'I'], LA: ['I', 'D', 'E'], UR: ['T', 'H', 'R'] };
@@ -1821,7 +1898,104 @@ app.post('/api/admin/ai-config', requireStudentAdmin, async (req, res) => {
   }
 });
 
+// 4.8.1 全服功能开关（公开只读）
+app.get('/api/features', async (req, res) => {
+  try { res.json({ success: true, features: await readFeatureFlags() }); }
+  catch(e){ res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' }); }
+});
+
+// 4.8.2 当前账号状态（用于黑名单拦截）
+app.get('/api/student/account-status', async (req, res) => {
+  const email = await resolveSessionEmailAllowBanned(req);
+  if(!email) return res.status(401).json({ error: '登录已过期', code: 'SYNC_AUTH' });
+  try {
+    const banned = await isStudentBanned(email);
+    let reason = '';
+    if(banned){
+      const r = await pool.query('SELECT reason FROM student_bans WHERE LOWER(email) = $1', [String(email).toLowerCase()]);
+      reason = r.rows[0] ? String(r.rows[0].reason || '') : '';
+    }
+    res.json({ success: true, authenticated: true, email: email, banned: banned, reason: reason, features: await readFeatureFlags() });
+  } catch(e){ res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' }); }
+});
+
+// 4.8.3 管理员：全服功能开关
+app.get('/api/admin/features', requireStudentAdmin, async (req, res) => {
+  try { res.json({ success: true, features: await readFeatureFlags() }); }
+  catch(e){ res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' }); }
+});
+app.post('/api/admin/features', requireStudentAdmin, async (req, res) => {
+  try {
+    const features = await writeFeatureFlags(req.body || {}, 'Administrator');
+    res.json({ success: true, features: features });
+  } catch(e){
+    console.error('[全服开关] 保存失败:', e.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
+// 4.8.4 管理员：用户列表 / 黑名单
+app.get('/api/admin/users', requireStudentAdmin, async (req, res) => {
+  const search = String(req.query.search || '').trim().slice(0, 100);
+  const pattern = '%' + search + '%';
+  try {
+    const r = await pool.query(
+      `SELECT se.email, se.username, se.phone, se."createdAt",
+              CASE WHEN b.email IS NULL THEN FALSE ELSE TRUE END AS banned,
+              b.reason, b."bannedAt"
+       FROM student_emails se
+       LEFT JOIN student_bans b ON LOWER(b.email) = LOWER(se.email)
+       WHERE ($1 = '' OR se.email ILIKE $2 OR COALESCE(se.username,'') ILIKE $2)
+       ORDER BY se."createdAt" DESC NULLS LAST
+       LIMIT 200`,
+      [search, pattern]
+    );
+    res.json({ success: true, users: r.rows.map(u => ({
+      email: u.email, username: u.username || '', phone: u.phone || '',
+      createdAt: Number(u.createdAt) || null, banned: !!u.banned,
+      reason: u.reason || '', bannedAt: Number(u.bannedAt) || null
+    })) });
+  } catch(e){
+    console.error('[用户列表] 失败:', e.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+app.post('/api/admin/users/:email/ban', requireStudentAdmin, async (req, res) => {
+  const email = String(req.params.email || '').toLowerCase().trim();
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    return res.status(400).json({ error: '邮箱格式不正确', code: 'BAD_REQUEST' });
+  }
+  if(email === 'administrator@qbti.local'){
+    return res.status(400).json({ error: '不能禁用管理员账号', code: 'BAD_REQUEST' });
+  }
+  const banned = req.body && req.body.banned !== false;
+  const reason = String((req.body && req.body.reason) || '').trim().slice(0, 200);
+  try {
+    if(banned){
+      const u = await pool.query('SELECT username FROM student_emails WHERE LOWER(email) = $1', [email]);
+      const username = u.rows[0] ? String(u.rows[0].username || '') : '';
+      await pool.query(
+        `INSERT INTO student_bans (email, username, reason, "bannedAt", "updatedBy")
+         VALUES ($1, $2, $3, $4, 'Administrator')
+         ON CONFLICT (email) DO UPDATE SET username = EXCLUDED.username, reason = EXCLUDED.reason, "bannedAt" = EXCLUDED."bannedAt", "updatedBy" = 'Administrator'`,
+        [email, username, reason, Date.now()]
+      );
+    } else {
+      await pool.query('DELETE FROM student_bans WHERE LOWER(email) = $1', [email]);
+    }
+    res.json({ success: true, email: email, banned: banned, reason: reason });
+  } catch(e){
+    console.error('[黑名单] 保存失败:', e.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
 app.post('/api/ai/chat', async (req, res) => {
+  const purpose = String(req.headers['x-qbti-purpose'] || '').trim();
+  if(purpose === 'story' || purpose === 'report' || purpose === 'explanation'){
+    const flags = await readFeatureFlags();
+    if(!flags[purpose]) return res.status(403).json({ error: '该功能已被管理员关闭', code: 'FEATURE_DISABLED' });
+  }
   const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || 'unknown').trim();
   const now = Date.now();
   const slot = aiProxyHits.get(ip);
@@ -2006,6 +2180,8 @@ function qlogParse(content){
 }
 
 app.post('/api/quantum/log', async (req, res) => {
+  const featureFlags = await readFeatureFlags();
+  if(!featureFlags.explanation) return res.status(403).json({ error: '量子态解释已被管理员关闭', code: 'FEATURE_DISABLED' });
   const body = req.body || {};
   const dim = String(body.dimension || '').toUpperCase();
   const dims = { PO: ['X','C','A'], II: ['P','M','I'], LA: ['I','D','E'], UR: ['T','H','R'] };
@@ -2380,6 +2556,7 @@ app.post('/api/report/sync', async (req, res) => {
   const { studentEmail, studentUsername, payload } = req.body || {};
   if (!studentEmail || !payload) return res.status(400).json({ error: '参数不完整' });
   const se = String(studentEmail).trim().toLowerCase();
+  if(await isStudentBanned(se)) return res.status(403).json({ error: '该账号已被管理员禁用', code: 'USER_BANNED' });
   const updatedAt = Date.now();
   const quizTs = Number(payload.quizTs) || updatedAt;
   payload.quizTs = quizTs;

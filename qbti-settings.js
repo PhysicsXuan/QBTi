@@ -381,6 +381,7 @@
         const el = $(id);
         if(el) el.addEventListener('click', () => toggleAdmin(map[id]));
       });
+      const privilege = $('adminPrivilegeBtn'); if(privilege) privilege.addEventListener('click', () => emit('adminPrivilege'));
       const api = $('adminApiBtn'); if(api) api.addEventListener('click', adminApi);
       const health = $('adminHealthBtn'); if(health) health.addEventListener('click', adminHealth);
       const exp = $('adminExportBtn'); if(exp) exp.addEventListener('click', adminExport);
@@ -408,6 +409,7 @@
         <div class="settings-row"><label>静音（音效）</label><button type="button" class="admin-switch" id="adminSoundBtn">OFF</button></div>
         <div class="settings-row"><label>禁用震动</label><button type="button" class="admin-switch" id="adminHapticBtn">OFF</button></div>
         <div class="admin-actions">
+          <button type="button" class="admin-action" id="adminPrivilegeBtn">🛡 最高权限控制台</button>
           <button type="button" class="admin-action" id="adminApiBtn">⚙ AI 接口参数</button>
           <button type="button" class="admin-action" id="adminHealthBtn">🩺 服务器健康</button>
           <button type="button" class="admin-action" id="adminExportBtn">⬇ 导出本地数据</button>
