@@ -1586,12 +1586,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   let crossDeviceSyncBusy = false;
 
   function hasHiddenPersonality(){
-    if(state.hiddenResult && state.hiddenResult.obtained) return true;
-    try {
-      return getAllResultsFromUser().some(function(entry){
-        return !!(entry && entry.hiddenResult && entry.hiddenResult.obtained);
-      });
-    } catch(e){ return false; }
+    const entry = resolveHomepageThemeEntry();
+    return !!(entry && entry.hiddenResult && entry.hiddenResult.obtained);
   }
 
   function refreshHiddenAura(){
@@ -1602,24 +1598,20 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   function currentPersonalityContext(){
-    if(state.result){
-      return {
-        code: state.result.letters.join(''),
-        suffix: state.result.suffix ? state.result.suffix.letter : '',
-        hiddenKey: state.hiddenResult && state.hiddenResult.obtained ? state.hiddenResult.key : ''
-      };
+    const entry = resolveHomepageThemeEntry();
+    if(!entry) return null;
+    let code = entry.code || '';
+    let suffix = entry.suffix || '';
+    if(code.indexOf('-') >= 0){
+      const parts = code.split('-');
+      code = parts[0] || '';
+      suffix = suffix || parts[1] || '';
     }
-    try {
-      const list = getAllResultsFromUser();
-      if(!list.length) return null;
-      const latest = list.slice().sort(function(a,b){ return Number(b.ts) - Number(a.ts); })[0];
-      if(!latest) return null;
-      return {
-        code: latest.code || '',
-        suffix: latest.suffix || '',
-        hiddenKey: latest.hiddenResult && latest.hiddenResult.obtained ? latest.hiddenResult.key : ''
-      };
-    } catch(e){ return null; }
+    return {
+      code: code,
+      suffix: suffix,
+      hiddenKey: entry.hiddenResult && entry.hiddenResult.obtained ? entry.hiddenResult.key : ''
+    };
   }
 
   function refreshPersonalityTheme(){
@@ -1908,7 +1900,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       entry = {
         quantumState: state.quantumState.type,
         dimStates: state.dimStates ? state.dimStates.types : null,
-        code: state.result.letters.join('') + '-' + state.result.suffix.letter,
+        code: state.result.letters.join(''),
+        suffix: state.result.suffix.letter,
+        hiddenResult: state.hiddenResult || null,
         typeName: Q.TYPE_NAMES[state.result.letters.join('')] || ''
       };
     }
@@ -4805,7 +4799,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
       if(info.key === 'sphereTheme' || info.key === 'sphereCustom' || info.key === 'reset' || info.key === 'sync'){
         applyHomepageTheme();
-        refreshPersonalityTheme();
+        refreshHiddenAura();
       }
       if(info.key === 'adminDebug' || info.key === 'adminForceSimple' || info.key === 'adminMuteSound' || info.key === 'adminDisableHaptic' || info.key === 'reset'){
         renderAdminDebug();
