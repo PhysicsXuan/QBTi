@@ -1636,10 +1636,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const badge = $('quantumThemeBadge');
     const name = $('quantumThemeName');
     const zh = currentLang() === 'zh-CN' || currentLang() === 'zh-TW';
-    const themeText = theme ? ((zh ? (theme.hidden ? '隐藏限定 · ' : '限定主题 · ') : (theme.hidden ? 'HIDDEN LIMITED · ' : 'LIMITED THEME · ')) + theme.name) : '';
+    const themeText = theme ? ((zh ? '隐藏限定 · ' : 'HIDDEN LIMITED · ') + theme.name) : '';
     if(badge && name){
       badge.classList.toggle('show', !!theme);
-      badge.classList.toggle('hidden-theme', !!(theme && theme.hidden));
+      badge.classList.toggle('hidden-theme', !!theme);
       name.textContent = themeText;
     }
     const chip = $('rThemeChip');
