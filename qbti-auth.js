@@ -916,16 +916,23 @@
 
   function cleanupDeletedAccount(email){
     const emailLower = String(email || '').toLowerCase();
+    const encodedLower = encodeURIComponent(emailLower);
     try {
       localStorage.removeItem('qbti_results_' + emailLower);
       localStorage.removeItem('qbti_results_' + email);
+      localStorage.removeItem('qbti_settings_v2_user_' + encodedLower);
+      localStorage.removeItem('qbti_settings_v2_user_' + encodeURIComponent(email));
+      localStorage.removeItem('qbti_result_tour_v1_' + emailLower);
+      localStorage.removeItem('qbti_result_tour_v1_' + email);
       localStorage.removeItem('qbti_ai_cache_v1');
       localStorage.removeItem('qbti_ai_daily_v1');
       localStorage.removeItem('qbti_ai_lock_v1:' + emailLower);
       localStorage.removeItem('qbti_ai_tokens_v1:' + emailLower);
       localStorage.removeItem('qbti_ai_inflight_v1:' + emailLower);
+      localStorage.removeItem('qbti_ai_burst_v1:' + emailLower);
       localStorage.removeItem('qbti_settings_v1');
       localStorage.removeItem('qbti_config_v2');
+      localStorage.removeItem('qbti_session_v1');
     } catch(e){}
     const users = loadUsers().filter(u => !u.email || u.email.toLowerCase() !== emailLower);
     saveUsers(users);

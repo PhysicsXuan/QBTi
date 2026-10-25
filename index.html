@@ -5439,6 +5439,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
         state.result = null; state.quantumState = null; state.dimStates = null;
         state.validity = null; state.aiReportText = null; state.restoredTs = null;
         state.hiddenResult = null;
+        state.resultTourPending = false;
+        if(resultTourActive) closeResultTour();
         const section = document.getElementById('historySection');
         if(section) section.style.display = 'none';
         refreshHiddenAura();
