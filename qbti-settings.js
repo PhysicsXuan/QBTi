@@ -9,7 +9,8 @@
 (function(){
   'use strict';
 
-  const SETTINGS_KEY = 'qbti_settings_v1';
+  const SETTINGS_KEY_PREFIX = 'qbti_settings_v2_user_';
+  let activeUserEmail = null;
   const DEFAULT_SETTINGS = {
     brightness: 100,
     effectsMode: 'normal',
@@ -31,6 +32,7 @@
 
   const $ = id => document.getElementById(id);
   const listeners = [];
+  try { localStorage.removeItem('qbti_settings_v1'); } catch(e){}
   let cur = loadSettings();
 
   function isAdmin(){
@@ -40,9 +42,13 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  function settingsKey(email){
+    return SETTINGS_KEY_PREFIX + encodeURIComponent(String(email || '').toLowerCase());
+  }
   function loadSettings(){
+    if(!activeUserEmail) return Object.assign({}, DEFAULT_SETTINGS);
     try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
+      const raw = localStorage.getItem(settingsKey(activeUserEmail));
       if(!raw) return Object.assign({}, DEFAULT_SETTINGS);
       const s = JSON.parse(raw) || {};
       const merged = Object.assign({}, DEFAULT_SETTINGS, s);
@@ -60,8 +66,10 @@
 
   function saveSettings(s){
     if(!suppressServerPush) s.updatedAt = Date.now();
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch(e){}
-    if(!suppressServerPush) scheduleServerPush();
+    if(activeUserEmail){
+      try { localStorage.setItem(settingsKey(activeUserEmail), JSON.stringify(s)); } catch(e){}
+    }
+    if(!suppressServerPush && activeUserEmail) scheduleServerPush();
   }
 
   function syncToken(){
@@ -73,6 +81,7 @@
     serverPushTimer = setTimeout(() => { pushToServer(); }, 600);
   }
   async function pushToServer(){
+    if(!activeUserEmail) return false;
     const token = syncToken();
     if(!token) return false;
     try {
@@ -89,20 +98,24 @@
     merged.updatedAt = Number(updatedAt) || Date.now();
     suppressServerPush = true;
     cur = merged;
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(cur)); } catch(e){}
+    if(activeUserEmail){ try { localStorage.setItem(settingsKey(activeUserEmail), JSON.stringify(cur)); } catch(e){} }
     applyAll(cur);
     suppressServerPush = false;
     const mask = $('settingsMask');
     if(mask && mask._syncUI) mask._syncUI();
+    emit('lang');
     emit('sync');
   }
   async function syncFromServer(){
+    if(!activeUserEmail) return false;
+    const expectedUser = activeUserEmail;
     const token = syncToken();
     if(!token) return false;
     try {
       const res = await fetch('/api/student/settings', { headers: { 'Authorization': 'Bearer ' + token } });
       if(!res.ok) return false;
       const data = await res.json();
+      if(activeUserEmail !== expectedUser) return false;
       if(data && data.settings && Number(data.updatedAt) > (Number(cur.updatedAt) || 0)){
         applyServerSettings(data.settings, data.updatedAt);
         return true;
@@ -630,8 +643,23 @@
     }
   }
 
+  function setActiveUser(email){
+    const next = String(email || '').toLowerCase().trim() || null;
+    if(next === activeUserEmail) return false;
+    activeUserEmail = next;
+    suppressServerPush = true;
+    cur = loadSettings();
+    applyAll(cur);
+    suppressServerPush = false;
+    const mask = $('settingsMask');
+    if(mask && mask._syncUI) mask._syncUI();
+    emit('userChange');
+    return true;
+  }
+
   window.QBTISettings = {
     get: () => Object.assign({}, cur),
+    setActiveUser: setActiveUser,
     reset: () => {
       cur = Object.assign({}, DEFAULT_SETTINGS);
       saveSettings(cur);

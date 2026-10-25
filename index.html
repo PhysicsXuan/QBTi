@@ -4907,6 +4907,14 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(info.key === 'adminDebug' || info.key === 'adminForceSimple' || info.key === 'adminMuteSound' || info.key === 'adminDisableHaptic' || info.key === 'reset'){
         renderAdminDebug();
       }
+      if(info.key === 'userChange'){
+        renderDimPreview();
+        if($('screen-quiz').classList.contains('active')) renderQuestion();
+        applyHomepageTheme();
+        refreshHiddenAura();
+        renderHistory();
+        if(state.result && $('screen-result').classList.contains('active')) renderResult(state.result, state.restoredTs);
+      }
       if(info.key === 'onboarding'){
         startOnboarding(true);
       }
@@ -4929,6 +4937,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       applyHomepageTheme();
       refreshHiddenAura();
       loadAccountStatus();
+      if(window.QBTISettings && window.QBTISettings.setActiveUser){
+        window.QBTISettings.setActiveUser(info.isLoggedIn && info.user ? info.user.email : null);
+      }
       if(window.QBTISettings && window.QBTISettings.refreshSphereHistory) window.QBTISettings.refreshSphereHistory();
       if(info.isLoggedIn) syncCrossDevice();
       if(info.isLoggedIn && info.user && info.user.role === 'admin'){
@@ -4959,6 +4970,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   renderQuestion();
   updateRestoreBanner();
   refreshAdminUI();
+  if(window.QAuth && window.QAuth.getCurrentUser && window.QBTISettings && window.QBTISettings.setActiveUser){
+    const initialUser = window.QAuth.getCurrentUser();
+    if(initialUser) window.QBTISettings.setActiveUser(initialUser.email);
+  }
   loadServerAIConfig();
   ensureCloudAIConfig();
   seedAdminHiddenSamples();
