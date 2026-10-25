@@ -33,5 +33,14 @@
 @keyframes obCardIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes obHolePulse{0%,100%{border-color:rgba(126,226,255,.72);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 22px rgba(80,220,255,.28),inset 0 0 18px rgba(80,220,255,.06)}50%{border-color:rgba(190,248,255,.98);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 42px rgba(80,220,255,.55),inset 0 0 26px rgba(80,220,255,.12)}}
 @keyframes obHintBreath{0%,100%{opacity:.38}50%{opacity:.92}}
+.ob-auth-actions{display:none;gap:8px;margin-top:17px}
+.onboarding.auth-gate .ob-auth-actions{display:flex}
+.onboarding.auth-gate .ob-dots{display:none}
+.onboarding.auth-gate .ob-actions{display:none}
+.ob-auth-actions button{pointer-events:auto;flex:1;padding:10px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.045);color:#DCE7FF;font:inherit;font-size:12px;font-weight:650;cursor:pointer;transition:.2s}
+.ob-auth-actions #obAuthLogin{background:linear-gradient(135deg,rgba(80,130,255,.9),rgba(130,95,255,.9));border-color:rgba(170,190,255,.35);color:#fff}
+.ob-auth-actions button:hover{filter:brightness(1.08);border-color:rgba(150,200,255,.5)}
+.onboarding-auth-open .qauth-mask{z-index:650 !important}
+.onboarding-auth-open .qauth-toast{z-index:700 !important}
 @media(max-width:560px){.ob-card{padding:17px 16px 14px}.ob-card h3{font-size:20px}.ob-card p{font-size:12.5px}}
 @media(prefers-reduced-motion:reduce){.onboarding.show,.ob-card,.ob-hole,.ob-hint{animation:none!important}}

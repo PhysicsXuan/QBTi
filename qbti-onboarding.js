@@ -249,5 +249,18 @@
     if(!p || !e) return;
     p.steps = p.steps.slice(0, 8).concat([e.script], p.steps.slice(8, 10), e.settings);
   });
+  const AUTH = {
+    'zh-CN': { title: '先登录或创建账户', body: '登录后，你的 QBTi 结果、历史记录和设置才会保存到自己的账户。完成登录后，我们继续。', login: '已有账户，登录', register: '创建新账户', hint: '登录后才能继续新手引导' },
+    'zh-TW': { title: '先登入或建立帳戶', body: '登入後，你的 QBTi 結果、歷史記錄和設定才會儲存到自己的帳戶。完成登入後，我們繼續。', login: '已有帳戶，登入', register: '建立新帳戶', hint: '登入後才能繼續新手引導' },
+    en: { title: 'Sign in or create an account', body: 'Your QBTi results, history and settings are saved to your own account. Sign in to continue the guide.', login: 'I have an account', register: 'Create an account', hint: 'Sign in to continue the guide' },
+    es: { title: 'Inicia sesión o crea una cuenta', body: 'Tus resultados QBTi, el historial y los ajustes se guardan en tu cuenta. Inicia sesión para continuar.', login: 'Ya tengo cuenta', register: 'Crear una cuenta', hint: 'Inicia sesión para continuar' },
+    pt: { title: 'Entre ou crie uma conta', body: 'Seus resultados QBTi, histórico e configurações ficam salvos na sua conta. Entre para continuar.', login: 'Já tenho conta', register: 'Criar uma conta', hint: 'Entre para continuar o guia' },
+    ko: { title: '로그인하거나 계정 만들기', body: 'QBTi 결과, 기록, 설정은 내 계정에 저장됩니다. 로그인하면 안내를 계속합니다.', login: '이미 계정이 있어요', register: '새 계정 만들기', hint: '로그인해야 안내를 계속할 수 있습니다' },
+    ja: { title: 'ログインまたはアカウント作成', body: 'QBTi の結果・履歴・設定は自分のアカウントに保存されます。ログインするとガイドを続けられます。', login: 'アカウントを持っている', register: '新しいアカウントを作成', hint: 'ログインするとガイドを続けられます' },
+    fr: { title: 'Connectez-vous ou créez un compte', body: 'Vos résultats QBTi, votre historique et vos réglages sont enregistrés dans votre compte. Connectez-vous pour continuer.', login: 'J’ai déjà un compte', register: 'Créer un compte', hint: 'Connectez-vous pour continuer le guide' }
+  };
+  Object.keys(PACKS).forEach(function(lang){
+    if(PACKS[lang] && AUTH[lang]) PACKS[lang].auth = AUTH[lang];
+  });
   window.QBTI_ONBOARDING = { get(lang){ return PACKS[lang] || PACKS.en; } };
 })();

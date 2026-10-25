@@ -2487,7 +2487,7 @@
       },
       isIridescent: function(){ return iridescentUnlocked; },
       getBallRects: function(){
-        if(!hasSplit || soloNebula || transitionType) return [];
+        if(!hasSplit || soloNebula) return [];
         const br = safeBaseR();
         return balls.map(function(b){
           const v = computeBallVisual(b);
