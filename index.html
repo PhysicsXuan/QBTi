@@ -950,6 +950,23 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
 <div class="feature-toast" id="featureToast"></div>
 
+<div class="result-tour" id="resultTour" aria-hidden="true">
+  <div class="rt-hole" id="rtHole"></div>
+  <div class="rt-card" id="rtCard">
+    <div class="rt-kicker">FIRST RESULT</div>
+    <div class="rt-step" id="rtStep"></div>
+    <h3 id="rtTitle"></h3>
+    <p id="rtBody"></p>
+    <div class="rt-hint" id="rtHint"></div>
+    <div class="rt-dots" id="rtDots"></div>
+    <div class="rt-actions" id="rtActions">
+      <button type="button" id="rtDisable">不再提示</button>
+      <button type="button" id="rtDone">开始探索</button>
+    </div>
+    <div class="rt-note" id="rtNote"></div>
+  </div>
+</div>
+
 <div class="onboarding" id="onboarding" aria-hidden="true" role="dialog" aria-live="polite">
   <div class="ob-hole" id="obHole"></div>
   <div class="ob-finger" id="obFinger" aria-hidden="true"><span class="ob-finger-ring"></span><span class="ob-finger-hand">☝</span></div>
@@ -998,7 +1015,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     quantumState: null, dimStates: null, aiReportText: null, aiReportSource: null,
     aiReportLang: null, aiLoading: false, aiError: null, lastAiAt: 0,
     aiRequestId: 0, resultTs: null, restoredTs: null,
-    hiddenUnlockKeys: [], hiddenQuiz: null, hiddenResult: null
+    hiddenUnlockKeys: [], hiddenQuiz: null, hiddenResult: null, resultTourPending: false
   };
   function shuffledQuizOrder(){
     const order = [];
@@ -2466,6 +2483,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     } catch(e){ console.warn('[QBTI hidden] unlock check failed', e); }
     state.hiddenUnlockKeys = hiddenUnlockKeys;
     state.hiddenResult = null;
+    let priorResultCount = 0;
+    try { priorResultCount = getAllResultsFromUser().length; } catch(e){}
+    state.resultTourPending = priorResultCount === 0 && !resultTourDone();
     saveResultToUser(state.result, qs, ds, state.answers);
     syncLatestHistoryToServer();
     applyHomepageTheme();
@@ -2477,6 +2497,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     renderQuantumStateBadge(qs, ds);
     syncReportToServer();
     goToScreen('screen-result');
+    maybeStartResultTour();
   }
 
   /* ============================================================
@@ -2550,6 +2571,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     renderQuantumStateBadge(state.quantumState, state.dimStates ? state.dimStates.types : null);
     syncReportToServer();
     goToScreen('screen-result');
+    maybeStartResultTour();
   }
 
   function updateHistoryHiddenResult(ts, hidden){
@@ -4381,6 +4403,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('btnStart').addEventListener('click', () => {
     if(!featureOn('quiz')){ showFeatureNotice('quiz'); return; }
     state.quizOrder = shuffledQuizOrder();
+    state.resultTourPending = false;
     state.idx = 0; state.answers = {}; state.timings = {}; state.questionShownAt = {};
     state.validity = null; state.result = null; state.aiReportText = null; state.aiReportSource = null;
     state.aiReportLang = null; state.aiError = null; state.aiLoading = false; state.lastAiAt = 0; state.resultTs = null;
@@ -4393,6 +4416,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('btnRestart').addEventListener('click', () => {
     if(!featureOn('quiz')){ showFeatureNotice('quiz'); return; }
     state.quizOrder = null;
+    state.resultTourPending = false;
     const I18N = window.QBTI_I18N;
     const msg = (I18N && I18N.current !== 'zh-CN') ? 'Restart? The quantum sphere will be overwritten, history preserved.' : '重新开始？量子球会被新结果覆盖，历史记录仍保留。';
     if(!confirm(msg)) return;
@@ -4862,6 +4886,237 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     onboardingTrackRaf = requestAnimationFrame(tick);
   }
 
+  /* ============================================================
+     第一次结果页独立教程
+     ============================================================ */
+  const RESULT_TOUR_STEPS = [
+    { target: null },
+    { target: '.quantum-log-toggle' },
+    { target: '#btnAI' },
+    { target: '#btnRestart' },
+    { target: '#btnBackFromResult' },
+    null
+  ];
+  const RESULT_TOUR_TEXTS = {
+    'zh-CN': {
+      kicker: 'FIRST RESULT', hint: '点击屏幕任意位置继续', disable: '不再提示', done: '开始探索',
+      note: '选择「不再提示」后将永久关闭本教程，设置中不会再次开启。',
+      steps: [
+        { title: '这是你的第一份观测结果', body: '接下来用几步告诉你：维度观测日志、报告、重新观测和历史记录分别在哪里。' },
+        { title: '展开每个维度的观测日志', body: '每个维度下方都有「点击展开：当前维度的物理观测日志」。点开它，可以看到这个维度的能级、势垒、量子行为和跃迁引导。' },
+        { title: '在这里生成报告', body: '点击「生成报告」，AI 会基于这次结果写一份只属于你的量子态解读。' },
+        { title: '想重新观测，点这里', body: '「重新观测」会重新开始 40 题。已经完成的历史结果会保留，不会被覆盖。' },
+        { title: '以后怎么看历史记录', body: '点左上角「返回 QBTi 首页」，向下滚动就能看到每一次观测。点任意一条历史卡片，可以恢复当时的结果。' }
+      ],
+      final: { title: '结果页导览结束', body: '你已经知道观测日志、报告、重新观测和历史记录在哪里了。' }
+    },
+    'zh-TW': {
+      kicker: 'FIRST RESULT', hint: '點擊螢幕任意位置繼續', disable: '不再提示', done: '開始探索',
+      note: '選擇「不再提示」後將永久關閉本教學，設定中不會再次開啟。',
+      steps: [
+        { title: '這是你的第一份觀測結果', body: '接下來用幾步告訴你：維度觀測日誌、報告、重新觀測和歷史記錄分別在哪裡。' },
+        { title: '展開每個維度的觀測日誌', body: '每個維度下方都有「點擊展開：當前維度的物理觀測日誌」。點開它，可以看到這個維度的能級、勢壘、量子行為和躍遷引導。' },
+        { title: '在這裡生成報告', body: '點擊「生成報告」，AI 會根據這次結果寫一份只屬於你的量子態解讀。' },
+        { title: '想重新觀測，點這裡', body: '「重新觀測」會重新開始 40 題。已經完成的歷史結果會保留，不會被覆蓋。' },
+        { title: '以後怎麼看歷史記錄', body: '點左上角「返回 QBTi 首頁」，向下捲動就能看到每一次觀測。點任意一則歷史卡片，可以恢復當時的結果。' }
+      ],
+      final: { title: '結果頁導覽結束', body: '你已經知道觀測日誌、報告、重新觀測和歷史記錄在哪裡了。' }
+    },
+    en: {
+      kicker: 'FIRST RESULT', hint: 'Click anywhere to continue', disable: 'Don’t show again', done: 'Start exploring',
+      note: 'Choosing “Don’t show again” permanently disables this guide. It cannot be re-enabled in Settings.',
+      steps: [
+        { title: 'This is your first result', body: 'A few quick steps will show you where the dimension logs, report, re-observation and history are.' },
+        { title: 'Open each dimension’s observation log', body: 'Under every dimension, open “physical observation log for this dimension”. It shows the energy level, barrier, quantum behavior and leap guidance for that dimension.' },
+        { title: 'Generate your report here', body: 'Click “Generate report” and AI will write a quantum-state interpretation based on this result.' },
+        { title: 'Observe again here', body: '“Observe again” starts a new 40-question run. Completed history is preserved and will not be overwritten.' },
+        { title: 'View history later', body: 'Click “Back to QBTi home” at the top left and scroll down to see every observation. Click any history card to restore that result.' }
+      ],
+      final: { title: 'Result tour complete', body: 'You now know where the logs, report, re-observation and history are.' }
+    },
+    es: {
+      kicker: 'FIRST RESULT', hint: 'Haz clic en cualquier lugar para continuar', disable: 'No volver a mostrar', done: 'Empezar a explorar',
+      note: 'Si eliges «No volver a mostrar», este tutorial se desactiva para siempre y no se puede reactivar en Ajustes.',
+      steps: [
+        { title: 'Este es tu primer resultado', body: 'En unos pasos te mostramos dónde están los registros por dimensión, el informe, la nueva observación y el historial.' },
+        { title: 'Abre el registro de cada dimensión', body: 'Debajo de cada dimensión, abre el registro de observación. Verás el nivel de energía, la barrera, la conducta cuántica y la invitación de salto.' },
+        { title: 'Genera el informe aquí', body: 'Pulsa «Generar informe» y la IA escribirá una interpretación basada en este resultado.' },
+        { title: 'Vuelve a observar aquí', body: '«Volver a observar» inicia otras 40 preguntas. El historial anterior se conserva.' },
+        { title: 'Consulta el historial después', body: 'Pulsa «Volver al inicio de QBTi» arriba a la izquierda y desplázate para ver cada observación. Toca una tarjeta para restaurarla.' }
+      ],
+      final: { title: 'Recorrido completado', body: 'Ya sabes dónde están los registros, el informe, la nueva observación y el historial.' }
+    },
+    pt: {
+      kicker: 'FIRST RESULT', hint: 'Clique em qualquer lugar para continuar', disable: 'Não mostrar novamente', done: 'Começar a explorar',
+      note: 'Escolher «Não mostrar novamente» desativa este guia para sempre. Ele não pode ser reativado nas Configurações.',
+      steps: [
+        { title: 'Este é o seu primeiro resultado', body: 'Em alguns passos mostramos onde ficam os registros por dimensão, o relatório, a nova observação e o histórico.' },
+        { title: 'Abra o registro de cada dimensão', body: 'Abaixo de cada dimensão, abra o registro de observação. Ele mostra o nível de energia, a barreira, o comportamento quântico e o convite de salto.' },
+        { title: 'Gere o relatório aqui', body: 'Clique em «Gerar relatório» e a IA escreverá uma interpretação baseada neste resultado.' },
+        { title: 'Observe novamente aqui', body: '«Observar novamente» inicia outras 40 perguntas. O histórico anterior é preservado.' },
+        { title: 'Veja o histórico depois', body: 'Clique em «Voltar ao início do QBTi» no canto superior esquerdo e role para ver cada observação. Toque em um cartão para restaurar.' }
+      ],
+      final: { title: 'Tour concluído', body: 'Agora você sabe onde ficam os registros, o relatório, a nova observação e o histórico.' }
+    },
+    ko: {
+      kicker: 'FIRST RESULT', hint: '화면 아무 곳이나 클릭하여 계속', disable: '다시 표시하지 않기', done: '탐색 시작',
+      note: '「다시 표시하지 않기」를 선택하면 이 안내가 영구적으로 꺼지며 설정에서 다시 켤 수 없습니다.',
+      steps: [
+        { title: '첫 번째 관측 결과입니다', body: '몇 단계로 차원별 관측 로그, 보고서, 다시 관측, 기록이 어디에 있는지 알려드립니다.' },
+        { title: '각 차원의 관측 로그 열기', body: '각 차원 아래의 관측 로그를 열면 에너지 준위, 장벽, 양자 행동, 도약 안내를 볼 수 있습니다.' },
+        { title: '여기서 보고서 생성', body: '「보고서 생성」을 누르면 AI가 이 결과를 바탕으로 해석을 작성합니다.' },
+        { title: '다시 관측하기', body: '「다시 관측」은 40문항을 새로 시작합니다. 완료된 기록은 유지됩니다.' },
+        { title: '나중에 기록 보기', body: '왼쪽 위 「QBTi 홈으로 돌아가기」를 누르고 아래로 스크롤하면 모든 관측을 볼 수 있습니다. 카드를 누르면 그 결과를 복원합니다.' }
+      ],
+      final: { title: '결과 안내 완료', body: '이제 로그, 보고서, 다시 관측, 기록의 위치를 알게 되었습니다.' }
+    },
+    ja: {
+      kicker: 'FIRST RESULT', hint: '画面の任意の場所をクリックして続行', disable: '今後表示しない', done: '探索を始める',
+      note: '「今後表示しない」を選ぶとこのガイドは完全に無効になり、設定からも再表示できません。',
+      steps: [
+        { title: '最初の観測結果です', body: 'いくつかの手順で、次元ごとの観測ログ、レポート、再観測、履歴の場所を案内します。' },
+        { title: '各次元の観測ログを開く', body: '各次元の下にある観測ログを開くと、エネルギー準位、障壁、量子行動、遷移の案内が表示されます。' },
+        { title: 'ここでレポートを生成', body: '「レポートを生成」を押すと、AIがこの結果に基づいた解釈を書きます。' },
+        { title: 'もう一度観測する', body: '「再観測」で40問を最初から始めます。完了済みの履歴は保持されます。' },
+        { title: '後で履歴を見る', body: '左上の「QBTi ホームに戻る」を押して下にスクロールすると、すべての観測が見られます。カードを押すと結果を復元できます。' }
+      ],
+      final: { title: '結果ガイド完了', body: 'ログ、レポート、再観測、履歴の場所がわかりました。' }
+    },
+    fr: {
+      kicker: 'FIRST RESULT', hint: 'Cliquez n’importe où pour continuer', disable: 'Ne plus afficher', done: 'Commencer l’exploration',
+      note: 'Choisir « Ne plus afficher » désactive définitivement ce guide. Il ne peut pas être réactivé dans les Réglages.',
+      steps: [
+        { title: 'Voici votre premier résultat', body: 'Quelques étapes pour vous montrer les journaux par dimension, le rapport, la nouvelle observation et l’historique.' },
+        { title: 'Ouvrez le journal de chaque dimension', body: 'Sous chaque dimension, ouvrez le journal d’observation pour voir le niveau d’énergie, la barrière, le comportement quantique et l’invitation au saut.' },
+        { title: 'Générez le rapport ici', body: 'Cliquez sur « Générer le rapport » et l’IA écrira une interprétation basée sur ce résultat.' },
+        { title: 'Observez à nouveau ici', body: '« Observer à nouveau » relance les 40 questions. L’historique déjà terminé est conservé.' },
+        { title: 'Consulter l’historique plus tard', body: 'Cliquez sur « Retour à l’accueil QBTi » en haut à gauche et faites défiler pour voir chaque observation. Cliquez sur une carte pour restaurer le résultat.' }
+      ],
+      final: { title: 'Visite terminée', body: 'Vous savez maintenant où se trouvent les journaux, le rapport, la nouvelle observation et l’historique.' }
+    }
+  };
+  let resultTourActive = false;
+  let resultTourStep = 0;
+
+  function resultTourKey(){
+    const u = (window.QAuth && window.QAuth.getCurrentUser) ? window.QAuth.getCurrentUser() : null;
+    return 'qbti_result_tour_v1_' + (u && u.email ? String(u.email).toLowerCase() : 'guest');
+  }
+  function resultTourDone(){
+    try { const v = localStorage.getItem(resultTourKey()); return v === 'seen' || v === 'never'; } catch(e){ return false; }
+  }
+  function resultTourText(){
+    return RESULT_TOUR_TEXTS[currentLang()] || RESULT_TOUR_TEXTS.en;
+  }
+  function maybeStartResultTour(){
+    if(!state.resultTourPending || resultTourActive) return;
+    if(onboardingActive){ setTimeout(maybeStartResultTour, 700); return; }
+    if(resultTourDone()){ state.resultTourPending = false; return; }
+    state.resultTourPending = false;
+    setTimeout(startResultTour, 420);
+  }
+  function startResultTour(){
+    if(resultTourActive || resultTourDone()) return;
+    resultTourActive = true;
+    resultTourStep = 0;
+    const el = $('resultTour');
+    if(el){ el.classList.add('show'); el.setAttribute('aria-hidden', 'false'); }
+    document.body.style.overflow = 'hidden';
+    renderResultTour();
+  }
+  function closeResultTour(){
+    resultTourActive = false;
+    const el = $('resultTour');
+    if(el){ el.classList.remove('show'); el.classList.remove('is-final'); el.setAttribute('aria-hidden', 'true'); }
+    document.body.style.overflow = '';
+  }
+  function markResultTour(mode){
+    try { localStorage.setItem(resultTourKey(), mode); } catch(e){}
+    closeResultTour();
+  }
+  function advanceResultTour(){
+    if(!resultTourActive) return;
+    if(resultTourStep >= RESULT_TOUR_STEPS.length - 1) return;
+    resultTourStep += 1;
+    renderResultTour();
+  }
+  function positionResultTour(){
+    const el = $('resultTour'), card = $('rtCard'), hole = $('rtHole');
+    if(!el || !card || !hole || !resultTourActive) return;
+    const step = RESULT_TOUR_STEPS[resultTourStep];
+    const target = step && step.target ? document.querySelector(step.target) : null;
+    const r = target ? target.getBoundingClientRect() : null;
+    const isFinal = resultTourStep >= RESULT_TOUR_STEPS.length - 1;
+    const cw = Math.min(390, window.innerWidth - 32);
+    card.style.width = cw + 'px';
+    const ch = card.offsetHeight || 220;
+    el.classList.toggle('no-target', !r || isFinal);
+    if(r && !isFinal){
+      const pad = 8;
+      const hx = Math.max(6, r.left - pad), hy = Math.max(6, r.top - pad);
+      const hw = Math.min(window.innerWidth - 12, r.width + pad * 2);
+      const hh = Math.min(window.innerHeight - 12, r.height + pad * 2);
+      hole.style.left = hx + 'px'; hole.style.top = hy + 'px'; hole.style.width = hw + 'px'; hole.style.height = hh + 'px'; hole.style.display = 'block';
+      let left = r.left + r.width / 2 - cw / 2;
+      let top = r.bottom + 16;
+      if(top + ch > window.innerHeight - 14) top = r.top - ch - 16;
+      if(top < 14) top = Math.max(14, (window.innerHeight - ch) / 2);
+      left = Math.max(14, Math.min(window.innerWidth - cw - 14, left));
+      card.style.left = left + 'px'; card.style.top = top + 'px';
+    } else {
+      hole.style.display = 'none';
+      card.style.left = Math.max(14, (window.innerWidth - cw) / 2) + 'px';
+      card.style.top = Math.max(14, (window.innerHeight - ch) / 2) + 'px';
+    }
+  }
+  function renderResultTour(){
+    if(!resultTourActive) return;
+    const pack = resultTourText();
+    const isFinal = resultTourStep >= RESULT_TOUR_STEPS.length - 1;
+    const el = $('resultTour');
+    if(!el) return;
+    el.classList.toggle('is-final', isFinal);
+    if($('rtKicker')) $('rtKicker').textContent = pack.kicker;
+    if($('rtStep')) $('rtStep').textContent = (resultTourStep + 1) + ' / ' + RESULT_TOUR_STEPS.length;
+    const dots = $('rtDots');
+    if(dots) dots.innerHTML = RESULT_TOUR_STEPS.map(function(_, i){ return '<span class="rt-dot ' + (i === resultTourStep ? 'active' : '') + '"></span>'; }).join('');
+    if(isFinal){
+      if($('rtTitle')) $('rtTitle').textContent = pack.final.title;
+      if($('rtBody')) $('rtBody').textContent = pack.final.body;
+      if($('rtHint')) $('rtHint').textContent = '';
+      if($('rtDisable')) $('rtDisable').textContent = pack.disable;
+      if($('rtDone')) $('rtDone').textContent = pack.done;
+      if($('rtNote')) $('rtNote').textContent = pack.note;
+    } else {
+      const item = pack.steps[resultTourStep] || pack.steps[0];
+      if($('rtTitle')) $('rtTitle').textContent = item.title;
+      if($('rtBody')) $('rtBody').textContent = item.body;
+      if($('rtHint')) $('rtHint').textContent = pack.hint;
+    }
+    const step = RESULT_TOUR_STEPS[resultTourStep];
+    if(step && step.target){
+      const target = document.querySelector(step.target);
+      if(target){
+        try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e){}
+        setTimeout(positionResultTour, 330);
+      }
+    }
+    requestAnimationFrame(positionResultTour);
+  }
+  function bindResultTour(){
+    const el = $('resultTour');
+    if(!el || el._bound) return;
+    el._bound = true;
+    el.addEventListener('click', function(e){
+      if(e.target.closest('#rtCard')) return;
+      advanceResultTour();
+    });
+    if($('rtDisable')) $('rtDisable').addEventListener('click', function(e){ e.stopPropagation(); markResultTour('never'); });
+    if($('rtDone')) $('rtDone').addEventListener('click', function(e){ e.stopPropagation(); markResultTour('seen'); });
+    window.addEventListener('resize', function(){ if(resultTourActive) positionResultTour(); }, { passive: true });
+  }
+  bindResultTour();
+
   function renderOnboardingAuthGate(){
     const overlay = $('onboarding');
     if(!overlay || !onboardingPack) return;
@@ -4987,7 +5242,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function onboardingClickCapture(e){
     if(!onboardingActive || onboardingAuthRequired) return;
     if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
-    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask,.qauth-mask')) return;
+    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask,.qauth-mask,#resultTour')) return;
     const step = ONBOARDING_STEPS[onboardingStep];
     if(step && (step.allowNav || step.allowAction)){
       const hit = step.selector && e.target.closest(step.selector);
@@ -5013,7 +5268,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function onboardingPointerDownCapture(e){
     if(!onboardingActive || onboardingAuthRequired) return;
     if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
-    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask,.qauth-mask')) return;
+    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask,.qauth-mask,#resultTour')) return;
     const step = ONBOARDING_STEPS[onboardingStep];
     if(step && step.interactive){
       if(step.interactive === 'nebula'){
@@ -5034,7 +5289,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function onboardingPointerUpCapture(e){
     if(!onboardingActive || onboardingAuthRequired) return;
     if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
-    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask,.qauth-mask')) return;
+    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask,.qauth-mask,#resultTour')) return;
     const step = ONBOARDING_STEPS[onboardingStep];
     if(!step || step.interactive !== 'split') return;
     const wasDown = onboardingPointerDown;

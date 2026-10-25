@@ -42,5 +42,31 @@
 .ob-auth-actions button:hover{filter:brightness(1.08);border-color:rgba(150,200,255,.5)}
 .onboarding-auth-open .qauth-mask{z-index:650 !important}
 .onboarding-auth-open .qauth-toast{z-index:700 !important}
+
+/* 第一次结果页独立教程 */
+.result-tour{position:fixed;inset:0;z-index:680;display:none;background:transparent;pointer-events:auto;overflow:hidden}
+.result-tour.show{display:block;animation:obFade .3s ease both}
+.rt-hole{position:fixed;border-radius:16px;border:1px solid rgba(126,226,255,.85);box-shadow:0 0 0 9999px rgba(2,4,12,.78),0 0 30px rgba(80,220,255,.38),inset 0 0 20px rgba(80,220,255,.07);pointer-events:none;transition:left .25s ease,top .25s ease,width .25s ease,height .25s ease;animation:obHolePulse 2.4s ease-in-out infinite}
+.result-tour.no-target{background:rgba(2,4,12,.80);backdrop-filter:blur(3px)}
+.result-tour.no-target .rt-hole{display:none}
+.rt-card{position:fixed;z-index:2;width:min(390px,calc(100vw - 32px));padding:20px 20px 17px;border-radius:18px;border:1px solid rgba(140,190,255,.30);background:radial-gradient(circle at 20% 0%,rgba(92,130,255,.16),transparent 58%),linear-gradient(145deg,rgba(16,23,52,.97),rgba(6,8,22,.98));box-shadow:0 22px 60px rgba(0,0,0,.55),0 0 40px rgba(65,120,255,.10);pointer-events:auto;cursor:default;animation:obCardIn .35s cubic-bezier(.2,.8,.2,1) both}
+.rt-kicker{font-size:10px;letter-spacing:.2em;color:#7FD8FF}
+.rt-step{position:absolute;right:18px;top:19px;font-size:10px;letter-spacing:.1em;color:#7183A8}
+.rt-card h3{margin:10px 0 0;font-size:clamp(19px,3.3vw,24px);line-height:1.3;font-weight:800;color:#fff;padding-right:34px}
+.rt-card p{margin:10px 0 0;font-size:13px;line-height:1.8;color:#B7C6E2}
+.rt-hint{margin-top:15px;font-size:10.5px;letter-spacing:.12em;color:#7796C4;animation:obHintBreath 2.6s ease-in-out infinite}
+.rt-dots{display:flex;gap:5px;margin-top:13px}
+.rt-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.14);transition:.25s}
+.rt-dot.active{width:18px;border-radius:99px;background:linear-gradient(90deg,#6FE7FF,#9C8CFF);box-shadow:0 0 12px rgba(100,220,255,.45)}
+.rt-actions{display:none;gap:8px;margin-top:16px}
+.result-tour.is-final .rt-actions{display:flex}
+.result-tour.is-final .rt-hint{display:none}
+.rt-actions button{pointer-events:auto;flex:1;padding:10px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.045);color:#DCE7FF;font:inherit;font-size:12px;font-weight:650;cursor:pointer}
+.rt-actions #rtDisable{color:#A8B4D0}
+.rt-actions #rtDone{background:linear-gradient(135deg,rgba(80,130,255,.9),rgba(130,95,255,.9));color:#fff;border-color:rgba(170,190,255,.35)}
+.rt-note{display:none;margin-top:9px;font-size:10px;line-height:1.6;color:#7E8DAE;text-align:center}
+.result-tour.is-final .rt-note{display:block}
+@media(max-width:560px){.rt-card{padding:17px 16px 14px}.rt-card h3{font-size:20px}.rt-card p{font-size:12.5px}}
+
 @media(max-width:560px){.ob-card{padding:17px 16px 14px}.ob-card h3{font-size:20px}.ob-card p{font-size:12.5px}}
 @media(prefers-reduced-motion:reduce){.onboarding.show,.ob-card,.ob-hole,.ob-hint{animation:none!important}}
