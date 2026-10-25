@@ -3403,7 +3403,36 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     })).filter(o => o.text).slice(0, max || 4);
   }
 
-  function normalizeDialogue(raw, dimension){
+  const DIALOGUE_STATE_OPEN = {
+    'zh-CN': { good: 'Signal 200 · Comms Open — 雷达信号清晰，通讯畅通，锁定稳定', superposition: 'Signal 207 · Two Frequencies — 双频重叠，干涉清晰，尚未坍缩' },
+    'zh-TW': { good: 'Signal 200 · Comms Open — 雷達訊號清晰，通訊暢通，鎖定穩定', superposition: 'Signal 207 · Two Frequencies — 雙頻重疊，干涉清晰，尚未坍縮' },
+    en: { good: 'Signal 200 · Comms Open — radar signal clear, communications open, lock stable', superposition: 'Signal 207 · Two Frequencies — two frequencies overlap, interference visible, not collapsed' },
+    es: { good: 'Signal 200 · Comms Open — señal clara, comunicaciones abiertas, bloqueo estable', superposition: 'Signal 207 · Two Frequencies — dos frecuencias se superponen, interferencia visible, sin colapsar' },
+    pt: { good: 'Signal 200 · Comms Open — sinal claro, comunicações abertas, bloqueio estável', superposition: 'Signal 207 · Two Frequencies — duas frequências se sobrepõem, interferência visível, sem colapso' },
+    ko: { good: 'Signal 200 · Comms Open — 신호 선명, 통신 정상, 안정적으로 고정됨', superposition: 'Signal 207 · Two Frequencies — 두 주파수가 겹치고 간섭이 보이며 아직 붕괴하지 않음' },
+    ja: { good: 'Signal 200 · Comms Open — 信号は明瞭、通信は開通、ロックは安定', superposition: 'Signal 207 · Two Frequencies — 二つの周波数が重なり、干渉が見え、まだ収縮していない' },
+    fr: { good: 'Signal 200 · Comms Open — signal clair, communications ouvertes, verrou stable', superposition: 'Signal 207 · Two Frequencies — deux fréquences se superposent, interférence visible, pas encore effondré' }
+  };
+  function enforceStateOpening(script, dimState){
+    if(!script || !script.intro || dimState === 'danger') return script;
+    const mode = dimState === 'good' ? 'good' : 'superposition';
+    const pack = DIALOGUE_STATE_OPEN[currentLang()] || DIALOGUE_STATE_OPEN.en;
+    const line = pack[mode];
+    const bad = /No\s*Found|404|Signal Lost|not found|信号丢失|訊號遺失|未找到/i;
+    let replaced = false;
+    script.intro = script.intro.map(function(entry){
+      if(bad.test(entry)){ replaced = true; return line; }
+      return entry;
+    });
+    if(!replaced){
+      const joined = script.intro.join(' ');
+      const ok = mode === 'good' ? /clear|open|stable|清晰|畅通|穩定|稳定/i.test(joined) : /two|overlap|interfer|双频|雙頻|干涉|叠加|疊加/i.test(joined);
+      if(!ok) script.intro.splice(2, 0, line);
+    }
+    return script;
+  }
+
+  function normalizeDialogue(raw, dimension, dimState){
     let text = String(raw || '').trim();
     text = text.replace(/^```(?:json)?/i, '').replace(/```$/i, '').trim();
     const start = text.indexOf('{');
@@ -3437,7 +3466,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     });
     /* 容错：不因缺少过渡/背景/因果字段而让整次生成失败；能播的剧本优先 */
     const openingText = script.intro.slice(0, 5).join(' ');
-    if(!/Error/i.test(openingText) || !/(扫描|探测|雷达)/.test(openingText) || !/我/.test(openingText)){
+    if(!/(Error|Signal|Status)/i.test(openingText) || !/(扫描|探测|雷达)/.test(openingText) || !/我/.test(openingText)){
       console.warn('[QBTI dialogue] AI 未按模板输出雷达开场，已接受当前剧本');
     }
     const introAll = script.intro.join(' ');
@@ -3472,7 +3501,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
     const disrespect = /他妈的|去你妈的|妈的|傻逼|操你|滚蛋|滚开|闭嘴|废物|没用的东西|怂货|巨婴|没救|你有病|loser|idiot|stupid|shut up/i;
     if(disrespect.test(fullText)) throw new Error('DISRESPECTFUL_LANGUAGE');
-    return script;
+    return enforceStateOpening(script, dimState);
   }
 
   function buildDialogueContext(dim, dimState, name, entry, isDanger){
@@ -3524,6 +3553,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       : mode === 'good'
         ? 'Act 1: use the strongest strength on a concrete challenge; Act 2: the strength meets resistance and must level up; Act 3: migrate it to a larger scene; Final: one concrete next step in the strongest direction.'
         : 'Act 1: two impulses coexist; Act 2: they interfere and create a third pattern; Act 3: a small measurement that does not kill the other side; Final: which side feels more coherent.';
+    const stateRadar = mode === 'danger'
+      ? 'RADAR: the signal is interrupted/lost; the channel is hollow and no clean direction locks.'
+      : mode === 'good'
+        ? 'RADAR: the signal is clear; all channels are open, communications are green, and the lock is stable.'
+        : 'RADAR: two or three frequencies overlap; interference and phase drift are visible, and none has collapsed.';
+    const errorByMode = {
+      danger: ['Error 404 Signal Not Found', 'Error 403 Signal Lost', 'Error 502 Echo Lost'],
+      good: ['Signal 000 · Locked', 'Signal 200 · Comms Open', 'Signal 101 · Radar Clear'],
+      superposition: ['Signal 207 · Two Frequencies', 'Signal 302 · Phase Drift', 'Signal 418 · Interference']
+    };
+    const errorCode = errorByMode[mode][Math.floor(Math.random() * errorByMode[mode].length)];
+    const episodeRules = 'CLEAR ANIMATED-EPISODE RULES: one location, one visible objective, one escalating problem. Each act = visible goal → physical obstacle → three different actions → immediate result. No unrelated mystery, no time skip, no sudden event. Short playable lines; at most one short metaphor that immediately becomes a concrete action. The system is an animated sidekick: panics, brags, gets embarrassed, makes visual mistakes; humor never mocks the user.';
     return [
       'You are the QBTI quantum-state system. First person: "I". The user is "you".',
       'OUTPUT LANGUAGE: ' + target + '. Write every visible string in ' + target + '. Do not use Chinese characters. JSON keys remain English.',
@@ -3533,12 +3574,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       'This must be a fresh four-act interactive script. Do not reuse any previous text.',
       stateContract,
       stateActs,
-      'MANDATORY OPENING: first 2-4 intro lines are "I" scanning the user’s radar; include the word Error, a new error code, and scan/probe/radar; the anomaly must foreshadow Act 1.',
-      'INTRO: 8-10 short lines: beep → scanning radar → Error code → state reading → non-judgmental reassurance → "I understand why…" → a grounded real-life line → "so now…" → "empty your mind… follow the words…" → "imagine…".',
+      episodeRules,
+      'MANDATORY OPENING: first 2-4 intro lines are "I" scanning the user’s radar; include "Error" for danger, or "Signal/Status" for good/superposition; use exactly this state-matched code: ' + errorCode + '; include scan/probe/radar; the anomaly must foreshadow Act 1.',
+      stateRadar,
+      'Do not use "No Found" for good or superposition. Good must clearly report clear signal / open communications / stable lock. Superposition must report overlapping frequencies / interference / phase drift. Only danger may use lost/not found.',
+      'INTRO: 8-10 short lines: beep → scanning radar → state-matched code (Error for danger / Signal for good or superposition) → state reading → non-judgmental reassurance → "I understand why…" → a grounded real-life line → "so now…" → "empty your mind… follow the words…" → "imagine…".',
       'SCENE: 2-4 background lines with concrete abandoned-place details; if intro ends with "imagine", set bridge to [].',
       'STRUCTURE: follow the state act plan above. Act 1/2/3 have 3 options; Final has 4 options. Each option has 1-2 feedback lines. Include branches A/B/C. Plant one concrete detail and pay it off in the final question.',
       'RULES: no judging, diagnosing, labeling, "you should", "you must", parents, teachers, AI, scores or reports. Humor comes from the system and situation, never from mocking the user. No sudden events without a physical precursor. Do not end lines with the Chinese full stop "。".',
-      'LENGTH: about 600-850 words.',
+      'LENGTH: about 500-700 words. Prefer action, visual jokes and clear consequences over literary description.',
       'OUTPUT: valid JSON only, no markdown or explanation. Schema:',
       '{"continuity":{"openingDetail":"…","causeChain":["…","…","…"],"payoff":"…"},"intro":["…"],"bridge":[],"background":["…"],"act1":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"act2":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"branches":{"A":["…"],"B":["…"],"C":["…"]},"act3":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"final":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]}}',
       'Output the JSON now.'
@@ -3594,8 +3638,17 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     };
     const causalList = causalVariants[dim] || [''];
     const causal = causalList[Math.floor(Math.random() * causalList.length)];
-    const errorCodes = ['Error 404 No Found', 'Error 403 Signal Lost', 'Error 500 Radar Overheat', 'Error 0x1F 信号漂移', 'Error 418 雷达不在服务区', 'Error 502 维度回波中断'];
-    const errorCode = errorCodes[Math.floor(Math.random() * errorCodes.length)];
+    const stateRadar = dimState === 'danger'
+      ? '【雷达状态】信号中断/丢失，通道是空的，系统锁不住清晰方向'
+      : dimState === 'good'
+        ? '【雷达状态】信号清晰，通讯畅通，所有通道在线，锁定稳定'
+        : '【雷达状态】两个或三个频率重叠，有可见干涉和相位漂移，任何一个都还没有坍缩';
+    const errorCodesByState = {
+      danger: ['Error 404 Signal Not Found', 'Error 403 Signal Lost', 'Error 502 Echo Lost'],
+      good: ['Signal 000 · Locked', 'Signal 200 · Comms Open', 'Signal 101 · Radar Clear'],
+      superposition: ['Signal 207 · Two Frequencies', 'Signal 302 · Phase Drift', 'Signal 418 · Interference']
+    };
+    const errorCode = errorCodesByState[dimState === 'danger' ? 'danger' : dimState === 'good' ? 'good' : 'superposition'][Math.floor(Math.random() * 3)];
     const link = {
       PO: '观测室墙上那台还在闪的旧射电接收器',
       II: '列车驾驶室里的旧广播和压力表',
@@ -3609,7 +3662,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       UR: '停用的灯塔，无线电靠旧发电机，雾笛电压不稳，油表见底，退潮时暗礁会露出黑边'
     }[dim] || '一个废弃很久、只剩旧设备还在勉强工作的地点';
     const style = [
-      '【开场强制】前2-4句必须是“我”在探测用户的该维度雷达，必须出现 Error 字样、本次错误码和“扫描/探测/雷达”中的一个；雷达状态对应维度状态；雷达异常要成为第一幕前兆的原因；每次换个错误码和现象',
+      '【清晰动画剧集】一个地点、一个看得见的目标、一个不断升级的问题；每一幕按“可见目标→物理障碍→三种不同行动→立刻结果”推进；不引入无关新谜团，不时间跳跃，不突然事件；台词短、可演，每场最多一个短比喻并立刻落到具体动作',
+      '【开场强制】前2-4句必须是“我”在探测用户的该维度雷达；危险态出现“Error”，良好态/叠加态出现“Signal/Status”；本次状态匹配代码必须逐字使用；' + stateRadar + '；良好态/叠加态禁止写 No Found/404/信号丢失；雷达异常要成为第一幕前兆的原因',
       '本次错误码：' + errorCode,
       '【引入节奏】intro 8-10句，按顺序：——哔…→我正在扫描你的雷达…→Error错误码→状态观察→不过别担心…还能争…→我理解你为何会是这种状态…→现实中每天迎接那么多未知…是个人都会累的…→那么现在…→把中控台关机…放空你的大脑…跟随着文字的指引…→想象一下…；必须出现“放空你的大脑”“跟随着文字的指引”“想象一下”',
       '【雷达→剧本】不要报完 Error 就切场景；如果以“想象一下…”进入场景，bridge 用空数组 []，不要强行写技术过渡；如果不用想象式过渡，才写1-3句 bridge 接到：' + link,
@@ -3637,11 +3691,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       '',
       style,
       '',
-      '写四幕互动剧本，总字数 1000-1300 字。所有句子末尾不要加句号。只输出合法 JSON，不要 markdown、代码块或解释。',
+      '写四幕互动剧本，总字数 750-950 字。每一幕先说清楚当前目标，再让障碍以动作出现。所有句子末尾不要加句号。只输出合法 JSON，不要 markdown、代码块或解释。',
       '必须完整输出所有字段，不能省略 continuity、branches、act1.lines 或任何 feedback。',
       '{',
       '  "continuity": { "openingDetail": "开场埋下的细节", "causeChain": ["前兆→触发", "触发→后果", "后果→回收"], "payoff": "终幕如何回收" },',
-      '  "intro": ["8-10句开场：雷达→Error→状态观察→安抚→理解→现实共鸣→那么现在→放空大脑→想象一下"],',
+      '  "intro": ["8-10句开场：雷达→状态代码（危险 Error / 良好或叠加 Signal）→状态观察→安抚→理解→现实共鸣→那么现在→放空大脑→想象一下"],',
       '  "bridge": [],',
       '  "background": ["2-4句：地点是什么、为什么废弃/停用、现在有什么具体细节"],',
       '  "act1": { "lines": ["1-3句过渡"], "prompt": "第一幕问题", "options": [ { "text": "选项A", "feedback": ["1-2句"] }, { "text": "选项B", "feedback": ["1-2句"] }, { "text": "选项C", "feedback": ["1-2句"] } ] },',
@@ -3682,7 +3736,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     let aiErr = null;
     try {
       const raw = await callAPI(prompt, systemPrompt, 0.9, 2600, 'story');
-      script = normalizeDialogue(raw, dim);
+      script = normalizeDialogue(raw, dim, dimState);
     } catch(e){
       aiErr = e;
       script = null;
@@ -3695,7 +3749,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       try {
         const retryPrompt = buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger) + '\n\n上一次输出不是合法 JSON 或缺少必要段落。请压缩到 600-800 字，只输出合法 JSON，确保所有括号和引号闭合。';
         const raw2 = await callAPI(retryPrompt, systemPrompt, 0.75, 2600, 'story');
-        script = normalizeDialogue(raw2, dim);
+        script = normalizeDialogue(raw2, dim, dimState);
       } catch(e2){
         aiErr = e2;
       }

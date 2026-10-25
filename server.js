@@ -1351,6 +1351,27 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
   const leadCode = dialogueSafeText(c.lead, 8) || (ratioEntries[0] ? ratioEntries[0][0] : '');
   const leadRatio = (ratioEntries.find(x => x[0] === leadCode) || ratioEntries[0] || [leadCode, 0])[1];
   const leadText = leadCode ? ((DIALOGUE_SUB_NAMES_EN[leadCode] || leadCode) + (leadRatio ? ' (' + leadRatio + '%)' : '')) : 'the brightest current signal';
+  const stateRadar = stateMode === 'danger'
+    ? 'RADAR: the signal is interrupted/lost; the channel is hollow and the system cannot lock a clean direction.'
+    : stateMode === 'good'
+      ? 'RADAR: the signal is clear; all channels are open, communications are green, and the lock is stable.'
+      : 'RADAR: two or three frequencies overlap; interference is visible, phase drift continues, and none of them has collapsed.';
+  const errorCodesByState = {
+    danger: ['Error 404 Signal Not Found', 'Error 403 Signal Lost', 'Error 502 Echo Lost'],
+    good: ['Signal 000 · Locked', 'Signal 200 · Comms Open', 'Signal 101 · Radar Clear'],
+    superposition: ['Signal 207 · Two Frequencies', 'Signal 302 · Phase Drift', 'Signal 418 · Interference']
+  };
+  const errorCode = errorCodesByState[stateMode][Math.floor(Math.random() * errorCodesByState[stateMode].length)];
+  const episodeRules = [
+    'CLEAR ANIMATED-EPISODE RULES:',
+    '- This is a 4-scene animated episode, not a novel, prose poem or mood piece. The user must always know: where they are, what they want right now, what is physically blocking them, and what each option will try to do.',
+    '- One location, one visible objective, one escalating problem. Do not introduce an unrelated new mystery in Act 2 or Act 3.',
+    '- Every act follows: visible goal → concrete obstacle → three different physical actions → immediate visible result. Each act ends with a clear new question caused by that result.',
+    '- Keep lines short and playable: action, object, system reaction, dialogue. At most one short metaphor per scene; immediately translate it into something the user can see or touch.',
+    '- The system is an animated sidekick: it reacts in real time, gets embarrassed, overconfident or panicked, and makes visual mistakes. Humor comes from the equipment and the system, never from mocking the user.',
+    '- The three options must be three different actions with different costs, not three moods or three rephrasings. Feedback must show the immediate consequence and hand a clear next beat to the next act.',
+    '- No time skips, no sudden events, no “and then everything changed”. Every transition needs a physical cause the user could point to.'
+  ].join('\n');
   const stateContract = stateMode === 'danger'
     ? [
         'STATE-SPECIFIC CONTRACT — DANGER / NOT YET COLLAPSED: HELP THE USER FIND A DIRECTION',
@@ -1394,8 +1415,6 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
           'Act 3: a small measurement lets the superposition show itself without fully collapsing; the first precursor pays off.',
           'Final: which side feels more coherent or more ready to be seen? Options keep room for both possibilities and do not choose for the user.'
         ];
-  const errorCodes = ['Error 404 No Found', 'Error 403 Signal Lost', 'Error 500 Radar Overheat', 'Error 502 Dimension Echo Lost', 'Error 418 Radar Out of Range'];
-  const errorCode = errorCodes[Math.floor(Math.random() * errorCodes.length)];
   const openingAngles = ['a half-finished complaint from the system', 'a broken notification tone', 'a smell that should not be there', 'a very small action nobody noticed', 'one wrong detail in the environment'];
   const openingAngle = openingAngles[Math.floor(Math.random() * openingAngles.length)];
   const moods = ['the system is sleepy', 'the system is secretly panicking', 'the system is pretending to be calm', 'the system just got embarrassed', 'the system is holding itself together'];
@@ -1419,13 +1438,14 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     '',
     'RADAR OPENING (MANDATORY):',
     '- The first 2-4 intro lines must show "I" scanning the user’s radar for this dimension.',
-    '- Include the word "Error" and this error code: ' + errorCode + '.',
+    '- Include the word "Error" only for danger; for good/superposition include "Signal" or "Status". Use exactly this state-matched code: ' + errorCode + '.',
     '- Include at least one of: scan, probe, radar.',
-    '- The radar result must match the dimension state: danger = lost/interrupted signal; good = stable/locked signal; superposition = two frequencies/drift.',
+    stateRadar,
+    '- Do not use "No Found" for a good or superposition state. Good must explicitly report clear signal / open communications / stable lock. Superposition must explicitly report overlapping frequencies / interference / phase drift. Danger may use lost/not found.',
     '- The anomaly must cause or foreshadow the first concrete detail in Act 1. It cannot be decorative.',
     '',
     'INTRO RHYTHM:',
-    '- Write 8-10 short intro lines in this order: "—beep…" → "I’m scanning your [dimension] radar…" → Error code → a specific reading of the state → a non-judgmental reassurance ("don’t worry… there is still room…") → "I understand why you might be in this state…" → a grounded real-life line about how many unknowns a person meets every day → "so now…" → "shut down the console… empty your mind… follow the words…" → "imagine…".',
+    '- Write 8-10 short intro lines in this order: "—beep…" → "I’m scanning your [dimension] radar…" → state-matched code (Error for danger / Signal for good or superposition) → a specific reading of the state → a non-judgmental reassurance ("don’t worry… there is still room…") → "I understand why you might be in this state…" → a grounded real-life line about how many unknowns a person meets every day → "so now…" → "shut down the console… empty your mind… follow the words…" → "imagine…".',
     '- Include the equivalent of "empty your mind", "follow the words" and "imagine" in the target language. Do not skip these three beats.',
     '',
     'RADAR → SCENE:',
@@ -1444,6 +1464,8 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     '',
     stateContract,
     '',
+    episodeRules,
+    '',
     'NON-NEGOTIABLE RULES:',
     '- Do not define, label, diagnose or judge the user.',
     '- Do not say "you should", "you must", "you need to", "I suggest you", or "believe in yourself".',
@@ -1459,11 +1481,12 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     '- The final question must grow naturally from the experience. Do not start preaching.',
     '',
     'STRUCTURE — FOLLOW THE STATE-SPECIFIC ACT PLAN:',
+    '- Each act begins by naming a visible goal in one short line, then shows the obstacle through action. The user should never have to guess what the scene is about.',
     ...stateActs,
     '- Every act has 3 options; the final has 4 options.',
     '- Every option needs 1-2 feedback lines. Do not leave feedback empty.',
     '- Include branches A, B and C, each 2-4 lines.',
-    '- Keep the whole script around 600-850 words. Be vivid and specific, not long-winded.',
+    '- Keep the whole script around 500-700 words. Prefer clear action and jokes over long literary description.',
     '- Do not end lines with the Chinese full stop "。"; use the target language’s normal punctuation.',
     '',
     'OUTPUT: valid JSON only, no markdown, no code fence, no explanation. Schema:',
@@ -1516,6 +1539,27 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
   const leadCode = dialogueSafeText(c.lead, 8) || (ratioEntries[0] ? ratioEntries[0][0] : '');
   const leadRatio = (ratioEntries.find(x => x[0] === leadCode) || ratioEntries[0] || [leadCode, 0])[1];
   const leadText = leadCode ? ((DIALOGUE_SUB_NAMES_ZH[leadCode] || leadCode) + (leadRatio ? '（' + leadRatio + '%）' : '')) : '当前最亮的那一束';
+  const stateRadar = stateMode === 'danger'
+    ? '【雷达状态】信号中断/丢失，通道里是空的，系统锁不住一个清晰方向。'
+    : stateMode === 'good'
+      ? '【雷达状态】信号清晰，通讯畅通，所有通道在线，锁定稳定。'
+      : '【雷达状态】两个或三个频率同时重叠，有可见干涉和相位漂移，任何一个都还没有坍缩。';
+  const errorCodesByState = {
+    danger: ['Error 404 Signal Not Found', 'Error 403 Signal Lost', 'Error 502 Echo Lost'],
+    good: ['Signal 000 · Locked', 'Signal 200 · Comms Open', 'Signal 101 · Radar Clear'],
+    superposition: ['Signal 207 · Two Frequencies', 'Signal 302 · Phase Drift', 'Signal 418 · Interference']
+  };
+  const errorCode = errorCodesByState[stateMode][Math.floor(Math.random() * errorCodesByState[stateMode].length)];
+  const episodeRules = [
+    '【清晰动画剧集规则】',
+    '- 这是一集四场动画，不是小说、散文诗或情绪片段。用户必须始终知道：我在哪、我这一场想要什么、什么东西在物理上挡着我、每个选项会尝试做什么。',
+    '- 一个地点、一个看得见的目标、一个不断升级的问题；第二幕和第三幕不能突然引入无关的新谜团。',
+    '- 每一幕都按：看得见的目标 → 具体障碍 → 三种不同的物理行动 → 立刻出现的结果。每一幕结束时，用这个结果自然抛出下一幕的问题。',
+    '- 台词短、可演：动作、物件、系统反应、对话。每场最多一个短比喻，而且必须马上落到用户能看见或摸到的东西上。',
+    '- 系统是动画里的跟班：实时吐槽、嘴硬、慌、被打脸、犯低级错误；笑点来自设备和系统，绝不嘲笑用户。',
+    '- 三个选项必须是三种不同行动和不同代价，不是三种心情或三句换皮。每条反馈都要写出立刻发生的后果，并把下一步交给下一幕。',
+    '- 不允许时间跳跃、突然事件或“然后一切都变了”。每个转场都要有用户能指认的物理前因。'
+  ].join('\n');
   const stateContract = stateMode === 'danger'
     ? [
         '【本维度核心任务：危险/未坍缩态 → 先帮助用户确定方向，不急着给答案】',
@@ -1575,15 +1619,6 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
   ];
   const openingAngle = openingAngles[Math.floor(Math.random() * openingAngles.length)];
   const systemMood = systemMoods[Math.floor(Math.random() * systemMoods.length)];
-  const errorCodes = [
-    'Error 404 No Found',
-    'Error 403 Signal Lost',
-    'Error 500 Radar Overheat',
-    'Error 0x1F 信号漂移',
-    'Error 418 雷达不在服务区',
-    'Error 502 维度回波中断'
-  ];
-  const errorCode = errorCodes[Math.floor(Math.random() * errorCodes.length)];
   const variantList = DIALOGUE_VARIANTS[dimension] || [b.causal];
   const variant = variantList[Math.floor(Math.random() * variantList.length)];
   return [
@@ -1612,11 +1647,12 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     '',
     '【开场强制：每次都要有雷达扫描】',
     '前 2-4 句必须是系统第一人称“我”在探测用户的该维度雷达，必须满足：',
-    '- 出现 “Error” 字样和本次错误码（可以微调数字/文案，但必须是 Error 开头）',
+    '- 危险态出现“Error”字样；良好态/叠加态出现“Signal/Status”字样，不使用“Error”。本次状态匹配代码必须逐字使用：' + errorCode,
     '- 出现“扫描 / 探测 / 雷达”中的至少一个词',
     '- 用“我”作为探测主体',
-    '- 雷达状态要对应维度状态：危险态偏信号丢失/404，良好态偏信号锁定，叠加态偏双频/漂移',
-    '- 错误码和开场现象每次必须有新意，不能固定写 Error 404',
+    stateRadar,
+    '- 良好态和叠加态禁止写“No Found / 404 / 信号丢失”；良好态要明确写“信号清晰、通讯畅通、锁定稳定”，叠加态要明确写“双频/多频重叠、干涉、相位漂移”。危险态才可以使用丢失/404。',
+    '- 错误码和开场现象每次必须有新意，但不能改变状态对应的雷达结论',
     '- 这个雷达异常不能只是装饰：它要成为第一幕第一个前兆的原因或伏笔',
     '- 必须明确读出用户当前状态：危险态是信号断续/丢失，良好态是信号稳定/锁定，叠加态是双频/漂移',
     '',
@@ -1719,7 +1755,7 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     '只输出合法 JSON，不要 markdown、代码块或解释。结构：',
     '{',
     '  "continuity": { "openingDetail": "开场埋下的一个细节", "causeChain": ["前兆→触发", "触发→后果", "后果→终幕回收"], "payoff": "终幕如何回收这个细节" },',
-    '  "intro": ["8-10句开场：雷达扫描→Error→状态观察→安抚→理解→现实共鸣→那么现在→放空大脑→想象一下"],',
+    '  "intro": ["8-10句开场：雷达扫描→状态代码（危险 Error / 良好或叠加 Signal）→状态观察→安抚→理解→现实共鸣→那么现在→放空大脑→想象一下"],',
     '  "bridge": [],',
     '  "background": ["2-4句：地点是什么、为什么废弃/停用、现在有什么具体细节"],',
     '  "act1": { "lines": ["第一幕过渡1-3句"], "prompt": "第一幕问题", "options": [',
