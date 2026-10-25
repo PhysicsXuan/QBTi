@@ -399,6 +399,17 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .settings-seg button:disabled:hover{color:var(--muted);}
 .settings-note{font-size:calc(11.5px * var(--q-fs));color:var(--muted);line-height:1.7;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);margin-bottom:18px;}
 .settings-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;}
+/* 小量子球访问门槛 */
+.ball-gate-mask{position:fixed;inset:0;z-index:760;display:none;place-items:center;padding:22px;background:rgba(2,4,12,.86);backdrop-filter:blur(10px)}
+.ball-gate-mask.show{display:grid}
+.ball-gate-card{width:min(420px,100%);padding:28px 24px;border-radius:20px;border:1px solid rgba(130,180,255,.28);background:radial-gradient(circle at 30% 0%,rgba(90,140,255,.14),transparent 60%),#0A0D1E;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.6)}
+.bg-icon{font-size:30px;margin-bottom:8px}
+.ball-gate-card h3{margin:0;color:#fff;font-size:21px}
+.ball-gate-card p{margin:10px 0 0;color:#AAB8D3;font-size:13px;line-height:1.8}
+.bg-actions{display:flex;gap:9px;margin-top:20px}
+.bg-actions button{flex:1;padding:10px;border-radius:10px;font:inherit;font-size:12.5px;font-weight:650;cursor:pointer}
+.bg-primary{border:1px solid rgba(150,190,255,.4);background:linear-gradient(135deg,rgba(80,130,255,.95),rgba(130,95,255,.95));color:#fff}
+.bg-cancel{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#AAB8D3}
 /* 最高权限控制台 */
 .admin-console-mask{position:fixed;inset:0;z-index:720;background:rgba(2,4,12,.86);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
 .admin-console-mask.show{display:flex}
@@ -923,6 +934,18 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   </div>
 </div>
 
+<div class="ball-gate-mask" id="ballGate" aria-hidden="true">
+  <div class="ball-gate-card">
+    <div class="bg-icon">🔒</div>
+    <h3 id="ballGateTitle">请先登录</h3>
+    <p id="ballGateDesc">登录后才能打开小量子球。</p>
+    <div class="bg-actions">
+      <button type="button" class="bg-primary" id="ballGatePrimary">去登录</button>
+      <button type="button" class="bg-cancel" id="ballGateCancel">取消</button>
+    </div>
+  </div>
+</div>
+
 <div class="feature-toast" id="featureToast"></div>
 
 <div class="onboarding" id="onboarding" aria-hidden="true" role="dialog" aria-live="polite">
@@ -983,6 +1006,48 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   };
 
   function featureOn(key){ return FEATURE_FLAGS[key] !== false; }
+
+  function hasQBTiData(){
+    if(state.result) return true;
+    try { return getAllResultsFromUser().length > 0; } catch(e){ return false; }
+  }
+
+  function smallBallAccess(){
+    if(window.QAuth && window.QAuth.isAdmin && window.QAuth.isAdmin()) return { ok: true };
+    if(!window.QAuth || !window.QAuth.isLoggedIn || !window.QAuth.isLoggedIn()){
+      return { ok: false, reason: 'login' };
+    }
+    if(!hasQBTiData()){
+      return { ok: false, reason: 'quiz' };
+    }
+    return { ok: true };
+  }
+
+  function closeNebulaForGate(){
+    try { hideNebulaChoice(); } catch(e){}
+    try {
+      if(window.QuantumSphere && window.QuantumSphere.isNebula && window.QuantumSphere.isNebula() && window.QuantumSphere.goBack) window.QuantumSphere.goBack();
+    } catch(e){}
+  }
+
+  function showBallGate(reason){
+    const mask = $('ballGate');
+    if(!mask) return;
+    const login = reason !== 'quiz';
+    if($('ballGateTitle')) $('ballGateTitle').textContent = login ? '请先登录' : '请先完成 QBTi';
+    if($('ballGateDesc')) $('ballGateDesc').textContent = login
+      ? '登录后才能打开小量子球，进入这个维度的量子态或剧情。'
+      : '你的账号还没有 QBTi 观测结果。请先完成一次 QBTi 问卷，再回来打开小量子球。';
+    if($('ballGatePrimary')) $('ballGatePrimary').textContent = login ? '去登录' : '去做 QBTi';
+    mask.dataset.reason = login ? 'login' : 'quiz';
+    mask.classList.add('show');
+    mask.setAttribute('aria-hidden', 'false');
+  }
+
+  function hideBallGate(){
+    const mask = $('ballGate');
+    if(mask){ mask.classList.remove('show'); mask.setAttribute('aria-hidden', 'true'); }
+  }
 
   function showFeatureNotice(key){
     const el = $('featureToast');
@@ -1183,6 +1248,34 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     document.addEventListener('keydown', e => { if(e.key === 'Escape') mask.classList.remove('show'); });
   }
   bindAdminConsole();
+
+  (function bindBallGate(){
+    const mask = $('ballGate');
+    if(!mask) return;
+    if($('ballGateCancel')) $('ballGateCancel').addEventListener('click', hideBallGate);
+    mask.addEventListener('click', e => { if(e.target === mask) hideBallGate(); });
+    document.addEventListener('keydown', e => {
+      if(e.key === 'Escape' && mask.classList.contains('show')){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        hideBallGate();
+      }
+    });
+    if($('ballGatePrimary')) $('ballGatePrimary').addEventListener('click', function(){
+      const reason = mask.dataset.reason || 'login';
+      hideBallGate();
+      if(reason === 'login'){
+        if(window.QAuth && window.QAuth.openLogin) window.QAuth.openLogin();
+      } else {
+        if(window.QAuth && window.QAuth.isLoggedIn && !window.QAuth.isLoggedIn()){
+          if(window.QAuth.openLogin) window.QAuth.openLogin();
+          return;
+        }
+        if(onboardingActive) closeOnboarding(false);
+        goToScreen('screen-intro');
+      }
+    });
+  })();
   function escapeHTML(value){
     return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -4038,7 +4131,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
   }
 
-  window.addEventListener('qbti:nebula-open', e => { openNebulaChoice(e.detail || {}); });
+  window.addEventListener('qbti:nebula-open', e => {
+    const access = smallBallAccess();
+    if(!access.ok){
+      closeNebulaForGate();
+      showBallGate(access.reason);
+      return;
+    }
+    openNebulaChoice(e.detail || {});
+  });
   window.addEventListener('qbti:nebula-close', () => { qDialogHide(); hideNebulaChoice(); hideQuantumStatus(); });
   if($('qDialog')) $('qDialog').addEventListener('click', e => {
     if(e.target.closest && (e.target.closest('#qDialogClose') || e.target.closest('.q-dialog-choice'))) return;
@@ -4675,7 +4776,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function onboardingClickCapture(e){
     if(!onboardingActive) return;
     if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
-    if(e.target.closest('#obCard')) return;
+    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask')) return;
     const step = ONBOARDING_STEPS[onboardingStep];
     if(step && (step.allowNav || step.allowAction)){
       const hit = step.selector && e.target.closest(step.selector);
@@ -4701,7 +4802,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function onboardingPointerDownCapture(e){
     if(!onboardingActive) return;
     if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
-    if(e.target.closest('#obCard')) return;
+    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask')) return;
     const step = ONBOARDING_STEPS[onboardingStep];
     if(step && step.interactive){
       if(step.interactive === 'nebula'){
@@ -4722,7 +4823,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function onboardingPointerUpCapture(e){
     if(!onboardingActive) return;
     if(onboardingStep >= ONBOARDING_STEPS.length - 1) return;
-    if(e.target.closest('#obCard')) return;
+    if(e.target.closest('#obCard,#ballGate,#banScreen,#adminConsoleMask')) return;
     const step = ONBOARDING_STEPS[onboardingStep];
     if(!step || step.interactive !== 'split') return;
     const wasDown = onboardingPointerDown;
@@ -4753,6 +4854,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     });
     window.addEventListener('qbti:nebula-open', (e) => {
       if(!onboardingActive || onboardingStep !== 6) return;
+      if(!smallBallAccess().ok) return;
       const step = ONBOARDING_STEPS[6];
       const dim = e && e.detail && e.detail.dim;
       if(step && step.dim && dim && step.dim !== dim) return;
