@@ -956,7 +956,7 @@
     mask.innerHTML = `
       <div class="qauth-delete-modal">
         <h3>注销账户</h3>
-        <p>注销后会永久删除该账户的注册信息、历史问卷记录、绑定关系与 AI 报告；本机相关设置也会清除。该邮箱之后可以重新注册。</p>
+        <p>注销后会永久删除该账户的注册信息、历史问卷记录、绑定关系与解析报告；本机相关设置也会清除。该邮箱之后可以重新注册。</p>
         <div class="qauth-field"><label>输入账户邮箱确认</label><input id="qauthDelEmail" type="text" placeholder="${escapeHTML(email)}" autocomplete="off" /></div>
         <div class="qauth-field"><label>密码</label><input id="qauthDelPwd" type="password" placeholder="输入当前密码" autocomplete="current-password" /></div>
         <label class="qauth-delete-check"><input type="checkbox" id="qauthDelCheck" /> 我已知晓：注销后不可恢复</label>
@@ -1013,7 +1013,7 @@
     const adminBadge = currentUser.role === 'admin'
       ? '<span class="qauth-admin-badge">ADMIN</span>' : '';
     const bindSection = currentUser.role === 'admin'
-      ? '<div class="qauth-bind-section" style="border-color:rgba(255,180,60,.3);background:rgba(255,180,60,.06);"><div class="qauth-bind-title"><span>🔧 管理员模式</span></div><div class="qauth-bind-empty">作为内置管理员，您可以：<br>• 使用右下角 ⚙ 打开 AI 接口参数（地址 / Key / 模型 / Temperature / Max tokens）<br>• 使用 🎨 → 底部「管理员高级权限」：原始数据面板、强制简洁特效、静音/禁用震动、导出本地数据、清除 AI 缓存与额度、清除历史、服务器健康检查<br>• 不参与家长绑定流程</div></div>'
+      ? '<div class="qauth-bind-section" style="border-color:rgba(255,180,60,.3);background:rgba(255,180,60,.06);"><div class="qauth-bind-title"><span>🔧 管理员模式</span></div><div class="qauth-bind-empty">作为内置管理员，您可以：<br>• 使用右下角 ⚙ 打开模型接口参数（地址 / Key / 模型 / Temperature / Max tokens）<br>• 使用 🎨 → 底部「管理员高级权限」：原始数据面板、强制简洁特效、静音/禁用震动、导出本地数据、清除解析缓存与额度、清除历史、服务器健康检查<br>• 不参与家长绑定流程</div></div>'
       : `
       <div class="qauth-bind-section" id="qauthBindSection">
         <div class="qauth-bind-title">

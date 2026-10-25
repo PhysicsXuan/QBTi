@@ -164,7 +164,7 @@
   };
   const EXTRA = {
     'zh-CN': {
-      script: { title: '剧本是什么', body: '进入量子球后，AI 会以这个维度为背景生成一段互动剧本。它不是测试，没有标准答案；每次会出现几个选择，你的选择会改变后续走向。' },
+      script: { title: '剧本是什么', body: '进入量子球后，{assistant} 会以这个维度为背景生成一段互动剧本。它不是测试，没有标准答案；每次会出现几个选择，你的选择会改变后续走向。' },
       settings: [
         { title: '设置在这里', body: '点开右下角设置，我们一项一项看。' },
         { title: '语言', body: '这里切换界面和问卷语言，选择后立即生效。' },
@@ -174,7 +174,7 @@
       ]
     },
     'zh-TW': {
-      script: { title: '劇本是什麼', body: '進入量子球後，AI 會以這個維度為背景生成一段互動劇本。它不是測驗，沒有標準答案；每次會出現幾個選擇，你的選擇會改變後續走向。' },
+      script: { title: '劇本是什麼', body: '進入量子球後，{assistant} 會以這個維度為背景生成一段互動劇本。它不是測驗，沒有標準答案；每次會出現幾個選擇，你的選擇會改變後續走向。' },
       settings: [
         { title: '設定在這裡', body: '點開右下角設定，我們一項一項看。' },
         { title: '語言', body: '這裡切換介面和問卷語言，選擇後立即生效。' },
@@ -184,7 +184,7 @@
       ]
     },
     en: {
-      script: { title: 'What the script is', body: 'After you enter the quantum ball, AI generates an interactive script set in this dimension. It is not a test and has no standard answer; every turn offers a few choices, and your choices change what happens next.' },
+      script: { title: 'What the script is', body: 'After you enter the quantum ball, {assistant} generates an interactive script set in this dimension. It is not a test and has no standard answer; every turn offers a few choices, and your choices change what happens next.' },
       settings: [
         { title: 'Settings are here', body: 'Open Settings at the bottom right and we will go through it one item at a time.' },
         { title: 'Language', body: 'Change the interface and questionnaire language here. It applies immediately.' },
@@ -194,7 +194,7 @@
       ]
     },
     es: {
-      script: { title: 'Qué es el guion', body: 'Al entrar en la bola cuántica, la IA genera un guion interactivo ambientado en esta dimensión. No es un examen y no tiene respuesta estándar; cada turno ofrece varias opciones y tus elecciones cambian lo que ocurre.' },
+      script: { title: 'Qué es el guion', body: 'Al entrar en la bola cuántica, {assistant} genera un guion interactivo ambientado en esta dimensión. No es un examen y no tiene respuesta estándar; cada turno ofrece varias opciones y tus elecciones cambian lo que ocurre.' },
       settings: [
         { title: 'Los ajustes están aquí', body: 'Abre los ajustes abajo a la derecha y los veremos uno por uno.' },
         { title: 'Idioma', body: 'Cambia aquí el idioma de la interfaz y del cuestionario. Se aplica al instante.' },
@@ -204,7 +204,7 @@
       ]
     },
     pt: {
-      script: { title: 'O que é o roteiro', body: 'Ao entrar na bola quântica, a IA gera um roteiro interativo ambientado nesta dimensão. Não é uma prova e não tem resposta padrão; a cada turno aparecem algumas escolhas, e suas escolhas mudam o que acontece.' },
+      script: { title: 'O que é o roteiro', body: 'Ao entrar na bola quântica, {assistant} gera um roteiro interativo ambientado nesta dimensão. Não é uma prova e não tem resposta padrão; a cada turno aparecem algumas escolhas, e suas escolhas mudam o que acontece.' },
       settings: [
         { title: 'As configurações ficam aqui', body: 'Abra as configurações no canto inferior direito e veremos uma por uma.' },
         { title: 'Idioma', body: 'Altere aqui o idioma da interface e do questionário. Aplica na hora.' },
@@ -214,7 +214,7 @@
       ]
     },
     ko: {
-      script: { title: '스크립트란', body: '양자 구에 들어가면 AI가 이 차원을 배경으로 인터랙티브 스크립트를 생성합니다. 시험이 아니고 정답도 없으며, 매 장면 몇 가지 선택지가 나오고 당신의 선택이 이후 전개를 바꿉니다.' },
+      script: { title: '스크립트란', body: '양자 구에 들어가면 {assistant}가 이 차원을 배경으로 인터랙티브 스크립트를 생성합니다. 시험이 아니고 정답도 없으며, 매 장면 몇 가지 선택지가 나오고 당신의 선택이 이후 전개를 바꿉니다.' },
       settings: [
         { title: '설정은 여기', body: '오른쪽 아래 설정을 열고 하나씩 살펴봅시다.' },
         { title: '언어', body: '여기서 인터페이스와 설문 언어를 바꿉니다. 즉시 적용됩니다.' },
@@ -224,7 +224,7 @@
       ]
     },
     ja: {
-      script: { title: '脚本とは', body: '量子球に入ると、AIがこの次元を舞台にインタラクティブな脚本を生成します。テストではなく正解もありません。場面ごとにいくつかの選択肢が出て、選んだ内容で後の展開が変わります。' },
+      script: { title: '脚本とは', body: '量子球に入ると、{assistant}がこの次元を舞台にインタラクティブな脚本を生成します。テストではなく正解もありません。場面ごとにいくつかの選択肢が出て、選んだ内容で後の展開が変わります。' },
       settings: [
         { title: '設定はここ', body: '右下の設定を開いて、一つずつ見ていきましょう。' },
         { title: '言語', body: 'ここで画面と質問の言語を変えられます。すぐに反映されます。' },
@@ -234,7 +234,7 @@
       ]
     },
     fr: {
-      script: { title: 'Qu’est-ce que le scénario', body: 'En entrant dans la sphère quantique, l’IA génère un scénario interactif dans cette dimension. Ce n’est pas un test et il n’y a pas de bonne réponse ; chaque scène propose quelques choix, et vos choix changent la suite.' },
+      script: { title: 'Qu’est-ce que le scénario', body: 'En entrant dans la sphère quantique, {assistant} génère un scénario interactif dans cette dimension. Ce n’est pas un test et il n’y a pas de bonne réponse ; chaque scène propose quelques choix, et vos choix changent la suite.' },
       settings: [
         { title: 'Les réglages sont ici', body: 'Ouvrez les réglages en bas à droite et nous allons les voir un par un.' },
         { title: 'Langue', body: 'Changez ici la langue de l’interface et du questionnaire. Cela s’applique immédiatement.' },

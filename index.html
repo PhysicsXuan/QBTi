@@ -608,15 +608,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       </div>
       <div class="vector-grid" id="vectorGrid"></div>
     </div>
-    <div class="section-title" data-i18n="result.sec3">AI 引导报告 · 写给你</div>
+    <div class="section-title" id="resultAISectionTitle" data-i18n="result.sec3">小Q 的量子态解析 · 写给你</div>
     <div class="ai-panel">
       <div class="ai-head">
-        <h3 data-i18n="result.aiTitle">个性化波函数解读</h3>
-        <button class="btn sm" id="btnAI">生成报告</button>
+        <h3 id="aiTitleText" data-i18n="result.aiTitle">小Q 的波函数解读</h3>
+        <button class="btn sm" id="btnAI">小Q解析</button>
       </div>
       <div id="hiddenReportBanner" style="display:none;"></div>
       <div class="ai-body" id="aiBody">
-        <div class="ai-empty" data-i18n="result.aiEmpty">点击「生成报告」，AI 将基于你的十二维量子态，输出一份只写给你自己的成长路径。</div>
+        <div class="ai-empty" data-i18n="result.aiEmpty">点击「小Q解析」，小Q 将基于你的十二维量子态，输出一份只写给你自己的成长路径。</div>
       </div>
     </div>
     <div class="result-actions">
@@ -735,12 +735,12 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   </div>
 
 
-<button class="gear" id="btnGear" title="管理员 AI 接口" style="display:none;">⚙</button>
+<button class="gear" id="btnGear" title="管理员模型接口" style="display:none;">⚙</button>
 <button class="settings-btn" id="btnSettings" title="设置">🎨</button>
 
 <div class="modal-mask" id="modalMask">
   <div class="modal">
-    <h3>管理员 · AI 接口参数</h3>
+    <h3>管理员 · 模型接口参数</h3>
     <p class="sub">API 配置由管理员保存到学生端云端，所有学生端会自动接入；密钥只保存在服务器，不会下发给普通用户。<br><span style="color:#FFD98A">⚠ 仅管理员可见；留空 API Key 表示保留云端已有 Key</span></p>
     <div class="field"><label>接口地址</label><input id="inpUrl" type="text" placeholder="https://api.deepseek.com/chat/completions"></div>
     <div class="field"><label>API Key</label><input id="inpKey" type="password" placeholder="sk-..."></div>
@@ -823,12 +823,17 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     </div>
 
     <div class="settings-group">
-      <div class="settings-group-title">AI 对话</div>
+      <div class="settings-group-title">程序对话</div>
       <div class="settings-row">
-        <label for="setUserCallName">系统对你的称呼</label>
+        <label for="setAssistantName">程序怎么称呼自己</label>
+        <input class="settings-text-input" id="setAssistantName" type="text" maxlength="12" placeholder="默认“小Q”" />
+      </div>
+      <div class="settings-note" style="margin-bottom:0;">整个程序会用这个名字称呼自己，例如“<span id="setAssistantNameEcho">小Q</span>为您解析量子态”。</div>
+      <div class="settings-row">
+        <label for="setUserCallName">程序对你的称呼</label>
         <input class="settings-text-input" id="setUserCallName" type="text" maxlength="20" placeholder="留空默认“你”" />
       </div>
-      <div class="settings-note" style="margin-bottom:0;">进入维度对话时，系统会用这个称呼和你说话。</div>
+      <div class="settings-note" style="margin-bottom:0;"><span id="setAssistantNameHint">小Q</span> 会用这个称呼和你说话。</div>
     </div>
 
     <div class="settings-group">
@@ -1047,9 +1052,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   let FEATURE_FLAGS = Object.assign({}, DEFAULT_FEATURE_FLAGS);
   const FEATURE_LABELS = {
     quiz: ['QBTi 问卷', 'QBTi questionnaire', '开启后学生可以开始 40 题问卷'],
-    explanation: ['量子态解释', 'Quantum explanation', 'AI 解释日志与量子态报告'],
+    explanation: ['量子态解析', 'Quantum reading', '程序生成的解释日志与量子态解析'],
     story: ['剧情 / 量子对话', 'Story / quantum dialogue', '进入量子球生成互动剧本'],
-    report: ['AI 报告', 'AI report', '生成 QBTi AI 报告'],
+    report: ['程序解析报告', 'Assistant report', '生成 QBTi 解析报告'],
     feedback: ['联系我们 / 反馈', 'Contact / feedback', '学生提交反馈与投诉']
   };
 
@@ -1400,18 +1405,48 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   /* 生成按钮文案（8 语言；不对用户展示 API 消耗提示） */
   const AI_TEXT = {
-    'zh-CN': { gen:'生成报告', regen:'重新生成', loading:'生成中…', cooldown:'请等待 %s 秒后再生成。', quota:'今天的生成次数已达上限（%s 次），请明天再试。' },
-    'zh-TW': { gen:'生成報告', regen:'重新生成', loading:'生成中…', cooldown:'請等待 %s 秒後再生成。', quota:'今天的生成次數已達上限（%s 次），請明天再試。' },
-    'en':    { gen:'Generate', regen:'Regenerate', loading:'Generating…', cooldown:'Please wait %s seconds before generating again.', quota:'Daily generation limit reached (%s). Please try again tomorrow.' },
-    'es':    { gen:'Generar', regen:'Regenerar', loading:'Generando…', cooldown:'Espera %s segundos antes de volver a generar.', quota:'Se alcanzó el límite diario de generaciones (%s). Inténtalo de nuevo mañana.' },
-    'pt':    { gen:'Gerar', regen:'Regerar', loading:'Gerando…', cooldown:'Aguarde %s segundos antes de gerar novamente.', quota:'Limite diário de gerações atingido (%s). Tente novamente amanhã.' },
-    'ko':    { gen:'생성', regen:'다시 생성', loading:'생성 중…', cooldown:'%s초 후에 다시 생성하세요.', quota:'오늘의 생성 한도(%s회)에 도달했습니다. 내일 다시 시도하세요.' },
-    'ja':    { gen:'生成', regen:'再生成', loading:'生成中…', cooldown:'%s秒後に再度生成してください。', quota:'本日の生成上限（%s回）に達しました。明日もう一度お試しください。' },
-    'fr':    { gen:'Générer', regen:'Régénérer', loading:'Génération…', cooldown:'Veuillez attendre %s secondes avant de régénérer.', quota:'Limite quotidienne de générations atteinte (%s). Réessayez demain.' }
+    'zh-CN': { gen:'{name}解析', regen:'让{name}重新解析', loading:'{name}正在解析…', cooldown:'请等待 %s 秒后再让{name}解析。', quota:'今天的解析次数已达上限（%s 次），请明天再试。' },
+    'zh-TW': { gen:'{name}解析', regen:'讓{name}重新解析', loading:'{name}正在解析…', cooldown:'請等待 %s 秒後再讓{name}解析。', quota:'今天的解析次數已達上限（%s 次），請明天再試。' },
+    'en':    { gen:'Ask {name}', regen:'Ask {name} again', loading:'{name} is reading…', cooldown:'Please wait %s seconds before asking {name} again.', quota:'Daily reading limit reached (%s). Please try again tomorrow.' },
+    'es':    { gen:'Preguntar a {name}', regen:'Preguntar de nuevo a {name}', loading:'{name} está leyendo…', cooldown:'Espera %s segundos antes de preguntar de nuevo a {name}.', quota:'Se alcanzó el límite diario de lecturas (%s). Inténtalo mañana.' },
+    'pt':    { gen:'Perguntar a {name}', regen:'Perguntar novamente a {name}', loading:'{name} está lendo…', cooldown:'Aguarde %s segundos antes de perguntar novamente a {name}.', quota:'Limite diário de leituras atingido (%s). Tente novamente amanhã.' },
+    'ko':    { gen:'{name}에게 묻기', regen:'{name}에게 다시 묻기', loading:'{name}이 읽는 중…', cooldown:'%s초 후에 {name}에게 다시 물어보세요.', quota:'오늘의 해석 한도(%s회)에 도달했습니다. 내일 다시 시도하세요.' },
+    'ja':    { gen:'{name} に聞く', regen:'{name} にもう一度聞く', loading:'{name} が読み取り中…', cooldown:'%s秒後にもう一度 {name} に聞いてください。', quota:'本日の解説上限（%s回）に達しました。明日もう一度お試しください。' },
+    'fr':    { gen:'Demander à {name}', regen:'Redemander à {name}', loading:'{name} lit…', cooldown:'Attendez %s secondes avant de redemander à {name}.', quota:'Limite quotidienne de lectures atteinte (%s). Réessayez demain.' }
   };
+  function assistantName(){
+    try {
+      const s = (window.QBTISettings && window.QBTISettings.get) ? window.QBTISettings.get() : null;
+      return String((s && s.assistantName) || '小Q').trim().slice(0, 12) || '小Q';
+    } catch(e){ return '小Q'; }
+  }
+  function withAssistantName(text){
+    return String(text == null ? '' : text).replace(/\{(?:name|assistant)\}/g, assistantName());
+  }
+  function withAssistantDeep(value){
+    if(typeof value === 'string') return withAssistantName(value);
+    if(Array.isArray(value)) return value.map(withAssistantDeep);
+    if(value && typeof value === 'object'){
+      const out = {};
+      Object.keys(value).forEach(function(k){ out[k] = withAssistantDeep(value[k]); });
+      return out;
+    }
+    return value;
+  }
   function aiText(key){
     const pack = AI_TEXT[currentLang()] || AI_TEXT['zh-CN'];
-    return pack[key] || AI_TEXT['zh-CN'][key] || '';
+    return withAssistantName(pack[key] || AI_TEXT['zh-CN'][key] || '');
+  }
+  function refreshAssistantLabels(){
+    const I18N = window.QBTI_I18N;
+    const name = assistantName();
+    const t = function(key, fallback){ return withAssistantName(I18N && I18N.t ? (I18N.t(key) || fallback) : fallback); };
+    const sec = $('resultAISectionTitle');
+    if(sec) sec.textContent = t('result.sec3', '{name} 的量子态解析 · 写给你');
+    const title = $('aiTitleText');
+    if(title) title.textContent = t('result.aiTitle', '{name} 的波函数解读');
+    const btn = $('btnAI');
+    if(btn && !state.aiLoading) btn.textContent = state.aiReportText ? aiText('regen') : aiText('gen');
   }
 
   const AI_TOKEN_ERROR_TEXT = {
@@ -1480,6 +1515,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       + 'Use exactly these four section headings:\n'
       + meta.headings.join('\n') + '\n'
       + 'This report is for the student only. Translate every part into ' + meta.name + '; never mention parents, guardians, authenticity scores, or parent-facing advice. Do not output Chinese.';
+    const assistant = assistantName();
+    const selfBlock = (lang === 'zh-CN' || lang === 'zh-TW')
+      ? '\n\n【程序自稱】\n這份解析由「' + assistant + '」給出。請以「' + assistant + '」作為說話者自稱，不要使用「AI」「模型」「助手」等稱呼；保持對話感，但不要假裝是人類。'
+      : '\n\n[SELF-REFERENCE]\nThis reading is given by "' + assistant + '". Refer to the speaker as "' + assistant + '"; do not call yourself "AI", "model" or "assistant". Keep a conversational tone without pretending to be human.';
+    out += selfBlock;
     const hidden = buildHiddenPromptBlock();
     return hidden ? out + '\n\n' + hidden : out;
   }
@@ -3045,7 +3085,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(state.aiReportText){
         parts.push(Q.renderMD(state.aiReportText));
       } else {
-        parts.push('<div class="ai-empty">' + (I18N ? I18N.t('result.aiEmpty') : '点击「生成报告」…') + '</div>');
+        parts.push('<div class="ai-empty">' + withAssistantName(I18N ? (I18N.t('result.aiEmpty') || '点击「{name}解析」…') : '点击「{name}解析」…') + '</div>');
       }
     }
     body.innerHTML = parts.join('');
@@ -3182,6 +3222,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
     }
     renderAIPanel();
+    refreshAssistantLabels();
     renderAdminDebug();
     refreshHiddenAura();
   }
@@ -3222,9 +3263,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const inflightId = acquireAIInflight();
     if(!inflightId) throw new Error('TOKEN_LOCK:' + aiTokenErrorText());
 
+    const selfName = assistantName();
     const systemContent = systemOverride || ((currentLang() === 'zh-CN' || currentLang() === 'zh-TW')
-      ? '你是一位擅长用隐喻理解青少年学习状态的教育引导顾问，语气温暖、具体、不评判。请始终使用用户要求的语言撰写报告。'
-      : 'You are an educational guidance consultant who uses quantum metaphors to understand teenagers’ learning states. Your tone is warm, specific, and non-judgmental. Always write the report in the language requested by the user.');
+      ? '你是「' + selfName + '」，一位擅长用隐喻理解青少年学习状态的教育引导顾问。语气温暖、具体、不评判。请始终使用用户要求的语言撰写报告，并以「' + selfName + '」自称，不要称自己为 AI 或模型。'
+      : 'You are "' + selfName + '", an educational guidance consultant who uses quantum metaphors to understand teenagers’ learning states. Your tone is warm, specific, and non-judgmental. Always write in the requested language and refer to yourself as "' + selfName + '", not as an AI or model.');
     const temperature = temperatureOverride != null
       ? Math.max(0, Math.min(1.5, Number(temperatureOverride)))
       : (useServer ? Number(serverAIConfig.temperature) : cfg.temperature);
@@ -3635,7 +3677,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
 
     const prompt = (data && data.prompt) ? data.prompt : buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger);
-    const systemPrompt = '你是 QBTI 的量子态对话系统。你必须只输出合法 JSON，严格遵守用户给出的红线和 JSON 结构；不要输出 markdown、代码块或任何解释。';
+    const systemPrompt = '你是 QBTI 的量子态对话系统「' + assistantName() + '」。你必须只输出合法 JSON，严格遵守用户给出的红线和 JSON 结构；不要输出 markdown、代码块或任何解释。';
     let script = null;
     let aiErr = null;
     try {
@@ -4728,7 +4770,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   function onboardingData(){
     const lang = currentLang();
-    return (window.QBTI_ONBOARDING && window.QBTI_ONBOARDING.get) ? window.QBTI_ONBOARDING.get(lang) : null;
+    const pack = (window.QBTI_ONBOARDING && window.QBTI_ONBOARDING.get) ? window.QBTI_ONBOARDING.get(lang) : null;
+    return pack ? withAssistantDeep(pack) : null;
   }
 
   function onboardingRectForStep(step){
@@ -4904,7 +4947,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       steps: [
         { title: '这是你的第一份观测结果', body: '接下来用几步告诉你：维度观测日志、报告、重新观测和历史记录分别在哪里。' },
         { title: '展开每个维度的观测日志', body: '每个维度下方都有「点击展开：当前维度的物理观测日志」。点开它，可以看到这个维度的能级、势垒、量子行为和跃迁引导。' },
-        { title: '在这里生成报告', body: '点击「生成报告」，AI 会基于这次结果写一份只属于你的量子态解读。' },
+        { title: '让{assistant}为你解析', body: '点击「{assistant}解析」，{assistant}会根据这次结果写一份只属于你的量子态解读。' },
         { title: '想重新观测，点这里', body: '「重新观测」会重新开始 40 题。已经完成的历史结果会保留，不会被覆盖。' },
         { title: '以后怎么看历史记录', body: '点左上角「返回 QBTi 首页」，向下滚动就能看到每一次观测。点任意一条历史卡片，可以恢复当时的结果。' }
       ],
@@ -4916,7 +4959,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       steps: [
         { title: '這是你的第一份觀測結果', body: '接下來用幾步告訴你：維度觀測日誌、報告、重新觀測和歷史記錄分別在哪裡。' },
         { title: '展開每個維度的觀測日誌', body: '每個維度下方都有「點擊展開：當前維度的物理觀測日誌」。點開它，可以看到這個維度的能級、勢壘、量子行為和躍遷引導。' },
-        { title: '在這裡生成報告', body: '點擊「生成報告」，AI 會根據這次結果寫一份只屬於你的量子態解讀。' },
+        { title: '讓{assistant}為你解析', body: '點擊「{assistant}解析」，{assistant}會根據這次結果寫一份只屬於你的量子態解讀。' },
         { title: '想重新觀測，點這裡', body: '「重新觀測」會重新開始 40 題。已經完成的歷史結果會保留，不會被覆蓋。' },
         { title: '以後怎麼看歷史記錄', body: '點左上角「返回 QBTi 首頁」，向下捲動就能看到每一次觀測。點任意一則歷史卡片，可以恢復當時的結果。' }
       ],
@@ -4928,7 +4971,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       steps: [
         { title: 'This is your first result', body: 'A few quick steps will show you where the dimension logs, report, re-observation and history are.' },
         { title: 'Open each dimension’s observation log', body: 'Under every dimension, open “physical observation log for this dimension”. It shows the energy level, barrier, quantum behavior and leap guidance for that dimension.' },
-        { title: 'Generate your report here', body: 'Click “Generate report” and AI will write a quantum-state interpretation based on this result.' },
+        { title: 'Let {assistant} read for you', body: 'Click “Ask {assistant}” and {assistant} will write a quantum-state interpretation based on this result.' },
         { title: 'Observe again here', body: '“Observe again” starts a new 40-question run. Completed history is preserved and will not be overwritten.' },
         { title: 'View history later', body: 'Click “Back to QBTi home” at the top left and scroll down to see every observation. Click any history card to restore that result.' }
       ],
@@ -4940,7 +4983,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       steps: [
         { title: 'Este es tu primer resultado', body: 'En unos pasos te mostramos dónde están los registros por dimensión, el informe, la nueva observación y el historial.' },
         { title: 'Abre el registro de cada dimensión', body: 'Debajo de cada dimensión, abre el registro de observación. Verás el nivel de energía, la barrera, la conducta cuántica y la invitación de salto.' },
-        { title: 'Genera el informe aquí', body: 'Pulsa «Generar informe» y la IA escribirá una interpretación basada en este resultado.' },
+        { title: 'Deja que {assistant} te lea', body: 'Pulsa «Preguntar a {assistant}» y {assistant} escribirá una interpretación basada en este resultado.' },
         { title: 'Vuelve a observar aquí', body: '«Volver a observar» inicia otras 40 preguntas. El historial anterior se conserva.' },
         { title: 'Consulta el historial después', body: 'Pulsa «Volver al inicio de QBTi» arriba a la izquierda y desplázate para ver cada observación. Toca una tarjeta para restaurarla.' }
       ],
@@ -4952,7 +4995,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       steps: [
         { title: 'Este é o seu primeiro resultado', body: 'Em alguns passos mostramos onde ficam os registros por dimensão, o relatório, a nova observação e o histórico.' },
         { title: 'Abra o registro de cada dimensão', body: 'Abaixo de cada dimensão, abra o registro de observação. Ele mostra o nível de energia, a barreira, o comportamento quântico e o convite de salto.' },
-        { title: 'Gere o relatório aqui', body: 'Clique em «Gerar relatório» e a IA escreverá uma interpretação baseada neste resultado.' },
+        { title: 'Deixe {assistant} ler para você', body: 'Clique em «Perguntar a {assistant}» e {assistant} escreverá uma interpretação baseada neste resultado.' },
         { title: 'Observe novamente aqui', body: '«Observar novamente» inicia outras 40 perguntas. O histórico anterior é preservado.' },
         { title: 'Veja o histórico depois', body: 'Clique em «Voltar ao início do QBTi» no canto superior esquerdo e role para ver cada observação. Toque em um cartão para restaurar.' }
       ],
@@ -4964,7 +5007,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       steps: [
         { title: '첫 번째 관측 결과입니다', body: '몇 단계로 차원별 관측 로그, 보고서, 다시 관측, 기록이 어디에 있는지 알려드립니다.' },
         { title: '각 차원의 관측 로그 열기', body: '각 차원 아래의 관측 로그를 열면 에너지 준위, 장벽, 양자 행동, 도약 안내를 볼 수 있습니다.' },
-        { title: '여기서 보고서 생성', body: '「보고서 생성」을 누르면 AI가 이 결과를 바탕으로 해석을 작성합니다.' },
+        { title: '{assistant}에게 해석 받기', body: '「{assistant}에게 묻기」를 누르면 {assistant}이 이 결과를 바탕으로 해석을 작성합니다.' },
         { title: '다시 관측하기', body: '「다시 관측」은 40문항을 새로 시작합니다. 완료된 기록은 유지됩니다.' },
         { title: '나중에 기록 보기', body: '왼쪽 위 「QBTi 홈으로 돌아가기」를 누르고 아래로 스크롤하면 모든 관측을 볼 수 있습니다. 카드를 누르면 그 결과를 복원합니다.' }
       ],
@@ -4976,7 +5019,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       steps: [
         { title: '最初の観測結果です', body: 'いくつかの手順で、次元ごとの観測ログ、レポート、再観測、履歴の場所を案内します。' },
         { title: '各次元の観測ログを開く', body: '各次元の下にある観測ログを開くと、エネルギー準位、障壁、量子行動、遷移の案内が表示されます。' },
-        { title: 'ここでレポートを生成', body: '「レポートを生成」を押すと、AIがこの結果に基づいた解釈を書きます。' },
+        { title: '{assistant} に解析してもらう', body: '「{assistant} に聞く」を押すと、{assistant} がこの結果に基づいた解釈を書きます。' },
         { title: 'もう一度観測する', body: '「再観測」で40問を最初から始めます。完了済みの履歴は保持されます。' },
         { title: '後で履歴を見る', body: '左上の「QBTi ホームに戻る」を押して下にスクロールすると、すべての観測が見られます。カードを押すと結果を復元できます。' }
       ],
@@ -4988,7 +5031,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       steps: [
         { title: 'Voici votre premier résultat', body: 'Quelques étapes pour vous montrer les journaux par dimension, le rapport, la nouvelle observation et l’historique.' },
         { title: 'Ouvrez le journal de chaque dimension', body: 'Sous chaque dimension, ouvrez le journal d’observation pour voir le niveau d’énergie, la barrière, le comportement quantique et l’invitation au saut.' },
-        { title: 'Générez le rapport ici', body: 'Cliquez sur « Générer le rapport » et l’IA écrira une interprétation basée sur ce résultat.' },
+        { title: 'Laissez {assistant} vous lire', body: 'Cliquez sur « Demander à {assistant} » et {assistant} écrira une interprétation basée sur ce résultat.' },
         { title: 'Observez à nouveau ici', body: '« Observer à nouveau » relance les 40 questions. L’historique déjà terminé est conservé.' },
         { title: 'Consulter l’historique plus tard', body: 'Cliquez sur « Retour à l’accueil QBTi » en haut à gauche et faites défiler pour voir chaque observation. Cliquez sur une carte pour restaurer le résultat.' }
       ],
@@ -5006,7 +5049,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     try { const v = localStorage.getItem(resultTourKey()); return v === 'seen' || v === 'never'; } catch(e){ return false; }
   }
   function resultTourText(){
-    return RESULT_TOUR_TEXTS[currentLang()] || RESULT_TOUR_TEXTS.en;
+    return withAssistantDeep(RESULT_TOUR_TEXTS[currentLang()] || RESULT_TOUR_TEXTS.en);
   }
   function maybeStartResultTour(){
     if(!state.resultTourPending || resultTourActive) return;
@@ -5373,6 +5416,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     window.QBTISettings.onChange(function(info){
       if(info.key === 'lang'){
         refreshPersonalityTheme();
+        refreshAssistantLabels();
         if(onboardingActive){ onboardingPack = onboardingData(); renderOnboarding(); }
         renderDimPreview();
         if($('screen-quiz').classList.contains('active')) renderQuestion();
@@ -5388,6 +5432,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       }
       if(info.key === 'adminDebug' || info.key === 'adminForceSimple' || info.key === 'adminMuteSound' || info.key === 'adminDisableHaptic' || info.key === 'reset'){
         renderAdminDebug();
+      }
+      if(info.key === 'assistantName'){
+        refreshAssistantLabels();
+        renderAIPanel();
       }
       if(info.key === 'userChange'){
         renderDimPreview();
@@ -5468,6 +5516,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   seedAdminHiddenSamples();
   maybeStartOnboarding();
   refreshHiddenAura();
+  refreshAssistantLabels();
   loadFeatureFlags();
   loadAccountStatus();
   setInterval(loadFeatureFlags, 60 * 1000);

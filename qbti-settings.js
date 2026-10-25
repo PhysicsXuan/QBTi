@@ -21,6 +21,7 @@
     sphereTheme: 'last',
     sphereCustomTs: null,
     userCallName: '',
+    assistantName: '小Q',
     onboardingDisabled: false,
     /* 管理员高级设置（仅管理员面板可见，普通用户不会显示） */
     adminDebug: false,
@@ -197,6 +198,7 @@
     const setSphereCustomRow = $('setSphereCustomRow');
     const setSphereHint = $('setSphereHint');
     const setUserCallName = $('setUserCallName');
+    const setAssistantName = $('setAssistantName');
     const setOnboarding = $('setOnboarding');
     const groups = {
       effectsMode: $('setEffectsMode'),
@@ -221,6 +223,10 @@
       if(setLang){ setLang.value = cur.lang; }
       if(setSphereCustom && cur.sphereCustomTs != null) setSphereCustom.value = String(cur.sphereCustomTs);
       if(setUserCallName) setUserCallName.value = cur.userCallName || '';
+      if(setAssistantName) setAssistantName.value = cur.assistantName || '小Q';
+      const an = cur.assistantName || '小Q';
+      const echo = $('setAssistantNameEcho'); if(echo) echo.textContent = an;
+      const ahint = $('setAssistantNameHint'); if(ahint) ahint.textContent = an;
       Object.keys(groups).forEach(k => {
         const el = groups[k];
         if(!el) return;
@@ -423,7 +429,7 @@
         <div class="settings-row"><label>禁用震动</label><button type="button" class="admin-switch" id="adminHapticBtn">OFF</button></div>
         <div class="admin-actions">
           <button type="button" class="admin-action" id="adminPrivilegeBtn">🛡 最高权限控制台</button>
-          <button type="button" class="admin-action" id="adminApiBtn">⚙ AI 接口参数</button>
+          <button type="button" class="admin-action" id="adminApiBtn">⚙ 模型接口参数</button>
           <button type="button" class="admin-action" id="adminHealthBtn">🩺 服务器健康</button>
           <button type="button" class="admin-action" id="adminExportBtn">⬇ 导出本地数据</button>
           <button type="button" class="admin-action" id="adminClearAIBtn">🧹 清除 AI 缓存/额度</button>
@@ -537,6 +543,17 @@
         syncUI();
         emit('sphereCustom');
       });
+    }
+    if(setAssistantName){
+      const saveAssistantName = () => {
+        cur.assistantName = String(setAssistantName.value || '').trim().slice(0, 12) || '小Q';
+        setAssistantName.value = cur.assistantName;
+        saveSettings(cur);
+        emit('assistantName');
+      };
+      setAssistantName.addEventListener('input', () => { const an = String(setAssistantName.value || '').trim() || '小Q'; const echo = $('setAssistantNameEcho'); if(echo) echo.textContent = an; const ahint = $('setAssistantNameHint'); if(ahint) ahint.textContent = an; });
+      setAssistantName.addEventListener('change', saveAssistantName);
+      setAssistantName.addEventListener('blur', saveAssistantName);
     }
     if(setUserCallName){
       const saveCallName = () => {
