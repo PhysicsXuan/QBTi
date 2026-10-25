@@ -993,13 +993,38 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   if(!Q){ console.error('[QBTI] qbti-core.js 未加载'); return; }
 
   const state = {
-    idx: 0, answers: {}, timings: {}, questionShownAt: {},
+    idx: 0, quizOrder: null, answers: {}, timings: {}, questionShownAt: {},
     validity: null, locked: false, result: null,
     quantumState: null, dimStates: null, aiReportText: null, aiReportSource: null,
     aiReportLang: null, aiLoading: false, aiError: null, lastAiAt: 0,
     aiRequestId: 0, resultTs: null, restoredTs: null,
     hiddenUnlockKeys: [], hiddenQuiz: null, hiddenResult: null
   };
+  function shuffledQuizOrder(){
+    const order = [];
+    [1, 2, 3, 4].forEach(function(group){
+      const groupQuestions = Q.QUESTIONS.filter(function(q){ return q.group === group; }).slice();
+      for(let i = groupQuestions.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = groupQuestions[i];
+        groupQuestions[i] = groupQuestions[j];
+        groupQuestions[j] = tmp;
+      }
+      order.push.apply(order, groupQuestions);
+    });
+    return order;
+  }
+  function ensureQuizOrder(){
+    if(!Array.isArray(state.quizOrder) || state.quizOrder.length !== Q.QUESTIONS.length){
+      state.quizOrder = shuffledQuizOrder();
+    }
+    return state.quizOrder;
+  }
+  function currentQuizQuestion(){
+    const order = ensureQuizOrder();
+    return order[state.idx] || Q.QUESTIONS[state.idx];
+  }
+
   const quantumLogCache = new Map();
   const DEFAULT_FEATURE_FLAGS = { quiz: true, explanation: true, story: true, report: true, feedback: true };
   let FEATURE_FLAGS = Object.assign({}, DEFAULT_FEATURE_FLAGS);
@@ -2335,7 +2360,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   $('qTotal').textContent = Q.QUESTIONS.length;
 
   function renderGroupStrip(){
-    const cur = Q.QUESTIONS[state.idx].group;
+    const cur = currentQuizQuestion().group;
     const I18N = window.QBTI_I18N;
     const labels = [
       I18N ? I18N.dim('PO','name') : '潜能开放度',
@@ -2351,7 +2376,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   }
 
   function renderQuestion(){
-    const q = Q.QUESTIONS[state.idx];
+    const q = currentQuizQuestion();
     if(!state.questionShownAt[q.id]) state.questionShownAt[q.id] = Date.now();
     const I18N = window.QBTI_I18N;
     $('qText').textContent = I18N ? I18N.q(q.id) : q.text;
@@ -2379,7 +2404,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   function answer(val){
     if(state.locked) return;
     state.locked = true;
-    const q = Q.QUESTIONS[state.idx];
+    const q = currentQuizQuestion();
     state.answers[q.id] = val;
     if(state.timings[q.id] == null && state.questionShownAt[q.id]){
       state.timings[q.id] = Math.max(0.1, (Date.now() - state.questionShownAt[q.id]) / 1000);
@@ -4355,6 +4380,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   $('btnStart').addEventListener('click', () => {
     if(!featureOn('quiz')){ showFeatureNotice('quiz'); return; }
+    state.quizOrder = shuffledQuizOrder();
     state.idx = 0; state.answers = {}; state.timings = {}; state.questionShownAt = {};
     state.validity = null; state.result = null; state.aiReportText = null; state.aiReportSource = null;
     state.aiReportLang = null; state.aiError = null; state.aiLoading = false; state.lastAiAt = 0; state.resultTs = null;
@@ -4366,6 +4392,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 
   $('btnRestart').addEventListener('click', () => {
     if(!featureOn('quiz')){ showFeatureNotice('quiz'); return; }
+    state.quizOrder = null;
     const I18N = window.QBTI_I18N;
     const msg = (I18N && I18N.current !== 'zh-CN') ? 'Restart? The quantum sphere will be overwritten, history preserved.' : '重新开始？量子球会被新结果覆盖，历史记录仍保留。';
     if(!confirm(msg)) return;
