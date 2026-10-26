@@ -436,6 +436,16 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .ac-search input:focus,.ac-ban-add input:focus{border-color:rgba(255,190,80,.5)}
 .ac-search button,.ac-ban-add button{padding:9px 13px;border-radius:9px;border:1px solid rgba(255,190,80,.28);background:rgba(255,190,80,.08);color:#FFE0A0;font:inherit;font-size:11.5px;cursor:pointer}
 .ac-users{max-height:280px;overflow-y:auto;margin-top:6px;padding-right:3px}
+.ac-account-detail{display:none;margin-top:10px;padding:12px;border:1px solid rgba(255,190,80,.2);border-radius:12px;background:rgba(255,190,80,.035);max-height:65vh;overflow:auto}
+.ac-account-detail.show{display:block}
+.ac-detail-top{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.ac-detail-top b{font-size:13px;color:#fff;word-break:break-all}
+.ac-detail-top span{font-size:10.5px;color:#8593AF}
+.ac-detail-close{margin-left:auto;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#C9D5EC;border-radius:7px;padding:5px 9px;font:inherit;font-size:10.5px;cursor:pointer}
+.ac-detail-block{border-top:1px solid rgba(255,255,255,.07);padding-top:9px;margin-top:9px;font-size:11.5px;color:#AEBBD5;line-height:1.7}
+.ac-detail-block>b{color:#EAF0FF;display:block;margin-bottom:4px}
+.ac-detail-chip{display:inline-block;margin:2px 4px 2px 0;padding:3px 7px;border-radius:99px;background:rgba(110,150,255,.1);color:#C5D4FF;font-size:10px}
+.ac-detail-pre{white-space:pre-wrap;word-break:break-word;background:rgba(0,0,0,.2);border-radius:7px;padding:7px;font:10px ui-monospace,Menlo,monospace;color:#93A5C5;max-height:220px;overflow:auto}
 .ac-history{max-height:420px;overflow-y:auto;margin-top:8px;padding-right:3px}
 .ac-history-item{border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.022);margin-bottom:8px;overflow:hidden}
 .ac-history-item summary{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;list-style:none;flex-wrap:wrap}
@@ -945,6 +955,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       <button type="button" class="ac-history-more" id="acHistoryMore" style="display:none;">加载更多</button>
     </div>
     <div class="ac-section">
+      <div class="ac-section-title">学生账户 · 全部 <span id="acStudentStatus"></span></div>
+      <div class="ac-search">
+        <input id="acStudentSearch" type="text" placeholder="搜索学生邮箱或用户名" />
+        <button type="button" id="acStudentSearchBtn">搜索</button>
+      </div>
+      <div class="ac-users" id="acStudentList"></div>
+      <div class="ac-account-detail" id="acStudentDetail" style="display:none;"></div>
+    </div>
+    <div class="ac-section">
       <div class="ac-section-title">用户黑名单 <span id="acUserStatus"></span></div>
       <div class="ac-search">
         <input id="acUserSearch" type="text" placeholder="搜索邮箱或用户名" />
@@ -1270,6 +1289,73 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     });
   }
 
+  function adminAccountCard(u){
+    const banned = u.banned ? ' · 已禁用' : '';
+    return '<div class="ac-user-row" style="border-bottom:1px solid rgba(255,255,255,.06);padding:8px 0;">'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'
+      + '<span class="ac-h-user">' + escapeHTML(u.username || u.email) + '</span>'
+      + '<span class="ac-h-time">' + escapeHTML(adminHistoryDate(u.createdAt)) + '</span>'
+      + '</div>'
+      + '<div style="color:#7E8DA8;font-size:10.5px;margin-top:3px;word-break:break-all;">' + escapeHTML(u.email) + (u.phone ? ' · ' + escapeHTML(u.phone) : '') + banned + '</div>'
+      + '<button type="button" class="ac-history-more" style="width:auto;margin-top:6px;padding:5px 9px;font-size:10px;" data-student="' + escapeHTML(u.email) + '">查看账户详情</button>'
+      + '</div>';
+  }
+  async function loadAdminStudentAccounts(search){
+    const host = $('acStudentList');
+    const status = $('acStudentStatus');
+    if(!host) return;
+    if(status) status.textContent = '读取中…';
+    try {
+      const data = await adminRequest('/api/admin/users?search=' + encodeURIComponent(search || ''));
+      const users = data.users || [];
+      host.innerHTML = users.length ? users.map(adminAccountCard).join('') : '<div class="ac-empty">没有匹配的学生账户</div>';
+      if(status) status.textContent = '共 ' + users.length + ' 个账户';
+      host.querySelectorAll('button[data-student]').forEach(btn => {
+        btn.addEventListener('click', () => openAdminStudentAccount(btn.dataset.student));
+      });
+    } catch(e){
+      if(status) status.textContent = e.message;
+      host.innerHTML = '<div class="ac-empty" style="color:#FF8FA0;">' + escapeHTML(e.message) + '</div>';
+    }
+  }
+  function renderAdminStudentAccount(data){
+    const host = $('acStudentDetail');
+    if(!host) return;
+    const a = data.account || {};
+    const report = data.report && data.report.payload ? data.report.payload : null;
+    const settings = data.settings && data.settings.settings ? data.settings.settings : null;
+    const history = data.history || [];
+    const shown = history;
+    const reportCode = report ? (report.code || (report.letters ? report.letters.join('') : '')) : '';
+    host.innerHTML = '<div class="ac-detail-top"><div><b>' + escapeHTML(a.username || a.email) + '</b><br><span>' + escapeHTML(a.email) + (a.phone ? ' · ' + escapeHTML(a.phone) : '') + '</span></div>'
+      + '<button type="button" class="ac-detail-close" id="acStudentDetailClose">关闭</button></div>'
+      + '<div class="ac-detail-block"><b>账户情况</b>'
+      + '注册：' + escapeHTML(adminHistoryDate(a.createdAt)) + '<br>'
+      + '状态：' + (data.banned ? '<span style="color:#FF8FA0;">已禁用 · ' + escapeHTML(data.banReason || '') + '</span>' : '<span style="color:#9EEBB8;">正常</span>') + '<br>'
+      + '绑定家长：' + ((data.bindings || []).length ? data.bindings.map(b => '<span class="ac-detail-chip">' + escapeHTML(b.parentUsername || b.parentEmail) + '</span>').join('') : '无')
+      + '</div>'
+      + '<div class="ac-detail-block"><b>最新报告</b>' + (report ? escapeHTML(reportCode || '已提交') + ' · ' + escapeHTML(adminHistoryDate(data.report.updatedAt)) + '<div class="ac-detail-pre">' + escapeHTML(String(report.aiReport || '（该报告没有解析文本）')).slice(0, 12000) + '</div>' : '暂无报告') + '</div>'
+      + '<div class="ac-detail-block"><b>账户设置</b><div class="ac-detail-pre">' + escapeHTML(settings ? JSON.stringify(settings, null, 2) : '暂无设置记录') + '</div></div>'
+      + '<div class="ac-detail-block"><b>历史观测 · ' + history.length + ' 条</b>'
+      + (shown.length ? shown.map(h => adminHistoryRecordHTML({ email: a.email, username: a.username, ts: h.ts, payload: h.payload })).join('') : '暂无历史观测')
+      + '</div>';
+    host.classList.add('show');
+    const close = $('acStudentDetailClose');
+    if(close) close.addEventListener('click', () => { host.classList.remove('show'); host.innerHTML = ''; });
+  }
+  async function openAdminStudentAccount(email){
+    const host = $('acStudentDetail');
+    if(!host) return;
+    host.innerHTML = '<div class="ac-empty">正在读取账户详情…</div>';
+    host.classList.add('show');
+    try {
+      const data = await adminRequest('/api/admin/student-account/' + encodeURIComponent(email));
+      renderAdminStudentAccount(data);
+    } catch(e){
+      host.innerHTML = '<div class="ac-empty" style="color:#FF8FA0;">读取失败：' + escapeHTML(e.message) + '</div>';
+    }
+  }
+
   let adminHistoryOffset = 0;
   let adminHistoryTotal = 0;
   let adminHistoryCount = 0;
@@ -1378,6 +1464,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(fs) fs.textContent = '立即生效';
       const us = $('acUserStatus'); if(us) us.textContent = '共 ' + (users.users || []).length + ' 位';
       const hs = $('acHistoryStatus'); if(hs) hs.textContent = '共 ' + adminHistoryTotal + ' 条 · 已显示 ' + adminHistoryCount + ' 条';
+      loadAdminStudentAccounts('');
       const hm = $('acHistoryMore'); if(hm) hm.style.display = adminHistoryCount < adminHistoryTotal ? 'block' : 'none';
     } catch(e){
       if(fs) fs.textContent = e.message;
@@ -1394,6 +1481,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if($('acHistorySearchBtn')) $('acHistorySearchBtn').addEventListener('click', () => refreshAdminHistory(true));
     if($('acHistorySearch')) $('acHistorySearch').addEventListener('keydown', e => { if(e.key === 'Enter') refreshAdminHistory(true); });
     if($('acHistoryMore')) $('acHistoryMore').addEventListener('click', () => refreshAdminHistory(false));
+    if($('acStudentSearchBtn')) $('acStudentSearchBtn').addEventListener('click', () => loadAdminStudentAccounts($('acStudentSearch') ? $('acStudentSearch').value : ''));
+    if($('acStudentSearch')) $('acStudentSearch').addEventListener('keydown', e => { if(e.key === 'Enter') loadAdminStudentAccounts(e.target.value); });
     if($('acUserSearch')) $('acUserSearch').addEventListener('keydown', e => { if(e.key === 'Enter') refreshAdminUsers(); });
     if($('acBanBtn')) $('acBanBtn').addEventListener('click', async function(){
       const email = $('acBanEmail') ? $('acBanEmail').value.trim() : '';

@@ -2091,6 +2091,62 @@ app.get('/api/admin/history', requireStudentAdmin, async (req, res) => {
 });
 
 // 4.8.4 管理员：用户列表 / 黑名单
+app.get('/api/admin/student-account/:email', requireStudentAdmin, async (req, res) => {
+  const email = String(req.params.email || '').toLowerCase().trim();
+  if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    return res.status(400).json({ error: '邮箱格式不正确', code: 'BAD_REQUEST' });
+  }
+  try {
+    const [accRes, bindRes, histRes, repRes, setRes, banRes] = await Promise.all([
+      pool.query('SELECT email, username, phone, "createdAt" FROM student_emails WHERE LOWER(email) = $1', [email]),
+      pool.query(
+        `SELECT b."parentEmail", b."boundAt", p.username AS "parentUsername"
+         FROM bindings b LEFT JOIN parents p ON LOWER(p.email) = LOWER(b."parentEmail")
+         WHERE LOWER(b."studentEmail") = $1 ORDER BY b."boundAt" DESC`,
+        [email]
+      ),
+      pool.query(
+        `SELECT "quizTs", payload FROM quiz_records WHERE LOWER("studentEmail") = $1 ORDER BY "quizTs" DESC LIMIT 500`,
+        [email]
+      ),
+      pool.query('SELECT payload, "updatedAt" FROM reports WHERE LOWER("studentEmail") = $1', [email]),
+      pool.query('SELECT settings, "updatedAt" FROM account_settings WHERE LOWER("studentEmail") = $1', [email]),
+      pool.query('SELECT reason, "bannedAt" FROM student_bans WHERE LOWER(email) = $1', [email])
+    ]);
+    const acc = accRes.rows[0];
+    if(!acc) return res.status(404).json({ error: '学生账户不存在', code: 'NOT_FOUND' });
+    const ban = banRes.rows[0];
+    const rep = repRes.rows[0];
+    const settings = setRes.rows[0];
+    res.json({
+      success: true,
+      account: {
+        email: acc.email,
+        username: acc.username || '',
+        phone: acc.phone || '',
+        createdAt: Number(acc.createdAt) || null
+      },
+      banned: !!ban,
+      banReason: ban ? (ban.reason || '') : '',
+      bannedAt: ban ? Number(ban.bannedAt) || null : null,
+      bindings: bindRes.rows.map(b => ({
+        parentEmail: b.parentEmail,
+        parentUsername: b.parentUsername || '',
+        boundAt: Number(b.boundAt) || null
+      })),
+      report: rep ? { payload: rep.payload || null, updatedAt: Number(rep.updatedAt) || null } : null,
+      settings: settings ? { settings: settings.settings || {}, updatedAt: Number(settings.updatedAt) || null } : null,
+      history: histRes.rows.map(h => ({
+        ts: Number(h.quizTs) || 0,
+        payload: h.payload || null
+      }))
+    });
+  } catch(e){
+    console.error('[管理员学生账户详情] 失败:', e.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
 app.get('/api/admin/users', requireStudentAdmin, async (req, res) => {
   const search = String(req.query.search || '').trim().slice(0, 100);
   const pattern = '%' + search + '%';
@@ -2103,7 +2159,7 @@ app.get('/api/admin/users', requireStudentAdmin, async (req, res) => {
        LEFT JOIN student_bans b ON LOWER(b.email) = LOWER(se.email)
        WHERE ($1 = '' OR se.email ILIKE $2 OR COALESCE(se.username,'') ILIKE $2)
        ORDER BY se."createdAt" DESC NULLS LAST
-       LIMIT 200`,
+       LIMIT 1000`,
       [search, pattern]
     );
     res.json({ success: true, users: r.rows.map(u => ({
@@ -2168,7 +2224,7 @@ app.post('/api/ai/chat', async (req, res) => {
   const body = req.body || {};
   const prompt = String(body.prompt || '');
   const system = String(body.system || '');
-  if(!prompt || prompt.length > 9000) return res.status(400).json({ error: '提示词为空或过长' });
+  if(!prompt || prompt.length > 20000) return res.status(400).json({ error: '提示词为空或过长' });
   if(system.length > 3000) return res.status(400).json({ error: '系统提示词过长' });
   const cfg = await readAIConfig();
   if(!cfg || !cfg.enabled || !cfg.key) return res.status(503).json({ error: 'AI 接口尚未配置', code: 'NO_API_CONFIG' });
