@@ -1334,9 +1334,55 @@ const DIALOGUE_BLUEPRINTS_EN = {
   }
 };
 
-function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
+
+/* 每次生成从不同地点/背景变体中选择；同一 IP+维度最近两次不会重复 */
+const DIALOGUE_SCENE_VARIANTS = {
+  PO: [
+    { id: 'po-dome', zh: { scene: '废弃天文台的圆顶观测室，锈死的赤道仪还指着旧坐标，星图接缝在漏灰', link: '圆顶轨道旁的旧射电接收器和卡住的观测门', background: '天文台停用多年，圆顶电机早就坏了，夜里温差让金属接缝不断响，墙角堆着掉落的铆钉，接收器却还在待机', metaphor: '那扇门后可能是一组新坐标，也可能只是更多灰尘' }, en: { scene: 'the dome room of an abandoned observatory, its seized equatorial mount still aimed at an old coordinate while dust leaks through the star-map seam', link: 'the old radio receiver beside the dome rail and the jammed observation door', background: 'the observatory has been closed for years; the dome motor is dead, temperature changes make the metal seams tick at night, fallen rivets gather in the corner, yet the receiver is still on standby', metaphor: 'behind the door may be a new coordinate set, or simply more dust' } },
+    { id: 'po-roof', zh: { scene: '天文台屋顶的天线平台，清晨的风把校准塔吹得轻轻摇晃，脚下是三米高的旧护栏', link: '校准塔上的风向标和一段断掉的同轴电缆', background: '屋顶平台多年无人维护，护栏有一截缺口，风向标的轴承干涩，断掉的同轴电缆偶尔还会冒出微弱电流声', metaphor: '是修好那根线继续听，还是承认这个频段早就没有信号' }, en: { scene: 'the antenna platform on the observatory roof at dawn, the calibration tower swaying in the wind above a three-meter drop and an old guard rail', link: 'the wind vane on the calibration tower and a severed coaxial cable', background: 'the roof platform has gone unmaintained for years; one guard-rail section is missing, the vane bearing is dry, and the cut cable still occasionally clicks with weak current', metaphor: 'repair the cable and keep listening, or admit this band has been silent for years' } },
+    { id: 'po-vault', zh: { scene: '天文台地下的数据保管室，磁带上落着厚灰，旧地震仪还在纸上画着几乎看不见的线', link: '地震仪旁的手摇录音机和一盒标着“未归档”的磁带', background: '地下保管室原本用来存观测数据，除湿机早已停摆，墙上水渍把标签泡烂，只有地震仪还靠备用电池画线', metaphor: '要不要把一盒没有归档的过去，重新放进机器里' }, en: { scene: 'the underground data vault of the observatory, thick dust on magnetic tapes while an old seismograph draws an almost invisible line', link: 'the hand-crank recorder beside the seismograph and a tape marked “unfiled”', background: 'the vault once stored observation data; the dehumidifier died long ago, water stains have ruined the labels, and only the seismograph still draws on backup battery', metaphor: 'whether to put an unfiled piece of the past back into the machine' } }
+  ],
+  II: [
+    { id: 'ii-depot', zh: { scene: '废弃矿区的环形轨道检修库，一辆旧列车停在转盘上，锅炉冷得像一块铁', link: '检修库墙上的压力表和驾驶室里的旧广播', background: '矿区停产后检修库被封，轨道缝里长满黑色杂草，工具柜上还挂着上一班司机的名牌，广播偶尔自己响一下', metaphor: '要不要重新点火，明知下一段隧道仍然没有灯' }, en: { scene: 'the maintenance depot on the mine’s circular track, an old train parked on the turntable with a boiler cold as iron', link: 'the pressure gauge on the depot wall and the old broadcast radio in the cab', background: 'the mine closed and the depot was sealed; black weeds grow between the rails, the last driver’s name tag still hangs on the tool cabinet, and the radio occasionally crackles on its own', metaphor: 'whether to relight the fire knowing the next tunnel is still dark' } },
+    { id: 'ii-cab', zh: { scene: '列车驾驶室，挡风玻璃上全是煤灰，唯一一盏灯照着发抖的压力表', link: '驾驶室里的旧广播、气压表和一根卡住的操纵杆', background: '这辆车被留在侧线上多年，驾驶室门变形，煤灰从窗缝灌进来，广播里只有一阵阵静电，操纵杆偶尔自己动一下', metaphor: '是相信仪表还能读数，还是相信窗外那条没有尽头的小轨道' }, en: { scene: 'the train cab, coal dust over the windshield and one lamp lighting a trembling pressure gauge', link: 'the old radio, the pressure gauge and a stuck control lever', background: 'the train has been left on a siding for years; the cab door is warped, coal dust blows through the window seams, the radio is mostly static, and the lever sometimes moves on its own', metaphor: 'trust the gauge, or trust the endless little track outside' } },
+    { id: 'ii-tunnel', zh: { scene: '隧道口的信号机房，墙上挂满褪色的调度牌，铁轨从黑暗里伸出来又缩回去', link: '信号机房的旧电话交换台和隧道壁上的检修灯', background: '隧道停用后信号机房还通着弱电，调度牌上的字被潮气泡花，检修灯隔几秒闪一次，铁轨上留着新鲜煤灰', metaphor: '是沿着旧信号走，还是承认这套调度早已失效' }, en: { scene: 'the signal room at the tunnel mouth, faded dispatch boards on the wall while rails slide out of the dark and back in', link: 'the old telephone switchboard and the maintenance lamp on the tunnel wall', background: 'the tunnel is closed but the signal room still has weak power; damp has blurred the dispatch boards, a maintenance lamp blinks every few seconds, and fresh coal dust sits on the rails', metaphor: 'follow the old signal, or admit the dispatch system stopped being true long ago' } }
+  ],
+  LA: [
+    { id: 'la-desk', zh: { scene: '闭馆图书馆的借阅台，绿色终端还亮着，台灯下压着一张写到一半的借阅单', link: '借阅台上的绿色终端和上一位读者留下的手绘地图', background: '图书馆闭馆多年，借阅台却还有电，终端里留着一条没完成的借阅记录，地图边缘有铅笔写的小字，书架在暗处轻轻响', metaphor: '是照着别人的地图走，还是自己画一条新的路线' }, en: { scene: 'the checkout desk of a closed library, a green terminal still glowing over a half-written borrowing slip', link: 'the green terminal on the desk and a hand-drawn map left by the previous reader', background: 'the library has been closed for years, yet the desk still has power; the terminal holds an unfinished loan record, pencil notes sit at the map’s edge, and the shelves creak softly in the dark', metaphor: 'follow someone else’s map, or draw a new route' } },
+    { id: 'la-archive', zh: { scene: '图书馆地下档案室，一排排移动书架停在半途，地上有旧轨道的黑色油迹', link: '移动书架旁的摇柄和一张被压在书脊下的索书号', background: '档案室靠机械轨道移动书架，停电后书架卡在半开的位置，湿气让书页粘在一起，摇柄上还留着上一位管理员的手印', metaphor: '是用力摇开一条路，还是从卡住的缝里侧身进去' }, en: { scene: 'the library’s underground archive, rows of movable shelves frozen halfway open and black oil marks along the old rails', link: 'the crank beside the movable shelves and a call number pressed under a book spine', background: 'the archive moves its shelves on mechanical rails; after the power cut they stuck half-open, damp has glued pages together, and a former librarian’s handprint remains on the crank', metaphor: 'force a path open, or slip sideways through the stuck gap' } },
+    { id: 'la-map', zh: { scene: '图书馆的旧地图阅览室，长桌上摊着卷边的城市图，窗外的光只够照亮一半', link: '地图柜里一叠手绘路线和桌角压着的断铅笔', background: '地图室很久没人来，窗帘卡在一半，城市图上有几处被反复描过的线，地图柜最底层压着一叠没有署名的路线图', metaphor: '是沿着被描过很多次的线走，还是把空白处补完' }, en: { scene: 'the old map reading room, curled city maps spread on a long table while only half of each is lit by the window', link: 'a stack of hand-drawn routes in the map cabinet and a broken pencil at the table corner', background: 'no one has visited the map room for years; the curtain is stuck half-open, several city-map lines have been traced over and over, and an unsigned stack of routes sits at the bottom of the cabinet', metaphor: 'follow the lines traced many times, or fill in the blank space' } }
+  ],
+  UR: [
+    { id: 'ur-base', zh: { scene: '停用灯塔底层的无线电室，发电机在墙角断续敲击，雾从门缝里钻进来', link: '灯塔底层的旧无线电和电压不稳的雾笛', background: '灯塔停用多年，发电机只够带一盏灯，无线电偶尔收到远处船鸣，雾笛的电压表在红区边缘抖动，门外潮水正在退', metaphor: '是相信雾里的声音，还是等海面自己露出形状' }, en: { scene: 'the radio room at the base of a decommissioned lighthouse, a generator knocking in the corner while fog slips under the door', link: 'the old radio at the lighthouse base and the unstable foghorn', background: 'the lighthouse has been out of service for years; the generator can barely power one lamp, the radio occasionally catches a distant ship horn, the foghorn voltage needle trembles at the red edge, and the tide is going out', metaphor: 'trust the sound in the fog, or wait for the sea to show its shape' } },
+    { id: 'ur-cliff', zh: { scene: '悬崖边的雾号站，铁架被海风锈得发红，脚下能听见浪撞暗礁的声音', link: '雾号站的手摇报警器和一根被盐腐蚀的电缆', background: '悬崖雾号站早已废弃，铁架有一根横梁松脱，报警器还能用手摇，盐雾让电缆外皮开裂，退潮时暗礁露出黑边', metaphor: '是拉响警报，还是先确认那声音到底来自哪里' }, en: { scene: 'the fog-signal station on the cliff, its iron frame rusted red by sea wind and waves audible against the reef below', link: 'the hand-crank alarm and a salt-eaten cable', background: 'the cliff station was abandoned long ago; one crossbeam is loose, the alarm can still be hand-cranked, salt fog has split the cable sheath, and black reef edges appear as the tide falls', metaphor: 'sound the alarm, or first confirm where the sound is coming from' } },
+    { id: 'ur-hut', zh: { scene: '海边的旧潮位观测棚，水尺被海藻缠住，桌上摊着一本被盐粘住的记录簿', link: '潮位棚里的手摇电话和棚外一根倾斜的标杆', background: '潮位棚停用后只剩一个铁皮屋，屋顶漏水，记录簿的纸页粘在一起，标杆被浪打歪，夜里能听到浮标钢索的低频摩擦', metaphor: '是相信记录簿上的旧潮位，还是相信今晚正在上涨的水' }, en: { scene: 'the old tide-gauge hut by the sea, a water gauge tangled in seaweed and a salt-stuck logbook open on the table', link: 'the hand-crank telephone inside the hut and a leaning marker post outside', background: 'only a tin hut remains after the tide station closed; the roof leaks, logbook pages are glued by salt, the marker post is knocked askew, and at night the buoy cable makes a low scraping sound', metaphor: 'trust the old tide levels in the logbook, or the water rising tonight' } }
+  ]
+};
+const dialogueRecentScenes = new Map();
+function chooseDialogueVariant(dimension, ip){
+  const list = DIALOGUE_SCENE_VARIANTS[dimension] || [];
+  if(!list.length) return null;
+  const key = String(ip || 'unknown') + '|' + dimension;
+  const recent = dialogueRecentScenes.get(key) || [];
+  let candidates = list.filter(v => recent.indexOf(v.id) < 0);
+  if(!candidates.length) candidates = list.slice();
+  const variant = candidates[Math.floor(Math.random() * candidates.length)];
+  recent.push(variant.id);
+  dialogueRecentScenes.set(key, recent.slice(-2));
+  if(dialogueRecentScenes.size > 2000) dialogueRecentScenes.clear();
+  return variant;
+}
+
+function buildDialoguePromptEnglish(dimension, address, context, nonce, lang, variant){
   const b = DIALOGUE_BLUEPRINTS_EN[dimension];
   if(!b) return null;
+  const v = variant && variant.en ? variant.en : null;
+  const sceneText = (v && v.scene) || b.scene;
+  const linkText = (v && v.link) || b.link;
+  const backgroundText = (v && v.background) || b.background;
+  const metaphorText = (v && v.metaphor) || b.metaphor;
+  const logicText = b.logic;
+  const variantId = (sceneVariant && sceneVariant.id) || (dimension + '-base');
   const c = context || {};
   const target = DIALOGUE_LANG_NAMES[lang] || 'English';
   const stateText = c.dimensionState === 'danger' ? 'danger / not yet collapsed'
@@ -1430,12 +1476,13 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     'You are guiding the user through one immersive dimensional dialogue.',
     '',
     'DIMENSION: ' + b.name,
-    'SCENE: ' + b.scene,
-    'RADAR LINK: ' + b.link,
-    'BACKGROUND MATERIAL: ' + b.background,
-    'CORE METAPHOR: ' + b.metaphor,
+    'SCENE: ' + sceneText,
+    'RADAR LINK: ' + linkText,
+    'BACKGROUND MATERIAL: ' + backgroundText,
+    'CORE METAPHOR: ' + metaphorText,
     'FORBIDDEN: ' + b.forbidden,
-    'CAUSAL RULE: ' + b.logic,
+    'CAUSAL RULE: ' + logicText,
+    'SCENARIO VARIANT: ' + variantId + ' — treat this as a new episode, not a rewrite of the sample. Invent at least three concrete details that are not in the background material and do not reuse the previous episode’s location name, first object, first action or opening sentence.',
     'Generation nonce: ' + dialogueSafeText(nonce, 48),
     'Opening angle for this run: ' + openingAngle,
     'System mood: ' + mood,
@@ -1458,7 +1505,7 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     'RADAR → SCENE:',
     '- Do not jump to the scene immediately after the error.',
     '- If the intro ends with an imagination transition, set "bridge" to an empty array [].',
-    '- Otherwise write 1-3 bridge lines connecting the signal to: ' + b.link + '.',
+    '- Otherwise write 1-3 bridge lines connecting the signal to: ' + linkText + '.',
     '- Always write 2-4 background lines: what the place is, why it was abandoned, and two concrete details from the background material.',
     '',
     'USER CONTEXT:',
@@ -1529,12 +1576,19 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
   ].filter(Boolean).join('\n');
 }
 
-function buildDialoguePrompt(dimension, address, context, nonce, lang){
+function buildDialoguePrompt(dimension, address, context, nonce, lang, sceneVariant){
   if(lang !== 'zh-CN' && lang !== 'zh-TW'){
-    return buildDialoguePromptEnglish(dimension, address, context, nonce, lang);
+    return buildDialoguePromptEnglish(dimension, address, context, nonce, lang, sceneVariant);
   }
   const b = DIALOGUE_BLUEPRINTS[dimension];
   if(!b) return null;
+  const v = sceneVariant && sceneVariant.zh ? sceneVariant.zh : null;
+  const sceneText = (v && v.scene) || b.scene;
+  const linkText = (v && v.link) || b.link;
+  const backgroundText = (v && v.background) || b.background;
+  const metaphorText = (v && v.metaphor) || b.metaphor;
+  const logicText = b.logic;
+  const variantId = (variant && variant.id) || (dimension + '-base');
   const c = context || {};
   const stateText = c.dimensionState === 'danger' ? '危险/未坍缩' : c.dimensionState === 'good' ? '良好/方向清晰' : '叠加/方向未定';
   const ratios = c.ratios && typeof c.ratios === 'object'
@@ -1639,12 +1693,13 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     '你正在和用户进行一场沉浸式维度对话。',
     '【本维度剧本设定】',
     '维度：' + b.name,
-    '场景：' + b.scene,
-    '雷达信号接入点：' + b.link,
-    '本维度背景信息：' + b.background,
-    '核心隐喻：' + b.metaphor,
+    '场景：' + sceneText,
+    '雷达信号接入点：' + linkText,
+    '本维度背景信息：' + backgroundText,
+    '核心隐喻：' + metaphorText,
     '禁止：' + b.forbidden,
-    '因果铺垫：' + b.logic,
+    '因果铺垫：' + logicText,
+    '【本次场景变体】' + variantId + '——把它当成全新的一集，不是改写样例；必须创造至少三个背景里没有的具体细节，不能复用上一集的场景名、第一个物件、第一个动作或开场句。',
     '【本维度因果骨架，必须遵守】',
     '前兆：' + variant.setup,
     '触发：' + variant.trigger,
@@ -1678,7 +1733,7 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     '- 不要报完 Error 就直接切到场景',
     '- 先让“我”读出雷达检测到的用户状态',
     '- 如果 intro 以“想象一下…”自然进入场景，就不需要强行写技术 bridge；此时 bridge 必须是空数组 []',
-    '- 如果不用想象式过渡，才写 1-3 句 bridge，把异常信号接入/投影到：' + b.link,
+    '- 如果不用想象式过渡，才写 1-3 句 bridge，把异常信号接入/投影到：' + linkText,
     '- 无论用哪种方式，都必须写 background 2-4 句，交代这个地点是什么、为什么废弃/停用、现在有什么具体细节',
     '- background 至少包含本维度背景信息里的两个具体细节，不要只写“你来到一个地方”',
     '',
@@ -1813,9 +1868,11 @@ app.post('/api/dialogue/prompt', async (req, res) => {
   }
   const nonce = dialogueSafeText(body.nonce, 48) || String(Date.now());
   const lang = DIALOGUE_LANG_NAMES[body.lang] ? body.lang : 'zh-CN';
-  const prompt = buildDialoguePrompt(dimension, address, safeContext, nonce, lang);
+  const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || 'unknown').trim();
+  const variant = chooseDialogueVariant(dimension, ip);
+  const prompt = buildDialoguePrompt(dimension, address, safeContext, nonce, lang, variant);
   if(!prompt || prompt.length > 8500) return res.status(500).json({ error: '提示词生成失败' });
-  res.json({ success: true, dimension: dimension, prompt: prompt });
+  res.json({ success: true, dimension: dimension, scenarioId: variant ? variant.id : null, prompt: prompt });
 });
 
 // 4.8.4 量子态状况（第五维度前的小球观测，确定性分析，不消耗 AI Token）
