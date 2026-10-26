@@ -1452,7 +1452,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
   const AI_CACHE_KEY = 'qbti_ai_cache_v1';
   const AI_MIN_INTERVAL = 30 * 1000;
   const AI_HARD_MAX_TOKENS = 2600;
-  const AI_MAX_PROMPT_CHARS = 9000;
+  const AI_MAX_PROMPT_CHARS = 20000;
   const AI_MAX_TOTAL_TOKENS = 9000;
   const AI_LOCK_MS = 15 * 60 * 1000;
   const AI_LOCK_KEY = 'qbti_ai_lock_v1';
@@ -3855,10 +3855,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     /* 优先使用后端生成的用户专属提示词；后端不可达时使用内置的应急提示词，仍然每次调用 AI */
     const context = buildDialogueContext(dim, dimState, name, entry, isDanger);
     let data = null;
+    const promptController = new AbortController();
+    const promptTimer = setTimeout(() => promptController.abort(), 12000);
     try {
       const res = await fetch('/api/dialogue/prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: promptController.signal,
         body: JSON.stringify({
           dimension: dim,
           address: name,
@@ -3871,6 +3874,8 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(!res.ok || !data.success || !data.prompt) data = null;
     } catch(e){
       data = null;
+    } finally {
+      clearTimeout(promptTimer);
     }
 
     const prompt = (data && data.prompt) ? data.prompt : buildEmergencyDialoguePrompt(dim, dimState, name, entry, isDanger);

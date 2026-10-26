@@ -1392,7 +1392,7 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang, va
   const backgroundText = (v && v.background) || b.background;
   const metaphorText = (v && v.metaphor) || b.metaphor;
   const logicText = b.logic;
-  const variantId = (sceneVariant && sceneVariant.id) || (dimension + '-base');
+  const variantId = (variant && variant.id) || (dimension + '-base');
   const c = context || {};
   const target = DIALOGUE_LANG_NAMES[lang] || 'English';
   const stateText = c.dimensionState === 'danger' ? 'danger / not yet collapsed'
@@ -1598,7 +1598,7 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang, sceneVari
   const backgroundText = (v && v.background) || b.background;
   const metaphorText = (v && v.metaphor) || b.metaphor;
   const logicText = b.logic;
-  const variantId = (variant && variant.id) || (dimension + '-base');
+  const variantId = (sceneVariant && sceneVariant.id) || (dimension + '-base');
   const c = context || {};
   const stateText = c.dimensionState === 'danger' ? '危险/未坍缩' : c.dimensionState === 'good' ? '良好/方向清晰' : '叠加/方向未定';
   const ratios = c.ratios && typeof c.ratios === 'object'
@@ -1855,6 +1855,7 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang, sceneVari
 }
 
 app.post('/api/dialogue/prompt', async (req, res) => {
+  try {
   const featureFlags = await readFeatureFlags();
   if(!featureFlags.story) return res.status(403).json({ error: '剧情功能已被管理员关闭', code: 'FEATURE_DISABLED' });
   const body = req.body || {};
@@ -1881,8 +1882,12 @@ app.post('/api/dialogue/prompt', async (req, res) => {
   const ip = String((req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || 'unknown').trim();
   const variant = chooseDialogueVariant(dimension, ip);
   const prompt = buildDialoguePrompt(dimension, address, safeContext, nonce, lang, variant);
-  if(!prompt || prompt.length > 8500) return res.status(500).json({ error: '提示词生成失败' });
+  if(!prompt || prompt.length > 20000) return res.status(500).json({ error: '提示词生成失败' });
   res.json({ success: true, dimension: dimension, scenarioId: variant ? variant.id : null, prompt: prompt });
+  } catch(err){
+    console.error('[剧本提示词] 生成失败:', err && err.message ? err.message : err);
+    if(!res.headersSent) res.status(500).json({ error: '剧本提示词生成失败', code: 'PROMPT_FAILED' });
+  }
 });
 
 // 4.8.4 量子态状况（第五维度前的小球观测，确定性分析，不消耗 AI Token）
