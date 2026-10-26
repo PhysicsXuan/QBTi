@@ -3526,7 +3526,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     ja: { good: 'Signal 200 · Comms Open — 信号は明瞭、通信は開通、ロックは安定', superposition: 'Signal 207 · Two Frequencies — 二つの周波数が重なり、干渉が見え、まだ収縮していない' },
     fr: { good: 'Signal 200 · Comms Open — signal clair, communications ouvertes, verrou stable', superposition: 'Signal 207 · Two Frequencies — deux fréquences se superposent, interférence visible, pas encore effondré' }
   };
-  function enforceStateOpening(script, dimState){
+  function enforceStateOpening(script, dimState, dimension){
     if(!script || !script.intro || dimState === 'danger') return script;
     const mode = dimState === 'good' ? 'good' : 'superposition';
     const pack = DIALOGUE_STATE_OPEN[currentLang()] || DIALOGUE_STATE_OPEN.en;
@@ -3537,10 +3537,28 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       if(bad.test(entry)){ replaced = true; return line; }
       return entry;
     });
+    const joined = script.intro.join(' ');
     if(!replaced){
-      const joined = script.intro.join(' ');
       const ok = mode === 'good' ? /clear|open|stable|清晰|畅通|穩定|稳定/i.test(joined) : /two|overlap|interfer|双频|雙頻|干涉|叠加|疊加/i.test(joined);
       if(!ok) script.intro.splice(2, 0, line);
+    }
+    if(mode === 'good'){
+      let lead = '', ratio = 0;
+      try {
+        const info = state.result && state.result.dimLeadInfo && state.result.dimLeadInfo[dimension];
+        if(info){ lead = info.lead || ''; ratio = Number(info.leadRatio) || (state.result.dimGroupRatio && state.result.dimGroupRatio[dimension] && state.result.dimGroupRatio[dimension][lead]) || 0; }
+      } catch(e){}
+      if(lead){
+        const zh = currentLang() === 'zh-CN' || currentLang() === 'zh-TW';
+        const subName = (window.QBTI_I18N && window.QBTI_I18N.sub) ? window.QBTI_I18N.sub(lead) : lead;
+        const hasPraise = joined.indexOf(subName) >= 0 || /strong|strength|突出|优势|優勢/i.test(joined);
+        if(!hasPraise){
+          const praise = zh
+            ? '你的' + subName + '特别突出' + (ratio ? '，占比 ' + ratio + '%' : '') + '。这不是运气，是你已经在用的真实优势'
+            : 'Your ' + subName + ' is especially strong' + (ratio ? ' at ' + ratio + '%' : '') + '. That is a real advantage you are already using.';
+          script.intro.splice(3, 0, praise);
+        }
+      }
     }
     return script;
   }
@@ -3614,7 +3632,7 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     }
     const disrespect = /他妈的|去你妈的|妈的|傻逼|操你|滚蛋|滚开|闭嘴|废物|没用的东西|怂货|巨婴|没救|你有病|loser|idiot|stupid|shut up/i;
     if(disrespect.test(fullText)) throw new Error('DISRESPECTFUL_LANGUAGE');
-    return enforceStateOpening(script, dimState);
+    return enforceStateOpening(script, dimState, dimension);
   }
 
   function buildDialogueContext(dim, dimState, name, entry, isDanger){
@@ -3657,10 +3675,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     const address = name || 'you';
     const mode = dimState === 'danger' ? 'danger' : dimState === 'good' ? 'good' : 'superposition';
     const stateContract = mode === 'danger'
-      ? 'STATE CONTRACT — DANGER: the direction is not locked. The script should help the user feel which of several concrete directions carries energy. Each act must test a different direction. The final question only asks which direction to try first; no long-term demand.'
+      ? 'STATE CONTRACT — DANGER: the direction is not locked. The script should help the user feel which of several concrete directions carries energy. Each act must test a different direction. Never imply the user is deficient; describe the signal and situation. The final question only asks which direction to try first; no long-term demand.'
       : mode === 'good'
-        ? 'STATE CONTRACT — GOOD: the direction is clear. Identify the strongest subdimension and amplify it. Each act should use the strength against a larger challenge. The final question invites one concrete next step in the strongest direction.'
-        : 'STATE CONTRACT — SUPERPOSITION: keep two or more possibilities alive. Let them interfere; do not force a collapse in Act 1. The final question helps the user notice which side is more coherent without choosing for them.';
+        ? 'STATE CONTRACT — GOOD: the direction is clear. Identify the strongest subdimension and amplify it. Praise this specific strength with concrete evidence; do not give generic flattery. Each act should use the strength against a larger challenge. The final question invites one concrete next step in the strongest direction.'
+        : 'STATE CONTRACT — SUPERPOSITION: keep two or more possibilities alive. Let them interfere; do not force a collapse in Act 1. Both possibilities are valid; never call the user indecisive. The final question helps the user notice which side is more coherent without choosing for them.';
     const stateActs = mode === 'danger'
       ? 'Act 1: three different direction clues; Act 2: the choice creates a cost and interference from another direction; Act 3: a small experiment; Final: which direction to try first.'
       : mode === 'good'
@@ -3671,6 +3689,11 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       : mode === 'good'
         ? 'RADAR: the signal is clear; all channels are open, communications are green, and the lock is stable.'
         : 'RADAR: two or three frequencies overlap; interference and phase drift are visible, and none has collapsed.';
+    const stateIntro = mode === 'danger'
+      ? 'The radar channel is quiet right now. This is a reading of the equipment, not a judgment about you; do not rush the user or imply anything is wrong with them.'
+      : mode === 'good'
+        ? 'The radar is clear and the lock is stable. Name one specific strength from the user’s result and praise it with concrete evidence; do not say “I understand why you are in this state” or “don’t worry”. You are not here to fix the user.'
+        : 'Two or more real frequencies are present. Both are valid; holding two possibilities is not a flaw and does not need to collapse now. Never call the user indecisive.';
     const errorByMode = {
       danger: ['Error 404 Signal Not Found', 'Error 403 Signal Lost', 'Error 502 Echo Lost'],
       good: ['Signal 000 · Locked', 'Signal 200 · Comms Open', 'Signal 101 · Radar Clear'],
@@ -3691,10 +3714,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       'MANDATORY OPENING: first 2-4 intro lines are "I" scanning the user’s radar; include "Error" for danger, or "Signal/Status" for good/superposition; use exactly this state-matched code: ' + errorCode + '; include scan/probe/radar; the anomaly must foreshadow Act 1.',
       stateRadar,
       'Do not use "No Found" for good or superposition. Good must clearly report clear signal / open communications / stable lock. Superposition must report overlapping frequencies / interference / phase drift. Only danger may use lost/not found.',
-      'INTRO: 8-10 short lines: beep → scanning radar → state-matched code (Error for danger / Signal for good or superposition) → state reading → non-judgmental reassurance → "I understand why…" → a grounded real-life line → "so now…" → "empty your mind… follow the words…" → "imagine…".',
+      'INTRO: 8-10 short lines: beep → scanning radar → state-matched code → a concrete reading → ' + stateIntro + ' → a grounded real-life line → "so now…" → "empty your mind… follow the words…" → "imagine…".',
       'SCENE: 2-4 background lines with concrete abandoned-place details; if intro ends with "imagine", set bridge to [].',
       'STRUCTURE: follow the state act plan above. Act 1/2/3 have 3 options; Final has 4 options. Each option has 1-2 feedback lines. Include branches A/B/C. Plant one concrete detail and pay it off in the final question.',
-      'RULES: no judging, diagnosing, labeling, "you should", "you must", parents, teachers, AI, scores or reports. Humor comes from the system and situation, never from mocking the user. No sudden events without a physical precursor. Do not end lines with the Chinese full stop "。".',
+      'RULES: no judging, diagnosing, labeling, blaming or implying the user is broken, lazy, negative or abnormal; "lost/weak/stuck" may describe the channel only, never the user. No "you should", "you must", parents, teachers, AI, scores or reports. Humor comes from the system and situation, never from mocking the user. No sudden events without a physical precursor. Do not end lines with the Chinese full stop "。".',
       'LENGTH: about 500-700 words. Prefer action, visual jokes and clear consequences over literary description.',
       'OUTPUT: valid JSON only, no markdown or explanation. Schema:',
       '{"continuity":{"openingDetail":"…","causeChain":["…","…","…"],"payoff":"…"},"intro":["…"],"bridge":[],"background":["…"],"act1":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"act2":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"branches":{"A":["…"],"B":["…"],"C":["…"]},"act3":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]},"final":{"lines":["…"],"prompt":"…","options":[{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]},{"text":"…","feedback":["…"]}]}}',
@@ -3762,6 +3785,13 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       superposition: ['Signal 207 · Two Frequencies', 'Signal 302 · Phase Drift', 'Signal 418 · Interference']
     };
     const errorCode = errorCodesByState[dimState === 'danger' ? 'danger' : dimState === 'good' ? 'good' : 'superposition'][Math.floor(Math.random() * 3)];
+    const leadName = context.lead || '最强的那个子维度';
+    const leadRatioText = context.lead && context.ratios && context.ratios[context.lead] != null ? '，占比' + context.ratios[context.lead] + '%' : '';
+    const stateIntro = dimState === 'danger'
+      ? '“现在通道很安静，这是设备的读数，不是对你的判断” → “我不会催你”'
+      : dimState === 'good'
+        ? '“你的' + leadName + '特别突出' + leadRatioText + '，这是一个真实的优势” → 具体夸这个优势，不要泛泛鼓励 → “我不是来修你的；我们看看这个优势能走多远”'
+        : '“两个信号都是真的；同时保留两种可能，不是缺陷” → “我们不需要现在就让它坍缩”';
     const link = {
       PO: '观测室墙上那台还在闪的旧射电接收器',
       II: '列车驾驶室里的旧广播和压力表',
@@ -3778,10 +3808,10 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       '【清晰动画剧集】一个地点、一个看得见的目标、一个不断升级的问题；每一幕按“可见目标→物理障碍→三种不同行动→立刻结果”推进；不引入无关新谜团，不时间跳跃，不突然事件；台词短、可演，每场最多一个短比喻并立刻落到具体动作',
       '【开场强制】前2-4句必须是“我”在探测用户的该维度雷达；危险态出现“Error”，良好态/叠加态出现“Signal/Status”；本次状态匹配代码必须逐字使用；' + stateRadar + '；良好态/叠加态禁止写 No Found/404/信号丢失；雷达异常要成为第一幕前兆的原因',
       '本次错误码：' + errorCode,
-      '【引入节奏】intro 8-10句，按顺序：——哔…→我正在扫描你的雷达…→Error错误码→状态观察→不过别担心…还能争…→我理解你为何会是这种状态…→现实中每天迎接那么多未知…是个人都会累的…→那么现在…→把中控台关机…放空你的大脑…跟随着文字的指引…→想象一下…；必须出现“放空你的大脑”“跟随着文字的指引”“想象一下”',
+      '【引入节奏】intro 8-10句，按顺序：——哔…→我正在扫描你的雷达…→状态代码→具体读数→' + stateIntro + '→现实中每天迎接那么多未知…是个人都会累的…→那么现在…→把中控台关机…放空你的大脑…跟随着文字的指引…→想象一下…；必须出现“放空你的大脑”“跟随着文字的指引”“想象一下”；禁止说“我理解你为何会是这种状态”“不过别担心”，禁止暗示用户有缺陷',
       '【雷达→剧本】不要报完 Error 就切场景；如果以“想象一下…”进入场景，bridge 用空数组 []，不要强行写技术过渡；如果不用想象式过渡，才写1-3句 bridge 接到：' + link,
       '【背景】必须写 background 2-4 句，交代地点、废弃/停用原因、当前具体细节；至少包含两个：' + background,
-      '【核心：尊重用户】不爆粗口、不嘲讽、不贬低、不贴标签、不诊断、不评价用户的选择；幽默来自系统自己和情境，不来自嘲笑用户',
+      '【核心：尊重用户】不爆粗口、不嘲讽、不贬低、不贴标签、不诊断、不评价用户的选择；不把丢失/微弱/卡住说成用户的问题，只描述通道和设备；良好态必须具体夸最强优势，叠加态必须说两种信号都真实；幽默来自系统自己和情境，不来自嘲笑用户',
       '【语气】像真人在说话，可以吐槽设备、吐槽自己、慌、嘴硬、被打脸、说半句话；可以用“不是哥们”“绷不住了”“什么鬼”，但不要每句都堆梗',
       '不要把选项写成“怂”“莽”“摆烂”这种人格局限标签；描述行为，不评价人格',
       stateStrategy,

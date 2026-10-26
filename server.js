@@ -1372,10 +1372,15 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     '- The three options must be three different actions with different costs, not three moods or three rephrasings. Feedback must show the immediate consequence and hand a clear next beat to the next act.',
     '- No time skips, no sudden events, no “and then everything changed”. Every transition needs a physical cause the user could point to.'
   ].join('\n');
+  const introRhythm = stateMode === 'danger'
+    ? 'Write 8-10 short intro lines in this order: "—beep…" → "I’m scanning your [dimension] radar…" → the state-matched code → a concrete radar reading → "the channel is quiet right now; that is a reading of the equipment, not a judgment about you" → "I won’t rush you" → a grounded real-life line about how many unknowns a person meets every day → "so now…" → "shut down the console… empty your mind… follow the words…" → "imagine…". Do NOT say "I understand why you are in this state" or imply the user is broken, lazy or abnormal.'
+    : stateMode === 'good'
+      ? 'Write 8-10 short intro lines in this order: "—beep…" → "I’m scanning your [dimension] radar…" → the state-matched code → a clear, stable reading → "your [strongest subdimension] is especially strong at [ratio] — that is a real advantage" → praise this specific strength without flattery or generic encouragement → "I’m not here to fix you; let’s see how far this strength can go" → a grounded real-life line → "so now…" → "shut down the console… empty your mind… follow the words…" → "imagine…". Do NOT say "I understand why you are in this state", "don’t worry", or imply anything is wrong with the user.'
+      : 'Write 8-10 short intro lines in this order: "—beep…" → "I’m scanning your [dimension] radar…" → the state-matched code → a reading that shows two or more real frequencies → "both signals are real; holding two possibilities is not a flaw" → "we don’t have to collapse this yet" → a grounded real-life line → "so now…" → "shut down the console… empty your mind… follow the words…" → "imagine…". Do NOT say "I understand why you are in this state", call the user indecisive, or imply the superposition is a problem to fix.';
   const stateContract = stateMode === 'danger'
     ? [
         'STATE-SPECIFIC CONTRACT — DANGER / NOT YET COLLAPSED: HELP THE USER FIND A DIRECTION',
-        '- The ball is unstable and its direction is not locked. The script is not therapy and not a pep talk; it must let the user feel which of several concrete directions carries more energy.',
+        '- The ball is unstable and its direction is not locked. The script is not therapy and not a pep talk; it must let the user feel which of several concrete directions carries more energy. Never imply the user is deficient; describe the signal and the situation.',
         '- Each act must test a different direction, not rephrase the same choice. Options must point to concrete directions, concrete costs and concrete next moves.',
         '- The user may choose uncertainty or observation first, but each choice must make one direction slightly clearer.',
         '- The final question only helps the user name “which direction I am willing to test first”; do not demand a long-term commitment or decide for them.'
@@ -1383,14 +1388,14 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     : stateMode === 'good'
       ? [
           'STATE-SPECIFIC CONTRACT — GOOD / DIRECTION IS CLEAR: AMPLIFY THE STRONGEST DIRECTION',
-          '- The ball already has a clear direction. Its strongest subdimension is ' + leadText + '. The script must recognize and amplify this strength rather than reopening every direction.',
+          '- The ball already has a clear direction. Its strongest subdimension is ' + leadText + '. The script must recognize and amplify this strength rather than reopening every direction. Praise this specific strength with the actual ratio or evidence; do not give generic flattery.',
           '- Each act raises the challenge: first use the strength on a small problem → let it meet real resistance → migrate it to a larger scene.',
           '- Options should show different uses of the same strength; do not write “you are already fine, so do nothing.” The good state needs an extension, not stagnation.',
           '- The final question invites one concrete next step in the strongest direction, without commanding or deciding for the user.'
         ].join('\n')
       : [
           'STATE-SPECIFIC CONTRACT — SUPERPOSITION / DIRECTION NOT FIXED: TEST INSIDE THE SUPERPOSITION',
-          '- The ball is sitting between several possibilities. Let at least two real impulses appear and interfere; do not force a collapse in Act 1.',
+          '- The ball is sitting between several possibilities. Let at least two real impulses appear and interfere; do not force a collapse in Act 1. Both impulses are valid; never call the user indecisive or imply the superposition is a defect.',
           '- Structure: two possibilities coexist → the choice creates interference or a cost → a small measurement that does not kill the other side.',
           '- Options must include different strategies such as “hold both”, “test a little”, “step back and observe”; let the user experience the tension of superposition.',
           '- Branches should retain traces of both possibilities; the final question helps the user notice which side is more coherent, not choose for them.'
@@ -1441,12 +1446,14 @@ function buildDialoguePromptEnglish(dimension, address, context, nonce, lang){
     '- Include the word "Error" only for danger; for good/superposition include "Signal" or "Status". Use exactly this state-matched code: ' + errorCode + '.',
     '- Include at least one of: scan, probe, radar.',
     stateRadar,
+    '- Words like lost, weak, stuck or interrupted describe the channel, never the user. Do not blame or diagnose the user. For good, explicitly name and praise the strongest subdimension (with its ratio). For superposition, explicitly say both signals are real and valid.',
     '- Do not use "No Found" for a good or superposition state. Good must explicitly report clear signal / open communications / stable lock. Superposition must explicitly report overlapping frequencies / interference / phase drift. Danger may use lost/not found.',
     '- The anomaly must cause or foreshadow the first concrete detail in Act 1. It cannot be decorative.',
     '',
     'INTRO RHYTHM:',
-    '- Write 8-10 short intro lines in this order: "—beep…" → "I’m scanning your [dimension] radar…" → state-matched code (Error for danger / Signal for good or superposition) → a specific reading of the state → a non-judgmental reassurance ("don’t worry… there is still room…") → "I understand why you might be in this state…" → a grounded real-life line about how many unknowns a person meets every day → "so now…" → "shut down the console… empty your mind… follow the words…" → "imagine…".',
+    introRhythm,
     '- Include the equivalent of "empty your mind", "follow the words" and "imagine" in the target language. Do not skip these three beats.',
+    '- No-blame rule: the radar describes the channel, equipment and signal, never the user’s worth or personality. Never imply the user is broken, lazy, negative, abnormal or “in a bad state”.',
     '',
     'RADAR → SCENE:',
     '- Do not jump to the scene immediately after the error.',
@@ -1560,10 +1567,15 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     '- 三个选项必须是三种不同行动和不同代价，不是三种心情或三句换皮。每条反馈都要写出立刻发生的后果，并把下一步交给下一幕。',
     '- 不允许时间跳跃、突然事件或“然后一切都变了”。每个转场都要有用户能指认的物理前因。'
   ].join('\n');
+  const introRhythm = stateMode === 'danger'
+    ? '写 8-10 句短开场，顺序：——“哔…”→“我正在扫描你的[维度名]雷达…”→本次状态代码→具体雷达读数→“现在通道很安静，这是设备的读数，不是对你的判断”→ “我不会催你”→一句现实共鸣→“那么现在…”→“把中控台关机…放空你的大脑…跟随着文字的指引…”→“想象一下…”。禁止说“我理解你为何会是这种状态”，禁止暗示用户坏掉了、懒、消极或不正常。'
+    : stateMode === 'good'
+      ? '写 8-10 句短开场，顺序：——“哔…”→“我正在扫描你的[维度名]雷达…”→本次状态代码→清晰稳定的读数→“你的[最强子维度]特别突出，占比[比例]，这是一个真实的优势”→具体夸这个优势，不要泛泛鼓励→“我不是来修你的；我们看看这个优势能走多远”→一句现实共鸣→“那么现在…”→“把中控台关机…放空你的大脑…跟随着文字的指引…”→“想象一下…”。禁止说“我理解你为何会是这种状态”“不过别担心”，禁止暗示用户有任何问题。'
+      : '写 8-10 句短开场，顺序：——“哔…”→“我正在扫描你的[维度名]雷达…”→本次状态代码→读出两个或更多真实频率→“两个信号都是真的；同时保留两种可能，不是缺陷”→ “我们不需要现在就让它坍缩”→一句现实共鸣→“那么现在…”→“把中控台关机…放空你的大脑…跟随着文字的指引…”→“想象一下…”。禁止说“我理解你为何会是这种状态”，禁止说用户优柔寡断，禁止暗示叠加态是需要修的毛病。';
   const stateContract = stateMode === 'danger'
     ? [
         '【本维度核心任务：危险/未坍缩态 → 先帮助用户确定方向，不急着给答案】',
-        '- 这一颗球信号不稳，方向还没有锁定；剧本的任务不是治疗，也不是劝他振作，而是让他在几个具体方向里感受到哪一条更有能量。',
+        '- 这一颗球信号不稳，方向还没有锁定；剧本的任务不是治疗，也不是劝他振作，而是让他在几个具体方向里感受到哪一条更有能量。不要暗示用户有缺陷；只描述信号和处境。',
         '- 三幕必须分别测试不同的方向，而不是把同一句话换个说法；选项要指向具体方向、具体代价、具体下一步。',
         '- 允许用户先选“不确定/先观察”，但每次选择都要让某个方向变得更清楚一点。',
         '- 终幕只帮他命名“我愿意先往哪边试一步”，不要求长期承诺，不替他做决定。'
@@ -1571,14 +1583,14 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     : stateMode === 'good'
       ? [
           '【本维度核心任务：良好/方向清晰态 → 往最强方向推进】',
-          '- 这一颗球已经有明确方向；当前最强子维度是 ' + leadText + '。剧本要识别并放大这个优势，而不是重新把所有方向都铺开。',
+          '- 这一颗球已经有明确方向；当前最强子维度是 ' + leadText + '。剧本要识别并放大这个优势，而不是重新把所有方向都铺开。必须结合具体占比或证据明确夸这个优势，不要泛泛夸奖。',
           '- 三幕逐级增加挑战：先用优势解决一个小问题 → 让优势遇到真实阻力 → 把优势迁移到更大的场景。',
           '- 选项要体现同一优势的不同用法；不是“你已经很好所以不用动”，而是让优势再往前伸展一格。',
           '- 终幕邀请用户把最强方向变成一个可执行的下一步，但不命令、不替用户决定。'
         ].join('\n')
       : [
           '【本维度核心任务：叠加/方向未定态 → 在叠加里测试，不提前坍缩】',
-          '- 这一颗球同时停在多个可能之间；剧本要让两个或多个真实冲动都上场，制造干涉，而不是第一幕就逼他选死。',
+          '- 这一颗球同时停在多个可能之间；剧本要让两个或多个真实冲动都上场，制造干涉，而不是第一幕就逼他选死。两种冲动都是真实的；不要说用户优柔寡断，也不要把叠加态写成需要修的毛病。',
           '- 三幕结构：两个可能同时成立 → 选择产生干涉/代价 → 一次不杀死另一边的小测量。',
           '- 选项必须包含“同时保留 / 先试一点 / 退一步观察”等不同策略，让用户经验到叠加本身的张力。',
           '- 分支要保留两种可能留下的痕迹；终幕帮助他观察哪一边更相干，而不是替他选边。'
@@ -1651,24 +1663,16 @@ function buildDialoguePrompt(dimension, address, context, nonce, lang){
     '- 出现“扫描 / 探测 / 雷达”中的至少一个词',
     '- 用“我”作为探测主体',
     stateRadar,
+    '- “丢失/微弱/卡住/中断”只能描述通道和设备，不能描述用户；不得诊断、贬低或暗示用户有缺陷。良好态必须点名并具体夸最强子维度及其占比；叠加态必须明确说两种信号都真实、同时存在不是缺陷。',
     '- 良好态和叠加态禁止写“No Found / 404 / 信号丢失”；良好态要明确写“信号清晰、通讯畅通、锁定稳定”，叠加态要明确写“双频/多频重叠、干涉、相位漂移”。危险态才可以使用丢失/404。',
     '- 错误码和开场现象每次必须有新意，但不能改变状态对应的雷达结论',
     '- 这个雷达异常不能只是装饰：它要成为第一幕第一个前兆的原因或伏笔',
     '- 必须明确读出用户当前状态：危险态是信号断续/丢失，良好态是信号稳定/锁定，叠加态是双频/漂移',
     '',
     '【引入节奏：模仿这段呼吸，不要直接切场景】',
-    'intro 必须按这个顺序写 8-10 句：',
-    '1. “——哔…”',
-    '2. “我正在扫描你的' + b.name + '雷达…”',
-    '3. 本次 Error 错误码（可以带一句很短的系统反应）',
-    '4. 对雷达状态的观察：对应危险/良好/叠加，不要只报错，要像真在读数',
-    '5. 一句不评判的安抚：类似“不过别担心…还能争…”（不要保证结果，不要灌鸡汤）',
-    '6. 一句理解：类似“我理解你为何会是这种状态…”',
-    '7. 一句现实共鸣：类似“在现实中…每天迎接那么多未知变量…是个人都会累的…”',
-    '8. “那么现在…”',
-    '9. “把中控台关机…放空你的大脑…跟随着文字的指引…”',
-    '10. “想象一下…”',
-    '这 10 句必须原样或近似出现“放空你的大脑”“跟随着文字的指引”“想象一下”这三个关键动作，不能省略',
+    introRhythm,
+    '必须原样或近似出现“放空你的大脑”“跟随着文字的指引”“想象一下”这三个关键动作，不能省略',
+    '【不指责原则】雷达描述的是通道、设备和信号，不是用户的价值或人格；禁止说用户坏掉了、懒、消极、不正常，禁止用“你有问题/你状态不好”作为开场。',
     '',
     '【雷达 → 剧本的衔接】',
     '- 不要报完 Error 就直接切到场景',
