@@ -12,6 +12,26 @@
   const CODE_COOLDOWN = 60 * 1000;
   const API_BASE = '';
 
+  /* Render/反向代理冷启动时 502/503/504 很常见：登录请求短暂重试，避免用户误以为账号坏了 */
+  async function fetchWithBootstrapRetry(url, options, attempts){
+    const max = attempts || 3;
+    let lastError = null;
+    for(let i = 0; i < max; i++){
+      try {
+        const res = await fetch(url, options);
+        if((res.status === 502 || res.status === 503 || res.status === 504) && i < max - 1){
+          await new Promise(resolve => setTimeout(resolve, 700 * (i + 1)));
+          continue;
+        }
+        return res;
+      } catch(err){
+        lastError = err;
+        if(i < max - 1) await new Promise(resolve => setTimeout(resolve, 700 * (i + 1)));
+      }
+    }
+    throw lastError || new Error('NETWORK');
+  }
+
   const ADMIN_USERNAME = 'Administrator';
   const ADMIN_PASSWORD = 'admin123456';
   const ADMIN_EMAIL    = 'administrator@qbti.local';
@@ -823,7 +843,7 @@
       submitBtn.disabled = true;
       submitBtn.textContent = '登录中…';
       try {
-        const res = await fetch(API_BASE + '/api/admin/login', {
+        const res = await fetchWithBootstrapRetry(API_BASE + '/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: 'Administrator', password: data.password })
@@ -859,7 +879,7 @@
     submitBtn.textContent = '登录中…';
 
     try {
-      const res = await fetch(API_BASE + '/api/student/login', {
+      const res = await fetchWithBootstrapRetry(API_BASE + '/api/student/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: data.identifier, password: data.password })

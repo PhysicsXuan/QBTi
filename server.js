@@ -45,7 +45,13 @@ if (!DATABASE_URL) {
 /* ---------- 数据库连接池 ---------- */
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: DATABASE_URL ? { rejectUnauthorized: false } : false
+  ssl: DATABASE_URL ? { rejectUnauthorized: false } : false,
+  max: 10,
+  connectionTimeoutMillis: 8000,
+  idleTimeoutMillis: 30000,
+  keepAlive: true,
+  statement_timeout: 12000,
+  query_timeout: 12000
 });
 
 pool.on('error', (err) => {
@@ -191,7 +197,11 @@ async function initDB() {
   ];
   try {
     for (let q of queries) {
-      await pool.query(q);
+      try {
+        await pool.query(q);
+      } catch (queryErr) {
+        console.error('⚠️ 数据库表初始化单条失败:', queryErr.message.slice(0, 180));
+      }
     }
     const salt = genSalt();
     await pool.query(
@@ -2827,7 +2837,10 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/parent', (req, res) => res.sendFile(path.join(__dirname, 'parent.html')));
 
 // 启动服务：先补齐表结构，再开始接收请求
-initDB().finally(() => {
+let serverStarted = false;
+function startHttpServer(){
+  if(serverStarted) return;
+  serverStarted = true;
   app.listen(PORT, () => {
     console.log('');
     console.log('===========================================');
@@ -2838,4 +2851,16 @@ initDB().finally(() => {
     console.log('===========================================');
     console.log('');
   });
+}
+/* 先监听端口，避免 Render 健康检查/登录请求在数据库初始化期间收到 502 */
+startHttpServer();
+initDB().catch(err => {
+  console.error('⚠️ 数据库初始化失败，HTTP 服务保持运行:', err && err.message ? err.message : err);
+});
+
+process.on('unhandledRejection', err => {
+  console.error('[未处理的 Promise 拒绝]', err && err.stack ? err.stack : err);
+});
+process.on('uncaughtException', err => {
+  console.error('[未捕获异常]', err && err.stack ? err.stack : err);
 });
