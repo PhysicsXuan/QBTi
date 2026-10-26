@@ -1970,6 +1970,50 @@ app.post('/api/admin/features', requireStudentAdmin, async (req, res) => {
   }
 });
 
+// 4.8.35 管理员：查看所有用户历史观测
+app.get('/api/admin/history', requireStudentAdmin, async (req, res) => {
+  const search = String(req.query.search || '').trim().slice(0, 100);
+  const pattern = '%' + search + '%';
+  const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 100));
+  const offset = Math.max(0, Math.min(100000, Number(req.query.offset) || 0));
+  try {
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM quiz_records q
+       LEFT JOIN student_emails se ON LOWER(se.email) = LOWER(q."studentEmail")
+       WHERE ($1 = '' OR q."studentEmail" ILIKE $2 OR COALESCE(se.username,'') ILIKE $2)`,
+      [search, pattern]
+    );
+    const r = await pool.query(
+      `SELECT q."studentEmail", q."quizTs", q.payload, q."createdAt", se.username
+       FROM quiz_records q
+       LEFT JOIN student_emails se ON LOWER(se.email) = LOWER(q."studentEmail")
+       WHERE ($1 = '' OR q."studentEmail" ILIKE $2 OR COALESCE(se.username,'') ILIKE $2)
+       ORDER BY q."quizTs" DESC
+       LIMIT $3 OFFSET $4`,
+      [search, pattern, limit, offset]
+    );
+    res.json({
+      success: true,
+      total: countRes.rows[0] ? countRes.rows[0].total : 0,
+      limit: limit,
+      offset: offset,
+      records: r.rows.map(function(row){
+        return {
+          email: row.studentEmail,
+          username: row.username || '',
+          ts: Number(row.quizTs) || 0,
+          updatedAt: Number(row.createdAt) || 0,
+          payload: row.payload || null
+        };
+      })
+    });
+  } catch(e){
+    console.error('[管理员全部历史] 读取失败:', e.message);
+    res.status(500).json({ error: '服务器数据库异常', code: 'DB_ERROR' });
+  }
+});
+
 // 4.8.4 管理员：用户列表 / 黑名单
 app.get('/api/admin/users', requireStudentAdmin, async (req, res) => {
   const search = String(req.query.search || '').trim().slice(0, 100);

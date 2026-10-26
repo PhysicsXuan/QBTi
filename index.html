@@ -436,6 +436,25 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
 .ac-search input:focus,.ac-ban-add input:focus{border-color:rgba(255,190,80,.5)}
 .ac-search button,.ac-ban-add button{padding:9px 13px;border-radius:9px;border:1px solid rgba(255,190,80,.28);background:rgba(255,190,80,.08);color:#FFE0A0;font:inherit;font-size:11.5px;cursor:pointer}
 .ac-users{max-height:280px;overflow-y:auto;margin-top:6px;padding-right:3px}
+.ac-history{max-height:420px;overflow-y:auto;margin-top:8px;padding-right:3px}
+.ac-history-item{border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.022);margin-bottom:8px;overflow:hidden}
+.ac-history-item summary{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;list-style:none;flex-wrap:wrap}
+.ac-history-item summary::-webkit-details-marker{display:none}
+.ac-history-item summary::after{content:'＋';margin-left:auto;color:#7F8EAB;font-size:13px}
+.ac-history-item[open] summary::after{content:'−'}
+.ac-h-user{color:#EAF0FF;font-size:11.5px;font-weight:700;word-break:break-all}
+.ac-h-code{color:#FFD98A;font-size:11px;font-weight:800;letter-spacing:.04em}
+.ac-h-time{color:#71809F;font-size:10px;margin-left:auto;white-space:nowrap}
+.ac-h-tag{font-size:9px;padding:2px 6px;border-radius:99px;background:rgba(110,150,255,.12);color:#B8C8FF;white-space:nowrap}
+.ac-h-tag.hidden{background:rgba(255,190,80,.14);color:#FFE0A0}
+.ac-h-body{padding:0 13px 12px;color:#AEBBD5;font-size:11.5px;line-height:1.75;border-top:1px solid rgba(255,255,255,.06)}
+.ac-h-row{margin-top:9px}
+.ac-h-row b{color:#DCE7FF;font-weight:700}
+.ac-h-answer{color:#8FA1C2;max-height:120px;overflow:auto;white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:10px;background:rgba(0,0,0,.2);padding:7px;border-radius:6px;margin-top:4px}
+.ac-h-report{color:#D9E4F7;background:rgba(80,130,255,.06);border:1px solid rgba(110,160,255,.12);padding:8px;border-radius:8px;margin-top:4px;white-space:pre-wrap;max-height:180px;overflow:auto}
+.ac-history-more{width:100%;margin-top:6px;padding:8px;border-radius:8px;border:1px solid rgba(255,190,80,.25);background:rgba(255,190,80,.06);color:#FFE0A0;font:inherit;font-size:11px;cursor:pointer}
+.ac-history-more:hover{background:rgba(255,190,80,.12)}
+
 .ac-user{display:flex;align-items:center;gap:12px;padding:10px 11px;border-radius:10px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);margin-bottom:7px}
 .ac-user-main{min-width:0;flex:1}
 .ac-user-main b{display:block;color:#E5ECFF;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -917,6 +936,15 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
       <div class="ac-feature-grid" id="acFeatures"></div>
     </div>
     <div class="ac-section">
+      <div class="ac-section-title">所有用户历史观测 <span id="acHistoryStatus"></span></div>
+      <div class="ac-search">
+        <input id="acHistorySearch" type="text" placeholder="搜索用户邮箱或用户名" />
+        <button type="button" id="acHistorySearchBtn">搜索</button>
+      </div>
+      <div class="ac-history" id="acHistoryList"></div>
+      <button type="button" class="ac-history-more" id="acHistoryMore" style="display:none;">加载更多</button>
+    </div>
+    <div class="ac-section">
       <div class="ac-section-title">用户黑名单 <span id="acUserStatus"></span></div>
       <div class="ac-search">
         <input id="acUserSearch" type="text" placeholder="搜索邮箱或用户名" />
@@ -1242,6 +1270,81 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     });
   }
 
+  let adminHistoryOffset = 0;
+  let adminHistoryTotal = 0;
+  let adminHistoryCount = 0;
+
+  function adminHistoryDate(ts){
+    const d = new Date(Number(ts) || 0);
+    const p = n => n < 10 ? '0' + n : '' + n;
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function adminHistoryRecordHTML(r){
+    const payload = (r.payload && typeof r.payload === 'object') ? r.payload : {};
+    let result = null;
+    try { if(payload.answers) result = Q.computeResult(payload.answers); } catch(e){}
+    const code = payload.code || (result ? result.letters.join('') : '');
+    const suffix = payload.suffix || (result && result.suffix ? result.suffix.letter : '');
+    const typeName = code && Q.TYPE_NAMES ? (Q.TYPE_NAMES[code] || '') : '';
+    const qs = payload.quantumState && (payload.quantumState.type || payload.quantumState);
+    const hidden = payload.hiddenResult && payload.hiddenResult.obtained ? payload.hiddenResult : null;
+    let hiddenName = '';
+    if(hidden && window.QBTI_HIDDEN){
+      try {
+        const hp = window.QBTI_HIDDEN.get(currentLang());
+        hiddenName = (hp.types[hidden.key] && hp.types[hidden.key].name) || hidden.key;
+      } catch(e){ hiddenName = hidden.key || ''; }
+    }
+    const dims = result ? Q.DIMS.map(function(d){
+      const ratio = result.dimGroupRatio[d.id];
+      return d.id + ': ' + d.letters.map(function(l){ return l + '=' + ratio[l] + '%'; }).join(' / ');
+    }).join(' · ') : '';
+    const answerText = payload.answers ? JSON.stringify(payload.answers) : '';
+    return '<details class="ac-history-item">'
+      + '<summary><span class="ac-h-user">' + escapeHTML(r.username || r.email) + '</span>'
+      + '<span class="ac-h-code">' + escapeHTML(code + (suffix ? '-' + suffix : '')) + '</span>'
+      + (hidden ? '<span class="ac-h-tag hidden">隐藏 · ' + escapeHTML(hiddenName) + '</span>' : '')
+      + '<span class="ac-h-tag">' + escapeHTML(qs || '—') + '</span>'
+      + '<span class="ac-h-time">' + escapeHTML(adminHistoryDate(r.ts)) + '</span></summary>'
+      + '<div class="ac-h-body">'
+      + '<div class="ac-h-row"><b>用户：</b>' + escapeHTML(r.email) + (r.username ? ' · ' + escapeHTML(r.username) : '') + '</div>'
+      + '<div class="ac-h-row"><b>类型：</b>' + escapeHTML(code + (suffix ? '-' + suffix : '')) + (typeName ? ' · ' + escapeHTML(typeName) : '') + '</div>'
+      + (dims ? '<div class="ac-h-row"><b>维度：</b>' + escapeHTML(dims) + '</div>' : '')
+      + (hidden ? '<div class="ac-h-row"><b>隐藏人格：</b>' + escapeHTML(hiddenName) + '（' + escapeHTML(hidden.key || '') + '）</div>' : '')
+      + (payload.aiReport ? '<div class="ac-h-row"><b>解析报告：</b><div class="ac-h-report">' + escapeHTML(payload.aiReport) + '</div></div>' : '')
+      + '<div class="ac-h-row"><b>答案：</b>' + (payload.answers ? Object.keys(payload.answers).length + ' 题' : '无') + '<div class="ac-h-answer">' + escapeHTML(answerText) + '</div></div>'
+      + '</div></details>';
+  }
+  function renderAdminHistory(records, append){
+    const host = $('acHistoryList');
+    if(!host) return;
+    if(!append) host.innerHTML = '';
+    if(!records || !records.length){
+      if(!append) host.innerHTML = '<div class="ac-empty">没有匹配的历史记录</div>';
+      return;
+    }
+    host.insertAdjacentHTML('beforeend', records.map(adminHistoryRecordHTML).join(''));
+  }
+  async function refreshAdminHistory(reset){
+    if(reset){ adminHistoryOffset = 0; adminHistoryCount = 0; }
+    const search = $('acHistorySearch') ? $('acHistorySearch').value.trim() : '';
+    const status = $('acHistoryStatus');
+    if(status) status.textContent = '读取中…';
+    try {
+      const data = await adminRequest('/api/admin/history?search=' + encodeURIComponent(search) + '&limit=100&offset=' + adminHistoryOffset);
+      adminHistoryTotal = Number(data.total) || 0;
+      const records = data.records || [];
+      renderAdminHistory(records, !reset);
+      adminHistoryCount += records.length;
+      adminHistoryOffset += records.length;
+      if(status) status.textContent = '共 ' + adminHistoryTotal + ' 条 · 已显示 ' + adminHistoryCount + ' 条';
+      const more = $('acHistoryMore');
+      if(more) more.style.display = adminHistoryCount < adminHistoryTotal ? 'block' : 'none';
+    } catch(e){
+      if(status) status.textContent = e.message;
+    }
+  }
+
   async function refreshAdminUsers(){
     const search = $('acUserSearch') ? $('acUserSearch').value.trim() : '';
     const status = $('acUserStatus'); if(status) status.textContent = '读取中…';
@@ -1261,14 +1364,21 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     mask.classList.add('show');
     const fs = $('acFeatureStatus'); if(fs) fs.textContent = '读取中…';
     try {
-      const [features, users] = await Promise.all([
+      const [features, users, history] = await Promise.all([
         adminRequest('/api/admin/features'),
-        adminRequest('/api/admin/users')
+        adminRequest('/api/admin/users'),
+        adminRequest('/api/admin/history?limit=100&offset=0')
       ]);
       renderAdminFeatures(features.features || DEFAULT_FEATURE_FLAGS);
       renderAdminUsers(users.users || []);
+      adminHistoryTotal = Number(history.total) || 0;
+      adminHistoryCount = (history.records || []).length;
+      adminHistoryOffset = adminHistoryCount;
+      renderAdminHistory(history.records || [], false);
       if(fs) fs.textContent = '立即生效';
       const us = $('acUserStatus'); if(us) us.textContent = '共 ' + (users.users || []).length + ' 位';
+      const hs = $('acHistoryStatus'); if(hs) hs.textContent = '共 ' + adminHistoryTotal + ' 条 · 已显示 ' + adminHistoryCount + ' 条';
+      const hm = $('acHistoryMore'); if(hm) hm.style.display = adminHistoryCount < adminHistoryTotal ? 'block' : 'none';
     } catch(e){
       if(fs) fs.textContent = e.message;
     }
@@ -1281,6 +1391,9 @@ body.q-bold{-webkit-text-stroke:0.35px currentColor;}
     if($('acClose')) $('acClose').addEventListener('click', () => mask.classList.remove('show'));
     mask.addEventListener('click', e => { if(e.target === mask) mask.classList.remove('show'); });
     if($('acUserSearchBtn')) $('acUserSearchBtn').addEventListener('click', refreshAdminUsers);
+    if($('acHistorySearchBtn')) $('acHistorySearchBtn').addEventListener('click', () => refreshAdminHistory(true));
+    if($('acHistorySearch')) $('acHistorySearch').addEventListener('keydown', e => { if(e.key === 'Enter') refreshAdminHistory(true); });
+    if($('acHistoryMore')) $('acHistoryMore').addEventListener('click', () => refreshAdminHistory(false));
     if($('acUserSearch')) $('acUserSearch').addEventListener('keydown', e => { if(e.key === 'Enter') refreshAdminUsers(); });
     if($('acBanBtn')) $('acBanBtn').addEventListener('click', async function(){
       const email = $('acBanEmail') ? $('acBanEmail').value.trim() : '';
